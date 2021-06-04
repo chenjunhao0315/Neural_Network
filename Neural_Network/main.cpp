@@ -18,22 +18,22 @@ int main(int argc, const char * argv[]) {
 //    nn.addLayer(LayerOption{{"type", "Softmax"}, {"number_class", "2"}});
     nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
-    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "64"}, {"activation", "Relu"}});
+    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "128"}, {"activation", "Relu"}});
     nn.addLayer(LayerOption{{"type", "Softmax"}, {"number_class", "3"}});
     nn.makeLayer();
 //    nn.shape();
     
-//    Tensor test1(5, 5, 1, 0), test2(5, 5, 1, 1);
+//    Tensor test1(5, 5, 1, 0), test2(5, 5, 1, 1), test3(5, 5, 1, 0.3);
 //    vtensor test{{Tensor(5, 5, 1, 0)}, {Tensor(5, 5, 1, 0.3)}, {Tensor(5, 5, 1, 0.7)}, Tensor{5, 5, 1, 1}};
 //    vfloat label{0, 0, 1, 1};
-//    vfloat test_result = nn.predict(&test1);
+//    vfloat test_result = nn.predict(&test2);
 //    printf("Predict: %.0f (%.2f%%)\n", test_result[0], test_result[1] * 100);
 //    test_result = nn.predict(&test2);
 //    printf("Predict: %.0f (%.2f%%)\n", test_result[0], test_result[1] * 100);
 ////    nn.shape();
-//    nn.train("SVG", 0.001, test, label, 300);
+////    nn.train("SVG", 0.01, test, label, 600);
 ////    nn.shape();
-//    test_result = nn.predict(&test1);
+//    test_result = nn.predict(&test3);
 //    printf("Predict: %.0f (%.2f%%)\n", test_result[0], test_result[1] * 100);
 //    test_result = nn.predict(&test2);
 //    printf("Predict: %.0f (%.2f%%)\n", test_result[0], test_result[1] * 100);
@@ -51,6 +51,12 @@ int main(int argc, const char * argv[]) {
     
 //    result = nn.predict(&input);
 //    printf("Predict: %.0f (%.2f%%)\n", result[0], result[1] * 100);
+//    Tensor test(vfloat(576, 0.3), vfloat(576, 0.3), vfloat(576, 0.3), 28, 28);
+//    vfloat out = nn.predict(&test);
+//    printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//    Tensor test2(vfloat(576, 0.5), vfloat(576, 0.5), vfloat(576, 0.5), 28, 28);
+//    out = nn.predict(&test2);
+//    printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     
     Data bee("bee.npy", 28, 28);
     vtensor data_bee = bee.get(500);
@@ -70,29 +76,27 @@ int main(int argc, const char * argv[]) {
         data_label.push_back(label_fish[i]);
     }
 //    data_train.insert(data_bee.end(), data_cat.begin(), data_cat.end());
-    
+//
 //    data_label.insert(label_bee.end(), label_cat.begin(), label_cat.end());
-    
-    
+
+
     vfloat out = nn.predict(&data_bee[0]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
 //    nn.shape();
     nn.train("SVG", 0.01, data_train, data_label, 1);
 //    nn.shape();
-    out = nn.predict(&data_bee[0]);
-    printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_bee[27]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_bee[376]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-    
+
     out = nn.predict(&data_cat[98]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_cat[312]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_cat[5]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-    
+
     out = nn.predict(&data_fish[198]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_fish[12]);

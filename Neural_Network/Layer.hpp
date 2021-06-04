@@ -36,7 +36,7 @@ public:
     void Backward();
     void UpdateWeight(string method, float learning_rate);
     void shape();
-    int getParameter(int type);
+    int getParameter(int type_);
     string getType() {return type;}
 private:
     string type;

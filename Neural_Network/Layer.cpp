@@ -27,3 +27,18 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         layer.convolution_layer = new ConvolutionLayer(opt_);
     }
 }
+
+Tensor* Model_Layer::Forward(Tensor* input_tensor_) {
+    if (type == "Input") {
+        return layer.input_layer->Forward(input_tensor_);
+    } else if (type == "Fullyconnected") {
+        return layer.fullyconnected_layer->Forward(input_tensor_);
+    } else if (type == "Relu") {
+        return layer.relu_layer->Forward(input_tensor_);
+    } else if (type == "Softmax") {
+        return layer.softmax_layer->Forward(input_tensor_);
+    } else if (type == "Convloution") {
+        return layer.convolution_layer->Forward(input_tensor_);
+    }
+    return 0;
+}

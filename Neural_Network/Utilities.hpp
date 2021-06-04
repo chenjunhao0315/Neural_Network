@@ -19,6 +19,5 @@ float Random();
 float Random(float min, float max);
 float guassRandom();
 float randn(float mu, float std);
-float* zero_array(int number);
 
 #endif /* Utilities_hpp */

@@ -127,31 +127,19 @@ int BaseLayer::getParameter(int type) {
 void BaseLayer::UpdateWeight(string method, float learning_rate) {
     if (method == "SVG") {
         vfloat &bias_weight = biases.getWeight();
-//        printf("bias before\n");
-//        biases.showWeight();
         vfloat &bias_grad = biases.getDeltaWeight();
-//        printf("bias grad\n");
-//        biases.showDeltaWeight();
         int output_dimension = info.output_dimension;
         for (int i = 0; i < output_dimension; ++i) {
             Tensor &act_tensor = kernel[i];
             int length = (int)act_tensor.getWeight().size();
             vfloat &weight = act_tensor.getWeight();
-//            printf("weight before\n");
-//            act_tensor.showWeight();
             vfloat &grad = act_tensor.getDeltaWeight();
-//            printf("weight gard\n");
-//            act_tensor.showDeltaWeight();
             for (int j = 0; j < length; j++) {
                 weight[j] -= learning_rate * grad[j];
             }
-//            printf("weight after\n");
-//            act_tensor.showWeight();
             float a = bias_weight[i] -= learning_rate * bias_grad[i];
             act_tensor.clearDeltaWeight();
         }
-//        printf("bias after\n");
-//        biases.showWeight();
         biases.clearDeltaWeight();
     }
 }
@@ -206,8 +194,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     int output_height = info.output_height;
     int xy_stride = stride;
     vfloat &input_weight = input_tensor->getWeight();
-//    printf("input weight\n");
-//    input_tensor->showWeight();
     
     for (int output_d = 0; output_d < info.output_dimension; ++output_d) {
         Tensor &act_kernel = kernel[output_d];
@@ -221,7 +207,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
         for (int output_h = 0; output_h < output_height; ++output_h, offset_h += xy_stride) {
             offset_w = -padding;
             for (int output_w = 0; output_w < output_width; ++output_w, offset_w += xy_stride) {
-//                printf("offset_w: %d\n", offset_w);
                 float sum = 0.0;
                 for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
                     int act_h = kernel_h + offset_h;
@@ -235,14 +220,11 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
                         }
                     }
                 }
-//                printf("sum: %f\n", sum);
                 sum += bias[output_d];
                 act_tensor->set(output_w, output_h, output_d, sum);
             }
         }
     }
-//    printf("output_weight\n");
-//    act_tensor->showWeight();
     output_tensor = act_tensor;
     return output_tensor;
 }

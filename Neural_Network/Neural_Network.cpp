@@ -29,6 +29,7 @@ void Neural_Network::addLayer(LayerOption opt_) {
 }
 
 void Neural_Network::makeLayer() {
+    printf("****Constructe Network****\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
         printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
         LayerOption opt = opt_layer[i];
@@ -40,6 +41,7 @@ void Neural_Network::makeLayer() {
         }
         layer.push_back(opt);
     }
+    printf("*************************\n");
 }
 
 void Neural_Network::shape() {
@@ -98,8 +100,6 @@ vfloat Neural_Network::predict(Tensor *input) {
     if (layer[layer.size() - 1].getType() != "Softmax") {
         printf("Last layer need to be softmax.\n");
     }
-//    printf("input\n");
-//    input->showWeight();
     Tensor* output_tensor = Forward(input);
     vfloat &output = output_tensor->getWeight();
     float max_value = output[0];

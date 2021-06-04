@@ -10,14 +10,6 @@
 static bool return_v = false;
 static float v_val = 0.0;
 
-float* zero_array(int num) {
-    float *array = new float [num];
-    for (int i = 0; i < num; i++) {
-        array[i] = 0;
-    }
-    return array;
-}
-
 float randn(float mu, float std) {
     return mu + guassRandom() * std;
 }

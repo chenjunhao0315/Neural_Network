@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <vector>
 #include <random>
+#include <algorithm>
 
 #include "Layer.hpp"
 #include "Data_Process.hpp"
@@ -26,6 +27,7 @@ public:
     vfloat train(string method, float learning_rate, Tensor *input, float &target);
     void train(string method, float learning_rate, vtensor &data_set, vfloat &target, int epoch);
     vfloat predict(Tensor *input);
+    float evaluate(vtensor &data_set, vfloat &target);
 private:
     vector<LayerOption> opt_layer;
     vector<Model_Layer> layer;

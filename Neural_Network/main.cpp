@@ -20,14 +20,14 @@ int main(int argc, const char * argv[]) {
     nn.makeLayer();
     
     Data bee("bee.npy", 28, 28);
-    vtensor data_bee = bee.get(100);
-    vfloat label_bee(100, 0);
+    vtensor data_bee = bee.get(500);
+    vfloat label_bee(500, 0);
     Data cat("cat.npy", 28, 28);
-    vtensor data_cat = cat.get(100);
-    vfloat label_cat(100, 1);
+    vtensor data_cat = cat.get(500);
+    vfloat label_cat(500, 1);
     Data fish("fish.npy", 28, 28);
-    vtensor data_fish = fish.get(100);
-    vfloat label_fish(100, 2);
+    vtensor data_fish = fish.get(500);
+    vfloat label_fish(500, 2);
     vtensor data_train(data_bee);
     vfloat data_label(label_bee);
     for (int i = 0; i < data_cat.size(); ++i) {
@@ -37,12 +37,11 @@ int main(int argc, const char * argv[]) {
         data_label.push_back(label_fish[i]);
     }
 
+//    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label));
+//    nn.shape();
+    nn.train("SVG", 0.01, data_train, data_label, 1);
+//    nn.shape();
     vfloat out = nn.predict(&data_bee[0]);
-    printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-//    nn.shape();
-    nn.train("SVG", 0.01, data_train, data_label, 3);
-//    nn.shape();
-    out = nn.predict(&data_bee[0]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_bee[27]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);

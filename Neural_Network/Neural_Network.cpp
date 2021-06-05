@@ -79,7 +79,7 @@ vfloat Neural_Network::train(string method, float learning_rate, Tensor *input, 
     for (int i = 0; i < length; ++i) {
         layer[i].UpdateWeight(method, learning_rate);
     }
-    return vfloat{0};
+    return vfloat{cost_lost};
 }
 
 void Neural_Network::train(string method, float learning_rate, vtensor &data_set, vfloat &target, int epoch) {
@@ -88,12 +88,17 @@ void Neural_Network::train(string method, float learning_rate, vtensor &data_set
     for (int i = 0; i < data_set.size(); ++i) {
         index.push_back(i);
     }
+    printf("Training");
     for (int i = 0; i < epoch; ++i) {
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j < data_set.size(); ++j) {
+            if (!(j % (data_set.size() / 20))) printf("*");
             train(method, learning_rate, &data_set[index[j]], target[index[j]]);
         }
     }
+    printf("\n");
+    float accuracy = evaluate(data_set, target);
+    printf("Accuracy: %.2f%%\n", accuracy * 100);
 }
 
 vfloat Neural_Network::predict(Tensor *input) {
@@ -111,4 +116,16 @@ vfloat Neural_Network::predict(Tensor *input) {
         }
     }
     return vfloat{static_cast<float>(max_index), max_value};
+}
+
+float Neural_Network::evaluate(vtensor &data_set, vfloat &target) {
+    int correct = 0;
+    int data_number = (int)data_set.size();
+    vfloat check;
+    for (int i = 0; i < data_number; ++i) {
+        check = predict(&data_set[i]);
+        if ((int)check[0] == (int)target[i])
+            correct++;
+    }
+    return (float)correct / data_number;
 }

@@ -13,121 +13,290 @@ class ReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
 
-//Model_Layer::~Model_Layer() {
-//    if (type == "Input") {
-//        delete layer.input_layer;
-//    } else if (type == "Fullyconnected") {
-//        delete layer.fullyconnected_layer;
-//    } else if (type == "Relu") {
-//        delete layer.relu_layer;
-//    } else if (type == "Softmax") {
-//        delete layer.softmax_layer;
-//    } else if (type == "Convolution") {
-//        delete layer.convolution_layer;
-//    } else if (type == "Pooling") {
-//        delete layer.pooling_layer;
-//    }
-//}
+Model_Layer::~Model_Layer() {
+    if (type == "Input") {
+        delete input_layer;
+    } else if (type == "Fullyconnected") {
+        delete fullyconnected_layer;
+    } else if (type == "Relu") {
+        delete relu_layer;
+    } else if (type == "Softmax") {
+        delete softmax_layer;
+    } else if (type == "Convolution") {
+        delete convolution_layer;
+    } else if (type == "Pooling") {
+        delete pooling_layer;
+    }
+    input_layer = nullptr;
+    fullyconnected_layer = nullptr;
+    relu_layer = nullptr;
+    softmax_layer = nullptr;
+    convolution_layer = nullptr;
+    pooling_layer = nullptr;
+}
+
+Model_Layer::Model_Layer() {
+    input_layer = nullptr;
+    fullyconnected_layer = nullptr;
+    relu_layer = nullptr;
+    softmax_layer = nullptr;
+    convolution_layer = nullptr;
+    pooling_layer = nullptr;
+}
+
+Model_Layer::Model_Layer(const Model_Layer &L) {
+    input_layer = nullptr;
+    fullyconnected_layer = nullptr;
+    relu_layer = nullptr;
+    softmax_layer = nullptr;
+    convolution_layer = nullptr;
+    pooling_layer = nullptr;
+    if (this != &L) {
+        type = L.type;
+        if (type == "Input") {
+            input_layer = new InputLayer(*L.input_layer);
+        } else if (type == "Fullyconnected") {
+            fullyconnected_layer = new FullyConnectedLayer(*L.fullyconnected_layer);
+        } else if (type == "Relu") {
+            relu_layer = new ReluLayer(*L.relu_layer);
+        } else if (type == "Softmax") {
+            softmax_layer = new SoftmaxLayer(*L.softmax_layer);
+        } else if (type == "Convolution") {
+            convolution_layer = new ConvolutionLayer(*L.convolution_layer);
+        } else if (type == "Pooling") {
+            pooling_layer = new PoolingLayer(*L.pooling_layer);
+        }
+    }
+}
+
+Model_Layer::Model_Layer(Model_Layer &&L) {
+    type = L.type;
+    input_layer = L.input_layer;
+    fullyconnected_layer = L.fullyconnected_layer;
+    relu_layer = L.relu_layer;
+    softmax_layer = L.softmax_layer;
+    convolution_layer = L.convolution_layer;
+    pooling_layer = L.pooling_layer;
+    L.input_layer = nullptr;
+    L.fullyconnected_layer = nullptr;
+    L.relu_layer = nullptr;
+    L.softmax_layer = nullptr;
+    L.convolution_layer = nullptr;
+    L.pooling_layer = nullptr;
+}
+
+Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
+    input_layer = nullptr;
+    fullyconnected_layer = nullptr;
+    relu_layer = nullptr;
+    softmax_layer = nullptr;
+    convolution_layer = nullptr;
+    pooling_layer = nullptr;
+    if (this != &L) {
+        type = L.type;
+        if (type == "Input") {
+            input_layer = new InputLayer(*L.input_layer);
+        } else if (type == "Fullyconnected") {
+            fullyconnected_layer = new FullyConnectedLayer(*L.fullyconnected_layer);
+        } else if (type == "Relu") {
+            relu_layer = new ReluLayer(*L.relu_layer);
+        } else if (type == "Softmax") {
+            softmax_layer = new SoftmaxLayer(*L.softmax_layer);
+        } else if (type == "Convolution") {
+            convolution_layer = new ConvolutionLayer(*L.convolution_layer);
+        } else if (type == "Pooling") {
+            pooling_layer = new PoolingLayer(*L.pooling_layer);
+        }
+    }
+    return *this;
+}
 
 Model_Layer::Model_Layer(LayerOption opt_) {
+    input_layer = nullptr;
+    fullyconnected_layer = nullptr;
+    relu_layer = nullptr;
+    softmax_layer = nullptr;
+    convolution_layer = nullptr;
+    pooling_layer = nullptr;
     type = opt_["type"];
     if (type == "Input") {
-        layer.input_layer = new InputLayer(opt_);
+        input_layer = new InputLayer(opt_);
     } else if (type == "Fullyconnected") {
-        layer.fullyconnected_layer = new FullyConnectedLayer(opt_);
+        fullyconnected_layer = new FullyConnectedLayer(opt_);
     } else if (type == "Relu") {
-        layer.relu_layer = new ReluLayer(opt_);
+        relu_layer = new ReluLayer(opt_);
     } else if (type == "Softmax") {
-        layer.softmax_layer = new SoftmaxLayer(opt_);
+        softmax_layer = new SoftmaxLayer(opt_);
     } else if (type == "Convolution") {
-        layer.convolution_layer = new ConvolutionLayer(opt_);
+        convolution_layer = new ConvolutionLayer(opt_);
     } else if (type == "Pooling") {
-        layer.pooling_layer = new PoolingLayer(opt_);
+        pooling_layer = new PoolingLayer(opt_);
     }
 }
 
 Tensor* Model_Layer::Forward(Tensor* input_tensor_) {
     if (type == "Input") {
-        return layer.input_layer->Forward(input_tensor_);
+        return input_layer->Forward(input_tensor_);
     } else if (type == "Fullyconnected") {
-        return layer.fullyconnected_layer->Forward(input_tensor_);
+        return fullyconnected_layer->Forward(input_tensor_);
     } else if (type == "Relu") {
-        return layer.relu_layer->Forward(input_tensor_);
+        return relu_layer->Forward(input_tensor_);
     } else if (type == "Softmax") {
-        return layer.softmax_layer->Forward(input_tensor_);
+        return softmax_layer->Forward(input_tensor_);
     } else if (type == "Convolution") {
-        return layer.convolution_layer->Forward(input_tensor_);
+        return convolution_layer->Forward(input_tensor_);
     } else if (type == "Pooling") {
-        return layer.pooling_layer->Forward(input_tensor_);
+        return pooling_layer->Forward(input_tensor_);
     }
     return 0;
 }
 
 float Model_Layer::Backward(float target) {
     if (type == "Softmax") {
-        return layer.softmax_layer->Backward(target);
+        return softmax_layer->Backward(target);
     }
     return 0;
 }
 
 void Model_Layer::Backward() {
     if (type == "Input") {
-        return layer.input_layer->Backward();
+        return input_layer->Backward();
     } else if (type == "Fullyconnected") {
-        return layer.fullyconnected_layer->Backward();
+        return fullyconnected_layer->Backward();
     } else if (type == "Relu") {
-        return layer.relu_layer->Backward();
+        return relu_layer->Backward();
     } else if (type == "Convolution") {
-        return layer.convolution_layer->Backward();
+        return convolution_layer->Backward();
     } else if (type == "Pooling") {
-        layer.pooling_layer->Backward();
+        pooling_layer->Backward();
     }
 }
 
 void Model_Layer::UpdateWeight(string method, float learning_rate) {
     if (type == "Fullyconnected") {
-        layer.fullyconnected_layer->UpdateWeight(method, learning_rate);
+        fullyconnected_layer->UpdateWeight(method, learning_rate);
     } else if (type == "Convolution") {
-        layer.convolution_layer->UpdateWeight(method, learning_rate);
+        convolution_layer->UpdateWeight(method, learning_rate);
     }
 }
 
 void Model_Layer::shape() {
-    
     if (type == "Input") {
-        return layer.input_layer->shape();
+        return input_layer->shape();
     } else if (type == "Fullyconnected") {
-        return layer.fullyconnected_layer->shape();
+        return fullyconnected_layer->shape();
     } else if (type == "Relu") {
-        return layer.relu_layer->shape();
+        return relu_layer->shape();
     } else if (type == "Softmax") {
-        return layer.softmax_layer->shape();
+        return softmax_layer->shape();
     } else if (type == "Convolution") {
-        return layer.convolution_layer->shape();
+        return convolution_layer->shape();
     } else if (type == "Pooling") {
-        return layer.pooling_layer->shape();
+        return pooling_layer->shape();
     }
 }
 
 int Model_Layer::getParameter(int type_) {
     if (type == "Input") {
-        return layer.input_layer->getParameter(type_);
+        return input_layer->getParameter(type_);
     } else if (type == "Fullyconnected") {
-        return layer.fullyconnected_layer->getParameter(type_);
+        return fullyconnected_layer->getParameter(type_);
     } else if (type == "Relu") {
-        return layer.relu_layer->getParameter(type_);
+        return relu_layer->getParameter(type_);
     } else if (type == "Softmax") {
-        return layer.softmax_layer->getParameter(type_);
+        return softmax_layer->getParameter(type_);
     } else if (type == "Convolution") {
-        return layer.convolution_layer->getParameter(type_);
+        return convolution_layer->getParameter(type_);
     } else if (type == "Pooling") {
-        return layer.pooling_layer->getParameter(type_);
+        return pooling_layer->getParameter(type_);
     }
     return 0;
 }
 
+BaseLayer::~BaseLayer() {
+//    if (input_tensor)
+//        delete input_tensor;
+    if (output_tensor)
+        delete output_tensor;
+    if (kernel)
+        delete [] kernel;
+}
+
+BaseLayer::BaseLayer() {
+    input_tensor = nullptr;
+    output_tensor = nullptr;
+    kernel = nullptr;
+    biases = Tensor();
+}
+
+BaseLayer::BaseLayer(BaseLayer *L) {
+    if (this != L) {
+        type = L->type;
+        info = L->info;
+        opt = L->opt;
+        input_tensor = new Tensor(L->input_tensor);
+        output_tensor = new Tensor(L->output_tensor);
+        kernel = new Tensor [info.output_dimension];
+        for (int i = 0; i < info.output_dimension; ++i) {
+            kernel[i] = L->kernel[i];
+        }
+        biases = L->biases;
+    }
+}
+
+BaseLayer::BaseLayer(const BaseLayer &L) {
+    if (this != &L) {
+        type = L.type;
+        info = L.info;
+        opt = L.opt;
+        input_tensor = L.input_tensor;
+        output_tensor = L.output_tensor;
+        if (L.kernel) {
+            kernel = new Tensor [info.output_dimension];
+            for (int i = 0; i < info.output_dimension; ++i) {
+                kernel[i] = L.kernel[i];
+            }
+        } else {
+            kernel = nullptr;
+        }
+        biases = L.biases;
+    }
+}
+
+BaseLayer::BaseLayer(BaseLayer &&L) {
+    type = L.type;
+    info = L.info;
+    opt = L.opt;
+    input_tensor = L.input_tensor;
+    L.input_tensor = nullptr;
+    output_tensor = L.output_tensor;
+    L.output_tensor = nullptr;
+    kernel = L.kernel;
+    L.kernel = nullptr;
+    biases = L.biases;
+}
+
+BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
+    if (this != &L) {
+        type = L.type;
+        info = L.info;
+        opt = L.opt;
+        input_tensor = L.input_tensor;
+        output_tensor = L.output_tensor;
+        if (L.kernel) {
+            kernel = new Tensor [info.output_dimension];
+            for (int i = 0; i < info.output_dimension; ++i) {
+                kernel[i] = L.kernel[i];
+            }
+        } else {
+            kernel = nullptr;
+        }
+        biases = L.biases;
+    }
+    return *this;
+}
+
 void BaseLayer::shape() {
-    
     printf("Type: %s\n", type.c_str());
     printf("Shape: out(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
 //    if (type == "Convolution" || type == "Fullyconnected") {
@@ -197,7 +366,8 @@ InputLayer::InputLayer(LayerOption opt_) {
 
 Tensor* InputLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    output_tensor = input_tensor_;
+    output_tensor = input_tensor
+    ;
     return output_tensor;
 }
 
@@ -285,8 +455,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
 
 void ConvolutionLayer::Backward() {
     input_tensor->clearDeltaWeight();
-//    int input_width = input_tensor->getWidth();
-//    int input_height = input_tensor->getHeight();
     int xy_stride = stride;
     float *input_weight = input_tensor->getWeight();
     float *input_grad = input_tensor->getDeltaWeight();
@@ -360,8 +528,6 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
 
 Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-//    printf("input:\n");
-//    input_tensor->showWeight();
     Tensor *act_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
     int output_dimension = info.output_dimension;
     int output_width = info.output_width;
@@ -401,7 +567,6 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
                 choosex[counter] = win_x;
                 choosey[counter] = win_y;
                 ++counter;
-//                printf("value: %f\n", value);
                 act_tensor->set(output_w, output_h, output_d, value);
             }
         }

@@ -19,6 +19,8 @@
 
 class Neural_Network {
 public:
+    ~Neural_Network();
+    Neural_Network() {layer_number = 0;}
     void addLayer(LayerOption opt_);
     void makeLayer();
     void shape();
@@ -29,6 +31,7 @@ public:
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vfloat &target);
 private:
+    int layer_number;
     vector<LayerOption> opt_layer;
     vector<Model_Layer> layer;
 };

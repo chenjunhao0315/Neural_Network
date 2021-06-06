@@ -31,7 +31,11 @@ class PoolingLayer;
 // Top layer
 class Model_Layer {
 public:
-    Model_Layer() {}
+    ~Model_Layer();
+    Model_Layer();
+    Model_Layer(const Model_Layer &L);
+    Model_Layer(Model_Layer &&L);
+    Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
     Tensor* Forward(Tensor* input_tensor_);
     float Backward(float target);
@@ -42,20 +46,23 @@ public:
     string getType() {return type;}
 private:
     string type;
-    union {
-        InputLayer *input_layer;
-        FullyConnectedLayer *fullyconnected_layer;
-        ReluLayer *relu_layer;
-        SoftmaxLayer *softmax_layer;
-        ConvolutionLayer *convolution_layer;
-        PoolingLayer *pooling_layer;
-    } layer;
+    InputLayer *input_layer;
+    FullyConnectedLayer *fullyconnected_layer;
+    ReluLayer *relu_layer;
+    SoftmaxLayer *softmax_layer;
+    ConvolutionLayer *convolution_layer;
+    PoolingLayer *pooling_layer;
 };
 
 // Base layer
 class BaseLayer {
 public:
-    BaseLayer() {output_tensor = nullptr;}
+    ~BaseLayer();
+    BaseLayer();
+    BaseLayer(BaseLayer *L);
+    BaseLayer(const BaseLayer &L);
+    BaseLayer(BaseLayer &&L);
+    BaseLayer& operator=(const BaseLayer &L);
     void shape();
     int getParameter(int type);
     void UpdateWeight(string method, float learning_rate);
@@ -80,6 +87,7 @@ protected:
 // Input layer
 class InputLayer : public BaseLayer {
 public:
+    ~InputLayer() {output_tensor = nullptr;}
     InputLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     void Backward() {}
@@ -137,6 +145,7 @@ public:
 // Softmax layer
 class SoftmaxLayer : public BaseLayer {
 public:
+    ~SoftmaxLayer() {delete [] expo_sum; expo_sum = nullptr;}
     SoftmaxLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     float Backward(float target);

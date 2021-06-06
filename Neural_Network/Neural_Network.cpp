@@ -7,6 +7,11 @@
 
 #include "Neural_Network.hpp"
 
+Neural_Network::~Neural_Network() {
+    for (int i = 0; i < layer_number; ++i) {
+    }
+}
+
 void Neural_Network::addLayer(LayerOption opt_) {
     LayerOption auto_opt;
     string type = opt_["type"];
@@ -39,7 +44,9 @@ void Neural_Network::makeLayer() {
             opt["input_dimension"] = to_string(c = layer[i - 1].getParameter(2));
         }
         string bias = opt["bias"].c_str();
-        layer.push_back(opt);
+        layer.push_back(Model_Layer(opt));
+        printf("end of for loop\n");
+        ++layer_number;
     }
     printf("*************************\n");
 }

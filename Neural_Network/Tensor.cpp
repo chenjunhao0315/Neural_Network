@@ -7,6 +7,11 @@
 
 #include "Tensor.hpp"
 
+Tensor::Tensor() {
+    weight = nullptr;
+    delta_weight = nullptr;
+}
+
 Tensor::~Tensor() {
 //    std::cout << "Free " << weight << " " << delta_weight << std::endl;
     if (weight)
@@ -20,7 +25,12 @@ void Tensor::operator=(const Tensor &T) {
     height = T.height;
     dimension = T.dimension;
     size = T.size;
+    if (weight)
+        delete [] weight;
     weight = new float [size];
+    
+    if (delta_weight)
+        delete [] delta_weight;
     delta_weight = new float [size];
     for (int i = 0; i < size; ++i) {
         weight[i] = T.weight[i];
@@ -39,8 +49,10 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     //delta_weight.assign(n, 0);
     weight = new float [n];
     delta_weight = new float [n];
-    memset(weight, 0, n * sizeof(float));
-    memset(delta_weight, 0, n * sizeof(float));
+    fill(weight, weight + n, 0);
+    fill(delta_weight, delta_weight + n, 0);
+//    memset(weight, 0, n * sizeof(float));
+//    memset(delta_weight, 0, n * sizeof(float));
     
     // assign random value
     float scale = sqrt(1.0 / (n));
@@ -64,7 +76,7 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
         weight[i] = parameter;
     }
 //    memset(weight, parameter, n * sizeof(float));
-    memset(delta_weight, 0, n * sizeof(float));
+    fill(delta_weight, delta_weight + n, 0);
 }
 
 Tensor::Tensor(Tensor *T) {
@@ -78,8 +90,10 @@ Tensor::Tensor(Tensor *T) {
     //delta_weight.assign(n, 0);
     weight = new float [n];
     delta_weight = new float [n];
-    memset(weight, 0, n * sizeof(float));
-    memset(delta_weight, 0, n * sizeof(float));
+    fill(weight, weight + n, 0);
+    fill(delta_weight, delta_weight + n, 0);
+//    memset(weight, 0, n * sizeof(float));
+//    memset(delta_weight, 0, n * sizeof(float));
     
     for (int i = 0; i < n; ++i) {
         weight[i] = T->weight[i];
@@ -97,8 +111,10 @@ Tensor::Tensor(vfloat V) {
     //delta_weight.assign(n, 0);
     weight = new float [n];
     delta_weight = new float [n];
-    memset(weight, 0, n * sizeof(float));
-    memset(delta_weight, 0, n * sizeof(float));
+//    memset(weight, 0, n * sizeof(float));
+//    memset(delta_weight, 0, n * sizeof(float));
+    fill(weight, weight + n, 0);
+    fill(delta_weight, delta_weight + n, 0);
     
     for (int i = 0; i < n; ++i) {
         weight[i] = V[i];
@@ -115,8 +131,10 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     // initialize
     weight = new float [n * 3];
     delta_weight = new float [n * 3];
-    memset(weight, 0, n * 3 * sizeof(float));
-    memset(delta_weight, 0, n * 3 * sizeof(float));
+//    memset(weight, 0, n * 3 * sizeof(float));
+//    memset(delta_weight, 0, n * 3 * sizeof(float));
+    fill(weight, weight + n, 0);
+    fill(delta_weight, delta_weight + n, 0);
     
     for (int i = 0; i < n; ++i) {
         weight[i * 3] = V1[i];
@@ -152,7 +170,8 @@ void Tensor::showDeltaWeight() {
 void Tensor::clearDeltaWeight() {
     float *temp = delta_weight;
     delta_weight = new float [size];
-    memset(delta_weight, 0, sizeof(float) * size);
+    fill(delta_weight, delta_weight + size, 0);
+//    memset(delta_weight, 0, sizeof(float) * size);
     delete [] temp;
     //delta_weight.assign(delta_weight.size(), 0);
 }
@@ -182,5 +201,7 @@ float Tensor::getGrad(int width_, int height_, int dimension_) {
 }
 
 void Tensor::addGrad(int width_, int height_, int dimension_, float value) {
+    if (width_ < 0 || height_ < 0 || width_ >= width || height_ >= height)
+        return;
     delta_weight[((width * height_) + width_) * dimension + dimension_] += value;
 }

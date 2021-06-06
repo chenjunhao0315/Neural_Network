@@ -14,13 +14,14 @@
 
 #include "Utilities.hpp"
 
+using std::fill;
 using std::vector;
 
 typedef vector<float> vfloat;
 
 class Tensor {
 public:
-    Tensor() {}
+    Tensor();
     ~Tensor();
     void operator=(const Tensor &T);
     Tensor(Tensor *T);

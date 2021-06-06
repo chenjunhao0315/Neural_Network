@@ -13,6 +13,22 @@ class ReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
 
+//Model_Layer::~Model_Layer() {
+//    if (type == "Input") {
+//        delete layer.input_layer;
+//    } else if (type == "Fullyconnected") {
+//        delete layer.fullyconnected_layer;
+//    } else if (type == "Relu") {
+//        delete layer.relu_layer;
+//    } else if (type == "Softmax") {
+//        delete layer.softmax_layer;
+//    } else if (type == "Convolution") {
+//        delete layer.convolution_layer;
+//    } else if (type == "Pooling") {
+//        delete layer.pooling_layer;
+//    }
+//}
+
 Model_Layer::Model_Layer(LayerOption opt_) {
     type = opt_["type"];
     if (type == "Input") {
@@ -325,7 +341,6 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     opt = opt_;
     type = "Pooling";
     
-    
     kernel_width = atoi(opt["kernel_width"].c_str());
     input_dimension = atoi(opt["input_dimension"].c_str());
     input_width = atoi(opt["input_width"].c_str());
@@ -366,7 +381,7 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
         for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
             offset_h = -padding;
             for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
-                minimum = -1000000;
+                minimum = -100000000;
                 win_x = -1;
                 win_y = -1;
                 for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
@@ -542,6 +557,7 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * info.output_dimension;
     info.output_width = 1;
     info.output_height = 1;
+    expo_sum = nullptr;
 }
 
 Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
@@ -556,7 +572,8 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
             max = act[i];
     }
     float *expo_sum_ = new float [output_dimension];
-    memset(expo_sum_, 0, sizeof(float) * output_dimension);
+    fill (expo_sum_, expo_sum_ + output_dimension, 0);
+//    memset(expo_sum_, 0, sizeof(float) * output_dimension);
     float sum = 0;
     
     for (int i = 0; i < output_dimension; ++i) {
@@ -571,7 +588,10 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
         cal_weight[i] = expo_sum_[i];
     }
     
+    if (expo_sum)
+        delete [] expo_sum;
     expo_sum = expo_sum_;
+    
     if (output_tensor)
         delete output_tensor;
     output_tensor = cal;

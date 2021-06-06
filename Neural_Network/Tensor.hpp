@@ -8,6 +8,7 @@
 #ifndef Tensor_hpp
 #define Tensor_hpp
 
+#include <iostream>
 #include <stdio.h>
 #include <vector>
 
@@ -20,27 +21,33 @@ typedef vector<float> vfloat;
 class Tensor {
 public:
     Tensor() {}
+    ~Tensor();
+    void operator=(const Tensor &T);
     Tensor(Tensor *T);
     Tensor(vfloat V);
     Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_);
     Tensor(int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_, float parameter);
     void set(int width_, int height_, int dimension_, float value);
+    float get(int width_, int height_, int dimension_);
     float getGrad(int width_, int height_, int dimension_);
+    void addGrad(int width_, int height_, int dimension_, float value);
     void showWeight();
     void showDeltaWeight();
-    vfloat& getWeight();
-    vfloat& getDeltaWeight();
+    float* getWeight();
+    float* getDeltaWeight();
     void clearDeltaWeight();
     int getWidth();
     int getHeight();
     int getDimension();
+    int length() {return size;}
 private:
     int width;
     int height;
     int dimension;
-    vfloat weight;
-    vfloat delta_weight;
+    int size;
+    float* weight;
+    float* delta_weight;
 };
 
 #endif /* Tensor_hpp */

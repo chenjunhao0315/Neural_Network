@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <map>
+#include <fstream>
 
 #include "Tensor.hpp"
 
@@ -25,6 +26,7 @@ class FullyConnectedLayer;
 class ReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
+class PoolingLayer;
 
 // Top layer
 class Model_Layer {
@@ -46,16 +48,20 @@ private:
         ReluLayer *relu_layer;
         SoftmaxLayer *softmax_layer;
         ConvolutionLayer *convolution_layer;
+        PoolingLayer *pooling_layer;
     } layer;
 };
 
 // Base layer
 class BaseLayer {
 public:
-    BaseLayer() {}
+    BaseLayer() {output_tensor = nullptr;}
     void shape();
     int getParameter(int type);
     void UpdateWeight(string method, float learning_rate);
+    int size() {return info.output_width * info.output_height * info.output_dimension;}
+    void save();
+    bool load();
 protected:
     string type;
     struct info_ {
@@ -67,7 +73,7 @@ protected:
     LayerOption opt;
     Tensor* input_tensor;
     Tensor* output_tensor;
-    vtensor kernel;
+    Tensor* kernel;
     Tensor biases;
 };
 
@@ -95,6 +101,23 @@ private:
     int padding;
 };
 
+class PoolingLayer : public BaseLayer {
+public:
+    PoolingLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    void Backward();
+private:
+    int input_width;
+    int input_height;
+    int input_dimension;
+    int kernel_width;
+    int kernel_height;
+    int stride;
+    int padding;
+    vector<int> choosex;
+    vector<int> choosey;
+};
+
 // FullyConnected layer
 class FullyConnectedLayer : public BaseLayer {
 public:
@@ -118,7 +141,7 @@ public:
     Tensor* Forward(Tensor *input_tensor_);
     float Backward(float target);
 private:
-    vfloat expo_sum;
+    float* expo_sum;
 };
 
 #endif /* Layer_hpp */

@@ -18,11 +18,10 @@ void Neural_Network::addLayer(LayerOption opt_) {
     if (opt_["activation"] == "Relu") {
         opt_["bias"] = "0.1";
     }
-    
+    string bias = opt_["bias"].c_str();
     opt_layer.push_back(opt_);
     
     if (opt_["activation"] == "Relu") {
-//        auto_opt.clear();
         auto_opt["type"] = "Relu";
         opt_layer.push_back(auto_opt);
     }
@@ -39,6 +38,7 @@ void Neural_Network::makeLayer() {
             opt["input_height"] = to_string(b = layer[i - 1].getParameter(1));
             opt["input_dimension"] = to_string(c = layer[i - 1].getParameter(2));
         }
+        string bias = opt["bias"].c_str();
         layer.push_back(opt);
     }
     printf("*************************\n");
@@ -88,17 +88,18 @@ void Neural_Network::train(string method, float learning_rate, vtensor &data_set
     for (int i = 0; i < data_set.size(); ++i) {
         index.push_back(i);
     }
-    printf("Training");
     for (int i = 0; i < epoch; ++i) {
+        printf("Epoch %d Training[", i + 1);
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j < data_set.size(); ++j) {
             if (!(j % (data_set.size() / 20))) printf("*");
-            train(method, learning_rate, &data_set[index[j]], target[index[j]]);
+//            Tensor input = data_set[a = index[j]];
+            train(method, learning_rate, &(data_set[index[j]]), target[index[j]]);
         }
+        printf("]\n");
+        float accuracy = evaluate(data_set, target);
+        printf("Accuracy: %.2f%%\n", accuracy * 100);
     }
-    printf("\n");
-    float accuracy = evaluate(data_set, target);
-    printf("Accuracy: %.2f%%\n", accuracy * 100);
 }
 
 vfloat Neural_Network::predict(Tensor *input) {
@@ -106,9 +107,9 @@ vfloat Neural_Network::predict(Tensor *input) {
         printf("Last layer need to be softmax.\n");
     }
     Tensor* output_tensor = Forward(input);
-    vfloat &output = output_tensor->getWeight();
+    float *output = output_tensor->getWeight();
     float max_value = output[0];
-    int max_index = 0, index, length = (int)output_tensor->getWeight().size();
+    int max_index = 0, index, length = (int)output_tensor->length();
     for (index = 1; index < length; ++index) {
         if (output[index] > max_value) {
             max_value = output[index];

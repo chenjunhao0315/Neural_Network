@@ -219,3 +219,22 @@ void Tensor::addGrad(int width_, int height_, int dimension_, float value) {
         return;
     delta_weight[((width * height_) + width_) * dimension + dimension_] += value;
 }
+
+void Tensor::save(FILE *f) {
+    fwrite(&width, sizeof(int), 1, f);
+    fwrite(&height, sizeof(int), 1, f);
+    fwrite(&dimension, sizeof(int), 1, f);
+    fwrite(&size, sizeof(int), 1, f);
+    fwrite(weight, sizeof(float), size, f);
+}
+
+void Tensor::load(FILE *f) {
+    fread(&width, sizeof(int), 1, f);
+    fread(&height, sizeof(int), 1, f);
+    fread(&dimension, sizeof(int), 1, f);
+    fread(&size, sizeof(int), 1, f);
+    if (weight)
+        delete [] weight;
+    weight = new float [size];
+    fread(weight, sizeof(float), size, f);
+}

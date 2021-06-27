@@ -13,16 +13,17 @@ using namespace std;
 
 int main(int argc, const char * argv[]) {
     Neural_Network nn;
-    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
-    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
-    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
+//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
 //    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "64"}, {"activation", "Relu"}});
-    nn.addLayer(LayerOption{{"type", "Softmax"}, {"number_class", "3"}});
-    nn.makeLayer();
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "Relu"}});
+////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
+////    nn.addLayer(LayerOption{{"type", "Softmax"}, {"number_class", "3"}});
+//    nn.makeLayer();
+    nn.load("model.bin");
     nn.shape();
 
     Data bee("bee.npy", 28, 28);
@@ -57,11 +58,11 @@ int main(int argc, const char * argv[]) {
         label_valid.push_back(label_fish[i]);
     }
 
-    printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid));
+    printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
 
-    nn.train("SVG", 0.01, data_train, data_label, 1);
+    nn.train("SVG", 0.005, data_train, data_label, 3);
     
-    printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid));
+    printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
 
     vfloat out = nn.predict(&data_bee[0]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
@@ -83,6 +84,8 @@ int main(int argc, const char * argv[]) {
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
     out = nn.predict(&data_fish[456]);
     printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+    
+    nn.save();
     
 
     

@@ -213,9 +213,41 @@ int Model_Layer::getParameter(int type_) {
     return 0;
 }
 
+bool Model_Layer::save(FILE *f) {
+    if (type == "Input") {
+        return input_layer->save(f);
+    } else if (type == "Fullyconnected") {
+        return fullyconnected_layer->save(f);
+    } else if (type == "Relu") {
+        return relu_layer->save(f);
+    } else if (type == "Softmax") {
+        return softmax_layer->save(f);
+    } else if (type == "Convolution") {
+        return convolution_layer->save(f);
+    } else if (type == "Pooling") {
+        return pooling_layer->save(f);
+    }
+    return 0;
+}
+
+bool Model_Layer::load(FILE *f) {
+    if (type == "Input") {
+        return input_layer->load(f);
+    } else if (type == "Fullyconnected") {
+        return fullyconnected_layer->load(f);
+    } else if (type == "Relu") {
+        return relu_layer->load(f);
+    } else if (type == "Softmax") {
+        return softmax_layer->load(f);
+    } else if (type == "Convolution") {
+        return convolution_layer->load(f);
+    } else if (type == "Pooling") {
+        return pooling_layer->load(f);
+    }
+    return 0;
+}
+
 BaseLayer::~BaseLayer() {
-//    if (input_tensor)
-//        delete input_tensor;
     if (output_tensor)
         delete output_tensor;
     if (kernel)
@@ -233,12 +265,17 @@ BaseLayer::BaseLayer(BaseLayer *L) {
     if (this != L) {
         type = L->type;
         info = L->info;
+        info_more = L->info_more;
         opt = L->opt;
         input_tensor = new Tensor(L->input_tensor);
         output_tensor = new Tensor(L->output_tensor);
-        kernel = new Tensor [info.output_dimension];
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i] = L->kernel[i];
+        if (L->kernel) {
+            kernel = new Tensor [info.output_dimension];
+            for (int i = 0; i < info.output_dimension; ++i) {
+                kernel[i] = L->kernel[i];
+            }
+        } else {
+            kernel = nullptr;
         }
         biases = L->biases;
     }
@@ -248,6 +285,7 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
     if (this != &L) {
         type = L.type;
         info = L.info;
+        info_more = L.info_more;
         opt = L.opt;
         input_tensor = L.input_tensor;
         output_tensor = L.output_tensor;
@@ -266,6 +304,7 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
 BaseLayer::BaseLayer(BaseLayer &&L) {
     type = L.type;
     info = L.info;
+    info_more = L.info_more;
     opt = L.opt;
     input_tensor = L.input_tensor;
     L.input_tensor = nullptr;
@@ -280,6 +319,7 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
     if (this != &L) {
         type = L.type;
         info = L.info;
+        info_more = L.info_more;
         opt = L.opt;
         input_tensor = L.input_tensor;
         output_tensor = L.output_tensor;
@@ -297,8 +337,8 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
 }
 
 void BaseLayer::shape() {
-    printf("Type: %s\n", type.c_str());
-    printf("Shape: out(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
+    printf("%-20s", type.c_str());
+    printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
 //    if (type == "Convolution" || type == "Fullyconnected") {
 //        for (int i = 0; i < info.output_dimension; ++i) {
 //            printf("Weight:\n%d: ", i);
@@ -340,19 +380,59 @@ void BaseLayer::UpdateWeight(string method, float learning_rate) {
     }
 }
 
-void BaseLayer::save() {
-    fstream model("model.bin", ios::out | ios::app | ios::binary);
-    if (type == "Fullyconnected") {
-        model.write("fc", sizeof(char) * 2);
-        model.write((char *)&info.output_width, sizeof(int));
-        model.write((char *)&info.output_height, sizeof(int));
-        model.write((char *)&info.output_dimension, sizeof(int));
+bool BaseLayer::save(FILE *f) {
+    if (type == "Input") {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+    } else if (type == "Fullyconnected") {
+        fwrite(&info.input_number, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+        for (int i = 0; i < info.output_dimension; ++i) {
+            kernel[i].save(f);
+        }
+        biases.save(f);
+    } else if (type == "Softmax") {
+        int input_number = info.input_number / info.output_dimension;
+        fwrite(&input_number, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+    } else if (type == "Convolution") {
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+        fwrite(&info_more.kernel_width, sizeof(int), 1, f);
+        fwrite(&info_more.input_dimension, sizeof(int), 1, f);
+        fwrite(&info_more.input_width, sizeof(int), 1, f);
+        fwrite(&info_more.input_height, sizeof(int), 1, f);
+        fwrite(&info_more.kernel_height, sizeof(int), 1, f);
+        fwrite(&info_more.stride, sizeof(int), 1, f);
+        fwrite(&info_more.padding, sizeof(int), 1, f);
+        for (int i = 0; i < info.output_dimension; ++i) {
+            kernel[i].save(f);
+        }
+        biases.save(f);
+    } else if (type == "Relu") {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+    } else if (type == "Pooling") {
+        fwrite(&info_more.kernel_width, sizeof(int), 1, f);
+        fwrite(&info_more.input_dimension, sizeof(int), 1, f);
+        fwrite(&info_more.input_width, sizeof(int), 1, f);
+        fwrite(&info_more.input_height, sizeof(int), 1, f);
+        fwrite(&info_more.kernel_height, sizeof(int), 1, f);
+        fwrite(&info_more.stride, sizeof(int), 1, f);
+        fwrite(&info_more.padding, sizeof(int), 1, f);
     }
-    model.close();
+
+    return true;
 }
 
-bool BaseLayer::load() {
-    fstream model("model.bin", ios::in | ios::binary);
+bool BaseLayer::load(FILE *f) {
+    if (type == "Fullyconnected" || type == "Convolution") {
+        for (int i = 0; i < info.output_dimension; ++i) {
+            kernel[i].load(f);
+        }
+        biases.load(f);
+    }
     return true;
 }
 
@@ -376,22 +456,22 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     type = "Convolution";
     
     info.output_dimension = atoi(opt["number_kernel"].c_str());
-    kernel_width = atoi(opt["kernel_width"].c_str());
-    input_dimension = atoi(opt["input_dimension"].c_str());
-    input_width = atoi(opt["input_width"].c_str());
-    input_height = atoi(opt["input_height"].c_str());
+    info_more.kernel_width = atoi(opt["kernel_width"].c_str());
+    info_more.input_dimension = atoi(opt["input_dimension"].c_str());
+    info_more.input_width = atoi(opt["input_width"].c_str());
+    info_more.input_height = atoi(opt["input_height"].c_str());
     
-    kernel_height = (opt.find("kernel_height") == opt.end()) ? kernel_width : atoi(opt["kernel_height"].c_str());
-    stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
-    padding = (opt.find("padding") == opt.end()) ? 0 : atoi(opt["padding"].c_str());
+    info_more.kernel_height = (opt.find("kernel_height") == opt.end()) ? info_more.kernel_width : atoi(opt["kernel_height"].c_str());
+    info_more.stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
+    info_more.padding = (opt.find("padding") == opt.end()) ? 0 : atoi(opt["padding"].c_str());
     
-    info.output_width = (input_width + padding * 2 - kernel_width) / stride + 1;
-    info.output_height = (input_height + padding * 2 - kernel_height) / stride + 1;
+    info.output_width = (info_more.input_width + info_more.padding * 2 - info_more.kernel_width) / info_more.stride + 1;
+    info.output_height = (info_more.input_height + info_more.padding * 2 - info_more.kernel_height) / info_more.stride + 1;
     
     float bias = (opt.find("bias") == opt.end()) ? 0 : atof(opt["bias"].c_str());
     kernel = new Tensor [info.output_dimension];
     for (int i = 0; i < info.output_dimension; ++i) {
-        Tensor new_kernel(kernel_width, kernel_height, input_dimension);
+        Tensor new_kernel(info_more.kernel_width, info_more.kernel_height, info_more.input_dimension);
         kernel[i] = new_kernel;
     }
     Tensor new_bias(1, 1, info.output_dimension, bias);
@@ -406,7 +486,7 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     int input_height = input_tensor->getHeight();
     int output_width = info.output_width;
     int output_height = info.output_height;
-    int xy_stride = stride;
+    int xy_stride = info_more.stride;
     float *input_weight = input_tensor->getWeight();
     
     int output_d, output_w, output_h;
@@ -421,13 +501,13 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     for (output_d = 0; output_d < info.output_dimension; ++output_d) {
         Tensor *act_kernel = kernel + output_d;
         bias = biases.getWeight();
-        offset_h = -padding;
+        offset_h = -info_more.padding;
         kernel_width = act_kernel->getWidth();
         kernel_height = act_kernel->getHeight();
         kernel_dimension = act_kernel->getDimension();
         kernel_weight = act_kernel->getWeight();
         for (output_h = 0; output_h < output_height; ++output_h, offset_h += xy_stride) {
-            offset_w = -padding;
+            offset_w = -info_more.padding;
             for (output_w = 0; output_w < output_width; ++output_w, offset_w += xy_stride) {
                 sum = 0.0;
                 for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
@@ -436,7 +516,7 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
                         act_w = kernel_w + offset_w;
                         if (act_h >= 0 && act_h < input_height && act_w >= 0 && act_w < input_width) {
                             for (kernel_d = 0; kernel_d < kernel_dimension; ++kernel_d) {
-                                sum += kernel_weight[((kernel_width * kernel_h) + kernel_w) * kernel_dimension + kernel_d] * input_weight[((input_width * act_h) + act_w) * input_dimension + kernel_d];
+                                sum += kernel_weight[((kernel_width * kernel_h) + kernel_w) * kernel_dimension + kernel_d] * input_weight[((input_width * act_h) + act_w) * info_more.input_dimension + kernel_d];
                             }
                             
                         }
@@ -455,7 +535,7 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
 
 void ConvolutionLayer::Backward() {
     input_tensor->clearDeltaWeight();
-    int xy_stride = stride;
+    int xy_stride = info_more.stride;
     float *input_weight = input_tensor->getWeight();
     float *input_grad = input_tensor->getDeltaWeight();
     
@@ -474,23 +554,23 @@ void ConvolutionLayer::Backward() {
     for (output_d = 0; output_d < info.output_dimension; ++output_d) {
         act_kernel = kernel + output_d;
         bias_grad = biases.getDeltaWeight();
-        offset_h = -padding;
+        offset_h = -info_more.padding;
         kernel_width = act_kernel->getWidth();
         kernel_height = act_kernel->getHeight();
         kernel_dimension = act_kernel->getDimension();
         kernel_weight = act_kernel->getWeight();
         kernel_grad = act_kernel->getDeltaWeight();
         for (output_h = 0; output_h < output_height; ++output_h, offset_h += xy_stride) {
-            offset_w = -padding;
+            offset_w = -info_more.padding;
             for (output_w = 0; output_w < output_width; ++output_w, offset_w += xy_stride) {
                 float chain_grad = output_tensor->getGrad(output_w, output_h, output_d);
                 for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
                     act_h = kernel_h + offset_h;
                     for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
                         act_w = kernel_w + offset_w;
-                        if (act_h >= 0 && act_h < input_height && act_w >= 0 && act_w < input_width) {
+                        if (act_h >= 0 && act_h < info_more.input_height && act_w >= 0 && act_w < info_more.input_width) {
                             for (kernel_d = 0; kernel_d < kernel_dimension; ++kernel_d) {
-                                index_1 = ((input_width * output_h) + output_w) * input_dimension + kernel_d;
+                                index_1 = ((info_more.input_width * output_h) + output_w) * info_more.input_dimension + kernel_d;
                                 index_2 = ((kernel_width * kernel_h) + kernel_w) * kernel_dimension + kernel_d;
                                 kernel_grad[index_2] += input_weight[index_1] * chain_grad;
                                 input_grad[index_1] += kernel_weight[index_2] * chain_grad;
@@ -509,18 +589,18 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     opt = opt_;
     type = "Pooling";
     
-    kernel_width = atoi(opt["kernel_width"].c_str());
-    input_dimension = atoi(opt["input_dimension"].c_str());
-    input_width = atoi(opt["input_width"].c_str());
-    input_height = atoi(opt["input_height"].c_str());
+    info_more.kernel_width = atoi(opt["kernel_width"].c_str());
+    info_more.input_dimension = atoi(opt["input_dimension"].c_str());
+    info_more.input_width = atoi(opt["input_width"].c_str());
+    info_more.input_height = atoi(opt["input_height"].c_str());
     
-    kernel_height = (opt.find("kernel_height") == opt.end()) ? kernel_width : atoi(opt["kernel_height"].c_str());
-    stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
-    padding = (opt.find("padding") == opt.end()) ? 0 : atoi(opt["padding"].c_str());
+    info_more.kernel_height = (opt.find("kernel_height") == opt.end()) ? info_more.kernel_width : atoi(opt["kernel_height"].c_str());
+    info_more.stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
+    info_more.padding = (opt.find("padding") == opt.end()) ? 0 : atoi(opt["padding"].c_str());
     
-    info.output_dimension = input_dimension;
-    info.output_width = (input_width + padding * 2 - kernel_width) / stride + 1;
-    info.output_height = (input_height + padding * 2 - kernel_height) / stride + 1;
+    info.output_dimension = info_more.input_dimension;
+    info.output_width = (info_more.input_width + info_more.padding * 2 - info_more.kernel_width) / info_more.stride + 1;
+    info.output_height = (info_more.input_height + info_more.padding * 2 - info_more.kernel_height) / info_more.stride + 1;
     
     choosex.assign(info.output_width * info.output_height * info.output_dimension, 0);
     choosey.assign(info.output_width * info.output_height * info.output_dimension, 0);
@@ -543,18 +623,18 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     
     int counter = 0;
     for (output_d = 0; output_d < output_dimension; ++output_d) {
-        offset_w = -padding;
-        for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
-            offset_h = -padding;
-            for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
+        offset_w = -info_more.padding;
+        for (output_w = 0; output_w < output_width; ++output_w, offset_w += info_more.stride) {
+            offset_h = -info_more.padding;
+            for (output_h = 0; output_h < output_height; ++output_h, offset_h += info_more.stride) {
                 minimum = -100000000;
                 win_x = -1;
                 win_y = -1;
-                for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                    for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
+                for (kernel_w = 0; kernel_w < info_more.kernel_width; ++kernel_w) {
+                    for (kernel_h = 0; kernel_h < info_more.kernel_height; ++kernel_h) {
                         act_w = offset_w + output_w;
                         act_h = offset_h + output_h;
-                        if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
+                        if (act_w >= 0 && act_w < info_more.input_width && act_h >= 0 && act_h < info_more.input_height) {
                             value = input_tensor->get(act_w, act_h, output_d);
                             if (value > minimum) {
                                 minimum = value;
@@ -591,10 +671,10 @@ void PoolingLayer::Backward() {
     float chain_grad;
     
     for (cal_d = 0; cal_d < output_dimension; ++cal_d) {
-        offset_w = -padding;
-        for (cal_w = 0; cal_w < output_width; ++cal_w, offset_w += stride) {
-            offset_h = -padding;
-            for (cal_h = 0; cal_h < output_height; ++cal_h, offset_h += stride) {
+        offset_w = -info_more.padding;
+        for (cal_w = 0; cal_w < output_width; ++cal_w, offset_w += info_more.stride) {
+            offset_h = -info_more.padding;
+            for (cal_h = 0; cal_h < output_height; ++cal_h, offset_h += info_more.stride) {
                 chain_grad = output->getGrad(cal_w, cal_h, cal_d);
                 input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad);
                 counter++;

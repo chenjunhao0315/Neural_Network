@@ -7,19 +7,127 @@
 
 #include "Neural_Network.hpp"
 
-Neural_Network::~Neural_Network() {
+bool Neural_Network::load(const char *model_) {
+    FILE *model = fopen(model_, "rb");
+    if (!model)
+        return false;
+    fread(&layer_number, sizeof(int), 1, model);
+    printf("Layer number: %d\n", layer_number);
     for (int i = 0; i < layer_number; ++i) {
+        int temp;
+        LayerOption opt;
+        char type[2] = {0};
+        fread(type, 2, 1, model);
+        if (type[0] == 'i' && type[1] == 'n') {
+            opt["type"] = "Input";
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            printf("Input\n");
+        } else if (type[0] == 'f' && type[1] == 'c') {
+            opt["type"] = "Fullyconnected";
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["number_neurons"] = to_string(temp);
+            opt["input_width"] = "1";
+            opt["input_height"] = "1";
+            printf("Fullyconnected\n");
+        } else if (type[0] == 'r' && type[1] == 'e') {
+            opt["type"] = "Relu";
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            printf("Relu\n");
+        } else if (type[0] == 's' && type[1] == 'm') {
+            opt["type"] = "Softmax";
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            opt["input_width"] = "1";
+            printf("Softmax\n");
+        } else if (type[0] == 'c' && type[1] == 'n') {
+            opt["type"] = "Convolution";
+            fread(&temp, sizeof(int), 1, model);
+            opt["number_kernel"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["kernel_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["kernel_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["stride"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["padding"] = to_string(temp);
+            printf("Convolution\n");
+        } else if (type[0] == 'p' && type[1] == 'o') {
+            opt["type"] = "Pooling";
+            fread(&temp, sizeof(int), 1, model);
+            opt["kernel_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["kernel_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["stride"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, model);
+            opt["padding"] = to_string(temp);
+            printf("Pooling\n");
+        }
+        layer.push_back(Model_Layer(opt));
+        layer[i].load(model);
     }
+    fclose(model);
+    return true;
+}
+
+bool Neural_Network::save() {
+    FILE *model = fopen("model.bin", "wb");
+    if (!model)
+        return false;
+    printf("write Layer number: %d\n", layer_number);
+    fwrite(&layer_number, sizeof(int), 1, model);
+    for (int i = 0; i < layer_number; ++i) {
+        string type = layer[i].getType();
+        if (type == "Input") {
+            fwrite("in", 2, 1, model);
+        } else if (type == "Fullyconnected") {
+            fwrite("fc", 2, 1, model);
+        } else if (type == "Relu") {
+            fwrite("re", 2, 1, model);
+        } else if (type == "Softmax") {
+            fwrite("sm", 2, 1, model);
+        } else if (type == "Convolution") {
+            fwrite("cn", 2, 1, model);
+        } else if (type == "Pooling") {
+            fwrite("po", 2, 1, model);
+        }
+        layer[i].save(model);
+    }
+    
+    fclose(model);
+    return true;
 }
 
 void Neural_Network::addLayer(LayerOption opt_) {
     LayerOption auto_opt;
     string type = opt_["type"];
-    if (type == "Softmax") {
-        auto_opt["type"] = "Fullyconnected";
-        auto_opt["number_neurons"] = opt_["number_class"];
-        opt_layer.push_back(auto_opt);
-    }
     if (opt_["activation"] == "Relu") {
         opt_["bias"] = "0.1";
     }
@@ -28,6 +136,10 @@ void Neural_Network::addLayer(LayerOption opt_) {
     
     if (opt_["activation"] == "Relu") {
         auto_opt["type"] = "Relu";
+        opt_layer.push_back(auto_opt);
+    } else if (opt_["activation"] == "Softmax") {
+        auto_opt["type"] = "Softmax";
+        auto_opt["number_class"] = auto_opt["number_neurons"];
         opt_layer.push_back(auto_opt);
     }
 }
@@ -45,18 +157,18 @@ void Neural_Network::makeLayer() {
         }
         string bias = opt["bias"].c_str();
         layer.push_back(Model_Layer(opt));
-        printf("end of for loop\n");
-        ++layer_number;
+        layer_number++;
     }
     printf("*************************\n");
 }
 
 void Neural_Network::shape() {
-    printf("**********Shpae**********\n");
+    printf("Layer(type)         Output Shape\n");
+    printf("======================================\n");
     for (int i = 0; i < layer.size(); ++i) {
         layer[i].shape();
     }
-    printf("*************************\n");
+    printf("======================================\n");
 }
 
 Tensor* Neural_Network::Forward(Tensor *input_tensor_) {

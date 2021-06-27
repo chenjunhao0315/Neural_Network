@@ -44,6 +44,8 @@ public:
     int getHeight();
     int getDimension();
     int length() {return size;}
+    void save(FILE *f);
+    void load(FILE *f);
 private:
     int width;
     int height;

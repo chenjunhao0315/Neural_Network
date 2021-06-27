@@ -44,6 +44,8 @@ public:
     void shape();
     int getParameter(int type_);
     string getType() {return type;}
+    bool save(FILE *f);
+    bool load(FILE *f);
 private:
     string type;
     InputLayer *input_layer;
@@ -67,8 +69,8 @@ public:
     int getParameter(int type);
     void UpdateWeight(string method, float learning_rate);
     int size() {return info.output_width * info.output_height * info.output_dimension;}
-    void save();
-    bool load();
+    bool save(FILE *f);
+    bool load(FILE *f);
 protected:
     string type;
     struct info_ {
@@ -82,6 +84,15 @@ protected:
     Tensor* output_tensor;
     Tensor* kernel;
     Tensor biases;
+    struct info_more {
+        int input_width;
+        int input_height;
+        int input_dimension;
+        int kernel_width;
+        int kernel_height;
+        int stride;
+        int padding;
+    } info_more;
 };
 
 // Input layer
@@ -100,13 +111,6 @@ public:
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
 private:
-    int input_width;
-    int input_height;
-    int input_dimension;
-    int kernel_width;
-    int kernel_height;
-    int stride;
-    int padding;
 };
 
 class PoolingLayer : public BaseLayer {
@@ -115,13 +119,6 @@ public:
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
 private:
-    int input_width;
-    int input_height;
-    int input_dimension;
-    int kernel_width;
-    int kernel_height;
-    int stride;
-    int padding;
     vector<int> choosex;
     vector<int> choosey;
 };

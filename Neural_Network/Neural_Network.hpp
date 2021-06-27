@@ -9,6 +9,7 @@
 #define Neural_Network_hpp
 
 
+#include <iostream>
 #include <stdio.h>
 #include <vector>
 #include <random>
@@ -19,7 +20,6 @@
 
 class Neural_Network {
 public:
-    ~Neural_Network();
     Neural_Network() {layer_number = 0;}
     void addLayer(LayerOption opt_);
     void makeLayer();
@@ -30,6 +30,8 @@ public:
     void train(string method, float learning_rate, vtensor &data_set, vfloat &target, int epoch);
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vfloat &target);
+    bool save();
+    bool load(const char *model_);
 private:
     int layer_number;
     vector<LayerOption> opt_layer;

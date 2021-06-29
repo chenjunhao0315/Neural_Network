@@ -238,3 +238,11 @@ void Tensor::load(FILE *f) {
     weight = new float [size];
     fread(weight, sizeof(float), size, f);
 }
+
+vfloat Tensor::toVector() {
+    vfloat result;
+    for (int i = 0; i < size; ++i) {
+        result.push_back(weight[i]);
+    }
+    return result;
+}

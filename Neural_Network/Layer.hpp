@@ -27,6 +27,7 @@ class ReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
 class PoolingLayer;
+class EuclideanLossLayer;
 
 // Top layer
 class Model_Layer {
@@ -38,7 +39,7 @@ public:
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
     Tensor* Forward(Tensor* input_tensor_);
-    float Backward(float target);
+    float Backward(vfloat& target);
     void Backward();
     void UpdateWeight(string method, float learning_rate);
     void shape();
@@ -54,6 +55,7 @@ private:
     SoftmaxLayer *softmax_layer;
     ConvolutionLayer *convolution_layer;
     PoolingLayer *pooling_layer;
+    EuclideanLossLayer *euclideanloss_layer;
 };
 
 // Base layer
@@ -73,6 +75,8 @@ public:
     bool load(FILE *f);
 protected:
     string type;
+    string name;
+    string input_name;
     struct info_ {
         int input_number;
         int output_width;
@@ -92,6 +96,7 @@ protected:
         int kernel_height;
         int stride;
         int padding;
+        float alpha;
     } info_more;
 };
 
@@ -113,6 +118,7 @@ public:
 private:
 };
 
+// Pooling layer
 class PoolingLayer : public BaseLayer {
 public:
     PoolingLayer(LayerOption opt_);
@@ -139,15 +145,25 @@ public:
     void Backward();
 };
 
-// Softmax layer
+// Softmax layer with cross entropy loss
 class SoftmaxLayer : public BaseLayer {
 public:
     ~SoftmaxLayer() {delete [] expo_sum; expo_sum = nullptr;}
     SoftmaxLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
-    float Backward(float target);
+    float Backward(vfloat& target);
 private:
     float* expo_sum;
+};
+
+// Euclidean loss layer
+class EuclideanLossLayer : public BaseLayer {
+public:
+    ~EuclideanLossLayer() {output_tensor = nullptr;}
+    EuclideanLossLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    float Backward(vfloat& target);
+private:
 };
 
 #endif /* Layer_hpp */

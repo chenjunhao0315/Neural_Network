@@ -46,6 +46,7 @@ public:
     int length() {return size;}
     void save(FILE *f);
     void load(FILE *f);
+    vfloat toVector();
 private:
     int width;
     int height;

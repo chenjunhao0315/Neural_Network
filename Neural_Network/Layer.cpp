@@ -7,12 +7,6 @@
 
 #include "Layer.hpp"
 
-class InputLayer;
-class FullyConnectedLayer;
-class ReluLayer;
-class SoftmaxLayer;
-class ConvolutionLayer;
-
 Model_Layer::~Model_Layer() {
     if (type == "Input") {
         delete input_layer;
@@ -26,6 +20,8 @@ Model_Layer::~Model_Layer() {
         delete convolution_layer;
     } else if (type == "Pooling") {
         delete pooling_layer;
+    } else if (type == "EuclideanLoss") {
+        delete euclideanloss_layer;
     }
     input_layer = nullptr;
     fullyconnected_layer = nullptr;
@@ -33,6 +29,7 @@ Model_Layer::~Model_Layer() {
     softmax_layer = nullptr;
     convolution_layer = nullptr;
     pooling_layer = nullptr;
+    euclideanloss_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -42,6 +39,7 @@ Model_Layer::Model_Layer() {
     softmax_layer = nullptr;
     convolution_layer = nullptr;
     pooling_layer = nullptr;
+    euclideanloss_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -51,6 +49,7 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     softmax_layer = nullptr;
     convolution_layer = nullptr;
     pooling_layer = nullptr;
+    euclideanloss_layer = nullptr;
     if (this != &L) {
         type = L.type;
         if (type == "Input") {
@@ -65,6 +64,8 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
             convolution_layer = new ConvolutionLayer(*L.convolution_layer);
         } else if (type == "Pooling") {
             pooling_layer = new PoolingLayer(*L.pooling_layer);
+        } else if (type == "EuclideanLoss") {
+            euclideanloss_layer = new EuclideanLossLayer(*L.euclideanloss_layer);
         }
     }
 }
@@ -77,12 +78,14 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     softmax_layer = L.softmax_layer;
     convolution_layer = L.convolution_layer;
     pooling_layer = L.pooling_layer;
+    euclideanloss_layer = L.euclideanloss_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
     L.softmax_layer = nullptr;
     L.convolution_layer = nullptr;
     L.pooling_layer = nullptr;
+    L.euclideanloss_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -92,6 +95,7 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     softmax_layer = nullptr;
     convolution_layer = nullptr;
     pooling_layer = nullptr;
+    euclideanloss_layer = nullptr;
     if (this != &L) {
         type = L.type;
         if (type == "Input") {
@@ -106,6 +110,8 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             convolution_layer = new ConvolutionLayer(*L.convolution_layer);
         } else if (type == "Pooling") {
             pooling_layer = new PoolingLayer(*L.pooling_layer);
+        } else if (type == "EuclideanLoss") {
+            euclideanloss_layer = new EuclideanLossLayer(*L.euclideanloss_layer);
         }
     }
     return *this;
@@ -118,6 +124,7 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     softmax_layer = nullptr;
     convolution_layer = nullptr;
     pooling_layer = nullptr;
+    euclideanloss_layer = nullptr;
     type = opt_["type"];
     if (type == "Input") {
         input_layer = new InputLayer(opt_);
@@ -131,6 +138,8 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         convolution_layer = new ConvolutionLayer(opt_);
     } else if (type == "Pooling") {
         pooling_layer = new PoolingLayer(opt_);
+    } else if (type == "EuclideanLoss") {
+        euclideanloss_layer = new EuclideanLossLayer(opt_);
     }
 }
 
@@ -147,13 +156,17 @@ Tensor* Model_Layer::Forward(Tensor* input_tensor_) {
         return convolution_layer->Forward(input_tensor_);
     } else if (type == "Pooling") {
         return pooling_layer->Forward(input_tensor_);
+    } else if (type == "EuclideanLoss") {
+        return euclideanloss_layer->Forward(input_tensor_);
     }
     return 0;
 }
 
-float Model_Layer::Backward(float target) {
+float Model_Layer::Backward(vfloat& target) {
     if (type == "Softmax") {
         return softmax_layer->Backward(target);
+    } else if (type == "EuclideanLoss") {
+        return euclideanloss_layer->Backward(target);
     }
     return 0;
 }
@@ -182,17 +195,19 @@ void Model_Layer::UpdateWeight(string method, float learning_rate) {
 
 void Model_Layer::shape() {
     if (type == "Input") {
-        return input_layer->shape();
+        input_layer->shape();
     } else if (type == "Fullyconnected") {
-        return fullyconnected_layer->shape();
+        fullyconnected_layer->shape();
     } else if (type == "Relu") {
-        return relu_layer->shape();
+        relu_layer->shape();
     } else if (type == "Softmax") {
-        return softmax_layer->shape();
+        softmax_layer->shape();
     } else if (type == "Convolution") {
-        return convolution_layer->shape();
+        convolution_layer->shape();
     } else if (type == "Pooling") {
-        return pooling_layer->shape();
+        pooling_layer->shape();
+    } else if (type == "EuclideanLoss") {
+        euclideanloss_layer->shape();
     }
 }
 
@@ -209,6 +224,8 @@ int Model_Layer::getParameter(int type_) {
         return convolution_layer->getParameter(type_);
     } else if (type == "Pooling") {
         return pooling_layer->getParameter(type_);
+    } else if (type == "EuclideanLoss") {
+        return euclideanloss_layer->getParameter(type_);
     }
     return 0;
 }
@@ -226,6 +243,8 @@ bool Model_Layer::save(FILE *f) {
         return convolution_layer->save(f);
     } else if (type == "Pooling") {
         return pooling_layer->save(f);
+    } else if (type == "EuclideanLoss") {
+        return euclideanloss_layer->save(f);
     }
     return 0;
 }
@@ -243,6 +262,8 @@ bool Model_Layer::load(FILE *f) {
         return convolution_layer->load(f);
     } else if (type == "Pooling") {
         return pooling_layer->load(f);
+    } else if (type == "EuclideanLoss") {
+        return euclideanloss_layer->load(f);
     }
     return 0;
 }
@@ -264,6 +285,8 @@ BaseLayer::BaseLayer() {
 BaseLayer::BaseLayer(BaseLayer *L) {
     if (this != L) {
         type = L->type;
+        name = L->name;
+        input_name = L->input_name;
         info = L->info;
         info_more = L->info_more;
         opt = L->opt;
@@ -284,6 +307,8 @@ BaseLayer::BaseLayer(BaseLayer *L) {
 BaseLayer::BaseLayer(const BaseLayer &L) {
     if (this != &L) {
         type = L.type;
+        name = L.name;
+        input_name = L.input_name;
         info = L.info;
         info_more = L.info_more;
         opt = L.opt;
@@ -303,6 +328,8 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
 
 BaseLayer::BaseLayer(BaseLayer &&L) {
     type = L.type;
+    name = L.name;
+    input_name = L.input_name;
     info = L.info;
     info_more = L.info_more;
     opt = L.opt;
@@ -318,6 +345,8 @@ BaseLayer::BaseLayer(BaseLayer &&L) {
 BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
     if (this != &L) {
         type = L.type;
+        name = L.name;
+        input_name = L.input_name;
         info = L.info;
         info_more = L.info_more;
         opt = L.opt;
@@ -337,7 +366,7 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
 }
 
 void BaseLayer::shape() {
-    printf("%-20s", type.c_str());
+    printf("%-17s%-10s %-10s  ", type.c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
 //    if (type == "Convolution" || type == "Fullyconnected") {
 //        for (int i = 0; i < info.output_dimension; ++i) {
@@ -381,6 +410,20 @@ void BaseLayer::UpdateWeight(string method, float learning_rate) {
 }
 
 bool BaseLayer::save(FILE *f) {
+    int len = (int)strlen(name.c_str());
+    char *name_ = new char [len];
+    fwrite(&len, sizeof(int), 1, f);
+    strcpy(name_, name.c_str());
+    fwrite(name_, sizeof(char), len, f);
+    delete [] name_;
+    
+    len = (int)strlen(input_name.c_str());
+    char *input_name_ = new char [len];
+    fwrite(&len, sizeof(int), 1, f);
+    strcpy(input_name_, input_name.c_str());
+    fwrite(input_name_, sizeof(char), len, f);
+    delete [] input_name_;
+    
     if (type == "Input") {
         fwrite(&info.output_width, sizeof(int), 1, f);
         fwrite(&info.output_height, sizeof(int), 1, f);
@@ -421,6 +464,11 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info_more.kernel_height, sizeof(int), 1, f);
         fwrite(&info_more.stride, sizeof(int), 1, f);
         fwrite(&info_more.padding, sizeof(int), 1, f);
+    } else if (type == "EuclideanLoss") {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+        fwrite(&info_more.alpha, sizeof(float), 1, f);
     }
 
     return true;
@@ -439,6 +487,9 @@ bool BaseLayer::load(FILE *f) {
 InputLayer::InputLayer(LayerOption opt_) {
     opt = opt_;
     type = "Input";
+    name = (opt.find("name") == opt.end()) ? "in" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
     info.output_dimension = (opt.find("input_dimension") == opt.end()) ? atoi(opt["output_dimension"].c_str()) : atoi(opt["input_dimension"].c_str());
     info.output_width = (opt.find("input_width") == opt.end()) ? atoi(opt["output_width"].c_str()) : atoi(opt["input_width"].c_str());
     info.output_height = (opt.find("input_height") == opt.end()) ? atoi(opt["output_height"].c_str()) : atoi(opt["input_height"].c_str());
@@ -446,14 +497,15 @@ InputLayer::InputLayer(LayerOption opt_) {
 
 Tensor* InputLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    output_tensor = input_tensor
-    ;
+    output_tensor = input_tensor;
     return output_tensor;
 }
 
 ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     opt = opt_;
     type = "Convolution";
+    name = (opt.find("name") == opt.end()) ? "conv" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
     info.output_dimension = atoi(opt["number_kernel"].c_str());
     info_more.kernel_width = atoi(opt["kernel_width"].c_str());
@@ -534,7 +586,7 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
 }
 
 void ConvolutionLayer::Backward() {
-    input_tensor->clearDeltaWeight();
+    //input_tensor->clearDeltaWeight();
     int xy_stride = info_more.stride;
     float *input_weight = input_tensor->getWeight();
     float *input_grad = input_tensor->getDeltaWeight();
@@ -588,6 +640,8 @@ void ConvolutionLayer::Backward() {
 PoolingLayer::PoolingLayer(LayerOption opt_) {
     opt = opt_;
     type = "Pooling";
+    name = (opt.find("name") == opt.end()) ? "pool" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
     info_more.kernel_width = atoi(opt["kernel_width"].c_str());
     info_more.input_dimension = atoi(opt["input_dimension"].c_str());
@@ -659,7 +713,7 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
 
 void PoolingLayer::Backward() {
     Tensor *input = input_tensor;
-    input->clearDeltaWeight();
+    //input->clearDeltaWeight();
     Tensor *output = output_tensor;
     
     int output_dimension = info.output_dimension;
@@ -686,6 +740,9 @@ void PoolingLayer::Backward() {
 FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     opt = opt_;
     type = "Fullyconnected";
+    name = (opt.find("name") == opt.end()) ? "fc" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
     info.output_dimension = atoi(opt["number_neurons"].c_str());
     
     info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * atoi(opt["input_dimension"].c_str());
@@ -733,7 +790,7 @@ Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
 
 void FullyConnectedLayer::Backward() {
     Tensor *cal = input_tensor;
-    cal->clearDeltaWeight();
+    //cal->clearDeltaWeight();
     float *cal_w = cal->getWeight();
     float *cal_dw = cal->getDeltaWeight();
     float *act_biases_grad = biases.getDeltaWeight();
@@ -759,6 +816,9 @@ void FullyConnectedLayer::Backward() {
 ReluLayer::ReluLayer(LayerOption opt_) {
     opt = opt_;
     type = "Relu";
+    name = (opt.find("name") == opt.end()) ? "relu" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
     info.output_width = atoi(opt["input_width"].c_str());
     info.output_height = atoi(opt["input_height"].c_str());
     info.output_dimension = atoi(opt["input_dimension"].c_str());
@@ -781,7 +841,7 @@ Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
 
 void ReluLayer::Backward() {
     Tensor *cal = input_tensor;
-    cal->clearDeltaWeight();
+    //cal->clearDeltaWeight();
     int length = (int)cal->length();
     float *act_weight = output_tensor->getWeight();
     float *act_grad = output_tensor->getDeltaWeight();
@@ -791,13 +851,16 @@ void ReluLayer::Backward() {
         if (act_weight[i] <= 0)
             pos_grad[i] = 0;
         else
-            pos_grad[i] = act_grad[i];
+            pos_grad[i] += act_grad[i];
     }
 }
 
 SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     opt = opt_;
     type = "Softmax";
+    name = (opt.find("name") == opt.end()) ? "sm" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
     info.output_dimension = atoi(opt["input_dimension"].c_str());
     info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * info.output_dimension;
     info.output_width = 1;
@@ -818,7 +881,6 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
     }
     float *expo_sum_ = new float [output_dimension];
     fill (expo_sum_, expo_sum_ + output_dimension, 0);
-//    memset(expo_sum_, 0, sizeof(float) * output_dimension);
     float sum = 0;
     
     for (int i = 0; i < output_dimension; ++i) {
@@ -844,16 +906,51 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
     return output_tensor;
 }
 
-float SoftmaxLayer::Backward(float target) {
+float SoftmaxLayer::Backward(vfloat& target) {
     Tensor *cal_tensor = input_tensor;
-    cal_tensor->clearDeltaWeight();
+    //cal_tensor->clearDeltaWeight();
     float *cal_delta_weight = cal_tensor->getDeltaWeight();
     int output_dimension = info.output_dimension;
     
     for (int i = 0; i < output_dimension; ++i) {
-        float indicator = (i == target) ? 1.0 : 0.0;
+        float indicator = (i == target[0]) ? 1.0 : 0.0;
         float mul = -(indicator - expo_sum[i]);
-        cal_delta_weight[i] = mul;
+        cal_delta_weight[i] += mul;
     }
-    return -log(expo_sum[(int)target]);
+    return -log(expo_sum[(int)target[0]]);
 }
+
+EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
+    opt = opt_;
+    type = "EuclideanLoss";
+    name = (opt.find("name") == opt.end()) ? "el" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.output_dimension = atoi(opt["input_dimension"].c_str()) * atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str());
+    info.output_width = 1;
+    info.output_height = 1;
+    info_more.alpha = (opt.find("alpha") == opt.end()) ? 1 : atof(opt["alpha"].c_str());
+}
+
+Tensor* EuclideanLossLayer::Forward(Tensor *input_tensor_) {
+    input_tensor = input_tensor_;
+    output_tensor = input_tensor;
+    return output_tensor;
+}
+
+float EuclideanLossLayer::Backward(vfloat& target) {
+    Tensor *cal_tensor = input_tensor;
+    //cal_tensor->clearDeltaWeight();
+    float *cal_weight = cal_tensor->getWeight();
+    float *cal_delta_weight = cal_tensor->getDeltaWeight();
+    int output_dimension = info.output_dimension;
+    float loss = 0;
+    
+    for (int i = 0; i < output_dimension; ++i) {
+        float delta = cal_weight[i] - target[i];
+        cal_delta_weight[i] = delta * info_more.alpha;
+        loss += 0.5 * delta * delta * info_more.alpha;
+    }
+    return loss;
+}
+

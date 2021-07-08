@@ -159,6 +159,23 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     }
 }
 
+Tensor::Tensor(float* RGB, int width_, int height_, int dimension_) {
+    width = width_;
+    height = height_;
+    dimension = dimension_;
+    int n = size = width * height * dimension;
+    
+    // initialize
+    weight = new float [n * 3];
+    delta_weight = new float [n * 3];
+    fill(weight, weight + n, 0);
+    fill(delta_weight, delta_weight + n, 0);
+    
+    for (int i = 0; i < n; ++i) {
+        weight[i] = RGB[i];
+    }
+}
+
 float* Tensor::getWeight() {
     return weight;
 }

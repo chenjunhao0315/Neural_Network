@@ -13,17 +13,32 @@
 #include <cstdlib>
 #include <map>
 #include <fstream>
+#include <cstring>
+#include <unordered_map>
 
 #include "Tensor.hpp"
 
 using namespace std;
 
 typedef vector<Tensor> vtensor;
-typedef map<string, string> LayerOption;
+typedef unordered_map<string, string> LayerOption;
+
+enum LayerType {
+    Input,
+    Fullyconnected,
+    Relu,
+    PRelu,
+    Softmax,
+    Convolution,
+    Pooling,
+    EuclideanLoss,
+    Error
+};
 
 class InputLayer;
 class FullyConnectedLayer;
 class ReluLayer;
+class PReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
 class PoolingLayer;
@@ -44,14 +59,19 @@ public:
     void UpdateWeight(string method, float learning_rate);
     void shape();
     int getParameter(int type_);
-    string getType() {return type;}
+    LayerType getType() {return type;}
+    LayerType string_to_type(string type);
     bool save(FILE *f);
     bool load(FILE *f);
+    Tensor* getKernel();
+    Tensor* getBiases();
+    vfloat getDetailParameter();
 private:
-    string type;
+    LayerType type;
     InputLayer *input_layer;
     FullyConnectedLayer *fullyconnected_layer;
     ReluLayer *relu_layer;
+    PReluLayer *prelu_layer;
     SoftmaxLayer *softmax_layer;
     ConvolutionLayer *convolution_layer;
     PoolingLayer *pooling_layer;
@@ -68,13 +88,18 @@ public:
     BaseLayer(BaseLayer &&L);
     BaseLayer& operator=(const BaseLayer &L);
     void shape();
+    string type_to_string();
     int getParameter(int type);
     void UpdateWeight(string method, float learning_rate);
+    void ClearDeltaWeight();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
     bool load(FILE *f);
+    Tensor* getKernel();
+    Tensor* getBiases();
+    vfloat getDetailParameter();
 protected:
-    string type;
+    LayerType type;
     string name;
     string input_name;
     struct info_ {
@@ -87,7 +112,7 @@ protected:
     Tensor* input_tensor;
     Tensor* output_tensor;
     Tensor* kernel;
-    Tensor biases;
+    Tensor* biases;
     struct info_more {
         int input_width;
         int input_height;
@@ -141,6 +166,14 @@ public:
 class ReluLayer : public BaseLayer {
 public:
     ReluLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    void Backward();
+};
+
+// PRelu layer
+class PReluLayer : public BaseLayer {
+public:
+    PReluLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
 };

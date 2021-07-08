@@ -29,6 +29,7 @@ public:
     Tensor(Tensor *T);
     Tensor(vfloat &V);
     Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_);
+    Tensor(float* RGB, int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_, float parameter);
     void set(int width_, int height_, int dimension_, float value);

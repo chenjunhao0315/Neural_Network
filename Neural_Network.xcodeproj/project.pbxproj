@@ -30,6 +30,7 @@
 /* Begin PBXFileReference section */
 		760C6CA026696CED0098007D /* Data_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_Process.cpp; sourceTree = "<group>"; };
 		760C6CA126696CED0098007D /* Data_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_Process.hpp; sourceTree = "<group>"; };
+		761CBCD8268F451C002A687E /* jpeg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jpeg.h; sourceTree = "<group>"; };
 		76390E702666B3D000FFA5EC /* Neural_Network */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Neural_Network; sourceTree = BUILT_PRODUCTS_DIR; };
 		76390E732666B3D000FFA5EC /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		76390E7B2666B44E00FFA5EC /* Neural_Network.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Neural_Network.cpp; sourceTree = "<group>"; };
@@ -83,6 +84,7 @@
 				76390E882666B78800FFA5EC /* Utilities.hpp */,
 				760C6CA026696CED0098007D /* Data_Process.cpp */,
 				760C6CA126696CED0098007D /* Data_Process.hpp */,
+				761CBCD8268F451C002A687E /* jpeg.h */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";

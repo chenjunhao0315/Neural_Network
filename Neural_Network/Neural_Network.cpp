@@ -227,18 +227,20 @@ void Neural_Network::addLayer(LayerOption opt_) {
 }
 
 void Neural_Network::makeLayer() {
+    unordered_map<string, int> id_table;
     printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
         printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
         LayerOption &opt = opt_layer[i];
         if (opt.find("name") == opt.end())
             opt["name"] = to_string(i);
+        id_table[opt["name"]] = i;
         if (i > 0) {
             if (opt.find("input_name") == opt.end())
                 opt["input_name"] = (opt_layer[i - 1].find("name") == opt_layer[i - 1].end()) ? to_string(i - 1) : opt_layer[i - 1]["name"];
-            opt["input_width"] = to_string(layer[i - 1].getParameter(0));
-            opt["input_height"] = to_string(layer[i - 1].getParameter(1));
-            opt["input_dimension"] = to_string(layer[i - 1].getParameter(2));
+            opt["input_width"] = to_string(layer[id_table[opt["input_name"]]].getParameter(0));
+            opt["input_height"] = to_string(layer[id_table[opt["input_name"]]].getParameter(1));
+            opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]].getParameter(2));
         }
         string bias = opt["bias"].c_str();
         layer.push_back(Model_Layer(opt));
@@ -280,14 +282,14 @@ vfloat Neural_Network::Forward(Tensor *input_tensor_) {
         else {
             act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
         }
-        
+//        act->shape();
         terminal[opt_layer[i]["name"]] = act;
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();
     for (int i = 1; i < output_layer.size(); ++i) {
         vfloat temp = terminal[output_layer[i]]->toVector();
-        for (int j = 1; j < temp.size(); ++j) {
+        for (int j = 0; j < temp.size(); ++j) {
             output.push_back(temp[j]);
         }
     }
@@ -305,14 +307,18 @@ float Neural_Network::Backward(vfloat& target) {
     } else if (model == "parallel") {
         if (target[0] == 1) {
             vfloat cls_pos{1};
-            float loss_cls = layer[path[0][0]].Backward(cls_pos);
-            for (int i = 1; i < path[0].size(); ++i) {
-                layer[path[0][i]].Backward();
-            }
             vfloat bbox_pos{target[1], target[2], target[3], target[4]};
+            float loss_cls = layer[path[0][0]].Backward(cls_pos);
             float loss_bbox = layer[path[1][0]].Backward(bbox_pos);
-            for (int i = 1; i < path[1].size(); ++i) {
-                layer[path[1][i]].Backward();
+            if (loss_cls > loss_bbox) {
+                for (int i = 1; i < path[0].size(); ++i) {
+                    layer[path[0][i]].Backward();
+                }
+            }
+            else {
+                for (int i = 1; i < path[1].size(); ++i) {
+                    layer[path[1][i]].Backward();
+                }
             }
             loss = loss_cls + loss_bbox * 0.5;
         }
@@ -375,6 +381,9 @@ void Neural_Network::train(string method, float learning_rate, vtensor &data_set
             train(method, learning_rate, &(data_set[index[j]]), target_set[index[j]]);
         }
         printf("]\n");
+        if ((i + 1) % 30 == 0) {
+            learning_rate *= 0.5;
+        }
         //float accuracy = evaluate(data_set, target_set);
         //printf("Accuracy: %.2f%%\n", accuracy * 100);
     }
@@ -437,6 +446,18 @@ vector<vfloat> Neural_Network::getDetailParameter() {
             detail_parameter.push_back(detail);
     }
     return detail_parameter;
+}
+
+void Neural_Network::UpdateNet() {
+    for (int i = 0; i < layer.size(); ++i) {
+        layer[i].Update();
+    }
+}
+
+void Neural_Network::ClearGrad() {
+    for (int i = 0; i < layer.size(); ++i) {
+        layer[i].ClearGrad();
+    }
 }
 
 Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
@@ -549,20 +570,25 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
                     gsumi[j] = ro * gsumi[j] + (1 - ro) * grad_ij * grad_ij;
                     float delta_weight = -sqrt((xsumi[j] + eps) / (gsumi[j] + eps)) * grad_ij;
                     xsumi[j] = ro * xsumi[j] + (1 - ro) * delta_weight * delta_weight;
+//                    grad[j] = delta_weight;
                     weight[j] += delta_weight;
                 } else if (method == ADAM) {
+//                    printf("gsumi: %.2f xsumi: %.2f\n", gsumi[j], xsumi[j]);
                     gsumi[j] = beta_1 * gsumi[j] + (1 - beta_1) * grad_ij;
                     xsumi[j] = beta_2 * xsumi[j] + (1 - beta_2) * grad_ij * grad_ij;
-                    float nor_gsumi = gsumi[j] / (1 - beta_1);
-                    float nor_xsumi = xsumi[j] / (1 - beta_2);
+                    float nor_gsumi = gsumi[j] / (1 - pow(beta_1, iter + 1));
+                    float nor_xsumi = xsumi[j] / (1 - pow(beta_2, iter + 1));
                     float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
+//                    grad[j] = delta_weight;
                     weight[j] += delta_weight;
                 } else { // SGD
                     if (momentum > 0) {
                         float delta_weight = momentum * gsumi[j] - learning_rate * grad_ij;
                         gsumi[j] = delta_weight;
                         weight[j] += delta_weight;
+//                        grad[j] = delta_weight;
                     } else {
+//                        grad[j] = grad_ij * learning_rate;
                         weight[j] += learning_rate * grad_ij;
                     }
                 }

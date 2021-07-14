@@ -33,6 +33,8 @@ public:
     void train(string method, float learning_rate, vtensor &data_set, vector<vfloat> &target_set, int epoch);
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vector<vfloat> &target);
+    void UpdateNet();
+    void ClearGrad();
     bool save(const char *model_name);
     bool load(const char *model_name);
     vector<Tensor*> getDetail();

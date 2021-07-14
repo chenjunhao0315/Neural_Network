@@ -48,6 +48,8 @@ public:
     void save(FILE *f);
     void load(FILE *f);
     vfloat toVector();
+    void toIMG(char *filename);
+    void shape();
 private:
     int width;
     int height;

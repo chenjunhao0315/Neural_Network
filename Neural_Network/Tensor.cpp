@@ -166,8 +166,8 @@ Tensor::Tensor(float* RGB, int width_, int height_, int dimension_) {
     int n = size = width * height * dimension;
     
     // initialize
-    weight = new float [n * 3];
-    delta_weight = new float [n * 3];
+    weight = new float [n];
+    delta_weight = new float [n];
     fill(weight, weight + n, 0);
     fill(delta_weight, delta_weight + n, 0);
     
@@ -219,6 +219,10 @@ int Tensor::getDimension() {
     return dimension;
 }
 
+void Tensor::shape() {
+    printf("width: %d height: %d dimension: %d size: %d\n", width, height, dimension, size);
+}
+
 void Tensor::set(int width_, int height_, int dimension_, float value) {
     weight[((height_ * width) + width_) * dimension + dimension_] = value;
 }
@@ -262,4 +266,15 @@ vfloat Tensor::toVector() {
         result.push_back(weight[i]);
     }
     return result;
+}
+
+void Tensor::toIMG(char *filename) {
+    FILE *f = fopen(filename, "wb");
+    fprintf(f, "P6\n%d %d\n255\n", width, height);
+    unsigned char *pixel = new unsigned char [3 * width * height];
+    for (int i = 0; i < 3 * width * height; ++i) {
+        pixel[i] = (unsigned char)(weight[i] * 255);
+    }
+    fwrite(pixel, sizeof(unsigned char), 3 * width * height, f);
+    fclose(f);
 }

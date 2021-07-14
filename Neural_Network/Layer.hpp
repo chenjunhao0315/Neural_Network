@@ -57,6 +57,8 @@ public:
     float Backward(vfloat& target);
     void Backward();
     void UpdateWeight(string method, float learning_rate);
+    void Update();
+    void ClearGrad();
     void shape();
     int getParameter(int type_);
     LayerType getType() {return type;}
@@ -91,6 +93,8 @@ public:
     string type_to_string();
     int getParameter(int type);
     void UpdateWeight(string method, float learning_rate);
+    void Update();
+    void ClearGrad();
     void ClearDeltaWeight();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);

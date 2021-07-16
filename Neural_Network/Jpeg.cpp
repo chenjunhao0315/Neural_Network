@@ -1,197 +1,19 @@
 //
-//  jpeg.h
-//  jpeg_encoder_decoder
+//  Jpeg.cpp
+//  Neural_Network
 //
-//  Created by 陳均豪 on 2021/5/26.
+//  Created by 陳均豪 on 2021/7/15.
 //
 
-#ifndef jpeg_h
-#define jpeg_h
-
-#define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
-#define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */
-#define W3 2408 /* 2048*sqrt(2)*cos(3*pi/16) */
-#define W5 1609 /* 2048*sqrt(2)*cos(5*pi/16) */
-#define W6 1108 /* 2048*sqrt(2)*cos(6*pi/16) */
-#define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
-
-#define DC 0
-#define AC 1
-
-#include <cstring>
-
-using namespace std;
-
-enum MARKER {
-    APP0_MARKER = 0xE0, APP1_MARKER = 0xE1,
-    SOF0_MARKER = 0xC0, SOF2_MARKER = 0xC2,
-    DQT_MARKER = 0xDB, DHT_MARKER = 0xC4,
-    DRI_MARKER = 0xDD, SOS_MARKER = 0xDA
-};
-
-enum EXIF_PARAMETER {
-    ExposureTime = 33434, FNumber = 33437, ExposureProgram = 34850,
-    ISOSpeedRatings = 34855, SensitivityType = 34864,
-    RecommendedExposureIndex = 34866, ExifVersion = 36864,
-    DateTimeOriginal = 36867, CreateDate = 36868, OffsetTime = 36880,
-    OffsetTimeOriginal = 36881, OffsetTimeDigitized = 36882,
-    ShutterSpeedValue = 37377, ApertureValue = 37378, ExposureBiasValue = 37380,
-    MaxApertureValue = 37381, MeteringMode = 37383, Flash = 37385,
-    FocalLength = 37386, SubSecTime = 37520, SubSecTimeOriginal = 37521,
-    SubSecTimeDigitized = 37522, FlashPixVersion = 40960, ColorSpace = 40961,
-    PixelXDimension = 40962, PixelYDimension = 40963, FocalPlaneXResolution = 41486,
-    FocalPlaneYResolution = 41487, FocalPlaneResolutionUnit = 41488,
-    CustomRendered = 41985, ExposureMode = 41986, WhiteBalance = 41987,
-    SceneCaptureType = 41990, CameraOwnerName = 42032, BodySerialNumber = 42033,
-    LensSpecification = 42034, LensModel = 42036, LensSerialNumber = 42037
-};
-
-struct DATA_SET {
-    enum decode_method {
-        TIFF, EXIF, GPS
-    };
-    ~DATA_SET() {
-        delete [] Tag;
-        delete [] Format;
-        delete [] Components;
-        delete [] Offset;
-        delete [] Sub;
-        delete start_pos;
-        delete sub;
-    }
-    DATA_SET(unsigned int num = 0, unsigned char *_start_pos = 0) {
-        Init(num, _start_pos);
-    }
-    void Init(unsigned int num, unsigned char *_start_pos) {
-        Tag = new unsigned int [num];
-        Format = new unsigned int [num];
-        Components = new unsigned int [num];
-        Offset = new unsigned int [num];
-        Sub = new unsigned int [num];
-        Tag_num = num;
-        method = TIFF;
-        start_pos = _start_pos;
-    }
-    void show();
-    void str(unsigned char *pos, unsigned int len);
-    float ration64u(unsigned char *pos);
-    float ration64s(unsigned char *pos);
-    
-    unsigned int Tag_num;
-    unsigned char method;
-    unsigned int *Tag, *Format, *Components, *Offset, *Sub;
-    DATA_SET *sub;
-    unsigned char *start_pos;
-};
-
-class JPEG {
-public:
-    ~JPEG();
-    JPEG(const char *filename);
-    int status() {return data.status;}
-    void showPicInfo();
-    void convert();
-    
-    enum Status{
-        OK = 0,
-        NOT_JPEG,
-        SYNTAX_ERROR,
-        UNSUPPORT,
-        DECODE_FINISH,
-        FREE
-    };
-    
-private:
-    struct VlcCode {
-        unsigned char bits, code;
-    };
-    
-    struct Component {
-        unsigned char id;
-        unsigned char samplex;
-        unsigned char sampley;
-        int width;
-        int height;
-        int stride;
-        unsigned char quant;
-        unsigned char dctable;
-        unsigned char actable;
-        int dc;
-        unsigned char *pixels;
-    };
-    
-    struct DATA {
-        int width, height;
-        unsigned char color_mode;
-        Status status;
-        unsigned char *data_indicator;
-        unsigned char *pos;
-        int size;
-        int length;
-        unsigned char qtab[4][64];
-        Component comp[3];
-        int comp_number;
-        int samplemaxx, samplemaxy;
-        int mcusizex, mcusizey;
-        int mcuwidth, mcuheight;
-        VlcCode vlctab[4][65536];
-        int mcu[64];
-        int buf, bufbits;
-        int resetinterval;
-        unsigned char *rgb;
-    };
-    
-    inline unsigned char CF(const int x) {
-        return clip((x + 64) >> 7);
-    }
-    
-    inline void skip(int number);
-    inline void GetLength();
-    Status decode();
-    void skipMARKER();
-    void readAPP1();
-    void readDataSet(DATA_SET *d, unsigned char *read_pos);
-    void readDQT();
-    void readSOF0();
-    void readDHT();
-    void readDRI();
-    void readSOS();
-    void readDATA();
-    void decodeMCU(Component *c, unsigned char *out);
-    int GetVLC(VlcCode *vlc, unsigned char *code);
-    int showBits(int bits);
-    void skipBits(int bits);
-    int GetBits(int bits);
-    void IDCTRow(int *mcu);
-    void IDCTCol(const int *mcu, unsigned char *out, int stride);
-    unsigned char clip(const int x);
-    void toRGB();
-    void upSampleV(Component *c);
-    void upSampleH(Component *c);
-    
-    unsigned char ZigZag[64];
-    DATA_SET *Exif;
-    DATA data;
-};
-
-inline unsigned short Decode16(const unsigned char *pos);
-inline unsigned short Get16u(const unsigned char *pos);
-inline unsigned int Get32u(const unsigned char *pos);
-inline int Get32s(const unsigned char *pos);
+#include "Jpeg.hpp"
 
 JPEG::~JPEG() {
-    if (Exif)
-        delete Exif;
-    if (data.data_indicator)
-        delete [] data.data_indicator;
-    if (data.comp[0].pixels)
-        delete [] data.comp[0].pixels;
-    if (data.comp[1].pixels)
-        delete [] data.comp[1].pixels;
-    if (data.comp[2].pixels)
-        delete [] data.comp[2].pixels;
-    if (data.rgb)
-        delete [] data.rgb;
+    delete Exif;
+    delete [] data.data_indicator;
+    delete [] data.comp[0].pixels;
+    delete [] data.comp[1].pixels;
+    delete [] data.comp[2].pixels;
+    delete [] data.rgb;
 }
 
 JPEG::JPEG(const char *filename) {
@@ -205,6 +27,8 @@ JPEG::JPEG(const char *filename) {
     data.comp[0].pixels = nullptr;
     data.comp[1].pixels = nullptr;
     data.comp[2].pixels = nullptr;
+    data.rgb = nullptr;
+    Exif = nullptr;
     data.pos = nullptr;
     fseek(f, 0, SEEK_END);
     size = ftell(f);
@@ -223,38 +47,39 @@ JPEG::JPEG(const char *filename) {
         38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
     memcpy(ZigZag, table, sizeof(ZigZag));
     data.status = decode();
-    switch (data.status) {
-        case OK: printf("Decode finish!\n"); break;
-        case NOT_JPEG: printf("Not jpeg file!\n"); break;
-        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
-        case UNSUPPORT: printf("Unsupport!\n"); break;
-        default: break;
-    }
+//    switch (data.status) {
+//        case OK: printf("Decode finish!\n"); break;
+//        case NOT_JPEG: printf("Not jpeg file!\n"); break;
+//        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
+//        case UNSUPPORT: printf("Unsupport!\n"); break;
+//        default: break;
+//    }
 }
 
-void JPEG::convert() {
+void JPEG::convert_ppm(const char *filename) {
     if (status() != DECODE_FINISH)
         return;
-    FILE *f = fopen("out.ppm", "wb");
+    FILE *f = fopen(filename, "wb");
     fprintf(f, "P%d\n%d %d\n255\n", data.comp_number == 3 ? 6 : 5, data.width, data.height);
     fwrite(data.rgb, 1, data.width * data.height * data.comp_number, f);
     fclose(f);
 }
 
-enum {
-    CF4A = (-9),
-    CF4B = (111),
-    CF4C = (29),
-    CF4D = (-3),
-    CF3A = (28),
-    CF3B = (109),
-    CF3C = (-9),
-    CF3X = (104),
-    CF3Y = (27),
-    CF3Z = (-3),
-    CF2A = (139),
-    CF2B = (-11),
-};
+int JPEG::getWidth() {
+    return data.width;
+}
+
+int JPEG::getHeight() {
+    return data.height;
+}
+
+int JPEG::getChannel() {
+    return data.comp_number;
+}
+
+unsigned char * JPEG::getPixel() {
+    return data.rgb;
+}
 
 void JPEG::upSampleH(Component* c) {
     const int xmax = c->width - 3;
@@ -564,7 +389,7 @@ void JPEG::readDHT() {
         for (codelen = 1; codelen <= 16; ++codelen)
         counts[codelen - 1] = data.pos[codelen];
         skip(17);
-//        printf("DHT id: %d\n", i);
+        //        printf("DHT id: %d\n", i);
         vlc = &data.vlctab[i][0];
         remain = spread = 65536;
         for (codelen = 1; codelen <= 16; ++codelen) {
@@ -602,7 +427,7 @@ void JPEG::readSOF0() {
     precision = data.pos[0];
     data.height = Decode16(data.pos + 1);
     data.width = Decode16(data.pos + 3);
-//    printf("resolution: %d * %d\n", data.width, data.height);
+    //    printf("resolution: %d * %d\n", data.width, data.height);
     data.comp_number = data.color_mode = data.pos[5];
     skip(6);
     for (i = 0, c = data.comp; i < data.comp_number; ++i, ++c) {
@@ -610,7 +435,7 @@ void JPEG::readSOF0() {
         c->samplex = data.pos[1] >> 4;
         c->sampley = data.pos[1] & 0x0F;
         c->quant = data.pos[2];
-//        printf("ID: %d width: %d height: %d quant: %d\n", c->id, c->samplex, c->sampley, c->quant);
+        //        printf("ID: %d width: %d height: %d quant: %d\n", c->id, c->samplex, c->sampley, c->quant);
         data.samplemaxx = (data.samplemaxx > c->samplex ? data.samplemaxx : c->samplex);
         data.samplemaxy = (data.samplemaxy > c->sampley ? data.samplemaxy : c->sampley);
         skip(3);
@@ -619,7 +444,7 @@ void JPEG::readSOF0() {
     data.mcusizey = data.samplemaxy << 3;
     data.mcuwidth = (data.width + data.mcusizex - 1) / data.mcusizex;
     data.mcuheight = (data.height + data.mcusizey - 1) / data.mcusizey;
-//    printf("mcuX: %d mcuY: %d mcuW: %d mcuH: %d\n", data.mcusizex, data.mcusizey, data.mcuwidth, data.mcuheight);
+    //    printf("mcuX: %d mcuY: %d mcuW: %d mcuH: %d\n", data.mcusizex, data.mcusizey, data.mcuwidth, data.mcuheight);
     for (i = 0, c = data.comp; i < data.comp_number; ++i, ++c) {
         c->width = (data.width * c->samplex + data.samplemaxx - 1) / data.samplemaxx;
         c->height = (data.height * c->sampley + data.samplemaxy - 1) / data.samplemaxy;
@@ -628,7 +453,7 @@ void JPEG::readSOF0() {
             printf("Out of memory!\n");
             return;
         }
-//        printf("id: %d width: %d height: %d\n", i, data.mcuwidth * data.mcusizex * c->samplex / data.samplemaxx, data.mcuheight * data.mcusizey * c->sampley / data.samplemaxy);
+        //        printf("id: %d width: %d height: %d\n", i, data.mcuwidth * data.mcusizex * c->samplex / data.samplemaxx, data.mcuheight * data.mcusizey * c->sampley / data.samplemaxy);
     }
     if (data.comp_number == 3) {
         data.rgb = new unsigned char [data.width * data.height * data.comp_number];
@@ -650,7 +475,7 @@ void JPEG::readDQT() {
         //        printf("precision: %d\n", precision);
         precision /= 8;
         id = c & 0x0F;
-//        printf("quan ID: %d\n", id);
+        //        printf("quan ID: %d\n", id);
         table = &data.qtab[id][0];
         skip(1);
         for (c = 0; c < 64; ++c) {
@@ -739,30 +564,30 @@ JPEG::Status JPEG::decode() {
         skip(2);
         switch (data.pos[-1]) {
             case APP0_MARKER:
-//                printf("APP0 MARKER\n");
+                //                printf("APP0 MARKER\n");
                 skipMARKER();
                 break;
             case APP1_MARKER:
-//                printf("APP1 MARKER\n");
+                //                printf("APP1 MARKER\n");
                 readAPP1();
                 break;
             case DQT_MARKER:
-//                printf("DQT MARKER\n");
+                //                printf("DQT MARKER\n");
                 readDQT();
                 break;
             case SOF0_MARKER:
-//                printf("SOF0 MARKER\n");
+                //                printf("SOF0 MARKER\n");
                 readSOF0();
                 break;
             case SOF2_MARKER:
-//                printf("SOF2 MARKER\n");
+                //                printf("SOF2 MARKER\n");
                 break;
             case DHT_MARKER:
-//                printf("DHT MARKER\n");
+                //                printf("DHT MARKER\n");
                 readDHT();
                 break;
             case SOS_MARKER:
-//                printf("SOS MARKER\n");
+                //                printf("SOS MARKER\n");
                 readSOS();
                 readDATA();
                 toRGB();
@@ -1132,6 +957,3 @@ void DATA_SET::show() {
         }
     }
 }
-
-
-#endif /* jpeg_h */

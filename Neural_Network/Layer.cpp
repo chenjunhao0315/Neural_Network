@@ -564,16 +564,16 @@ string BaseLayer::type_to_string() {
 void BaseLayer::shape() {
     printf("%-17s%-10s %-10s  ", type_to_string().c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
-        if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
-            for (int i = 0; i < info.output_dimension; ++i) {
-                printf("Weight:\n%d: ", i);
-                kernel[i].showWeight();
-            }
-            printf("Bias:\n");
-            biases->showWeight();
-        } else if (type == LayerType::PRelu) {
-            kernel[0].showWeight();
-        }
+//        if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
+//            for (int i = 0; i < info.output_dimension; ++i) {
+//                printf("Weight:\n%d: ", i);
+//                kernel[i].showWeight();
+//            }
+//            printf("Bias:\n");
+//            biases->showWeight();
+//        } else if (type == LayerType::PRelu) {
+//            kernel[0].showWeight();
+//        }
 }
 
 int BaseLayer::getParameter(int type) {
@@ -627,7 +627,7 @@ void BaseLayer::Update() {
             act_tensor->clearDeltaWeight();
         }
         biases->clearDeltaWeight();
-    } else {
+    } else if (type == LayerType::PRelu) {
         float *weight = kernel[0].getWeight();
         float *grad = kernel[0].getDeltaWeight();
         for (int i = 0; i < info.input_number; ++i) {
@@ -780,56 +780,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     biases = new Tensor(1, 1, info.output_dimension, bias);
 }
 
-Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
-    //    input_tensor = input_tensor_;
-    //    Tensor *act_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0);
-    //
-    //    int input_width = input_tensor->getWidth();
-    //    int input_height = input_tensor->getHeight();
-    //    int output_width = info.output_width;
-    //    int output_height = info.output_height;
-    //    int xy_stride = info_more.stride;
-    //    float *input_weight = input_tensor->getWeight();
-    //
-    //    int output_d, output_w, output_h;
-    //    int kernel_d, kernel_w, kernel_h;
-    //    int offset_w, offset_h;
-    //    int kernel_width, kernel_height, kernel_dimension;
-    //    float sum;
-    //    int act_h, act_w;
-    //    float *bias;
-    //    float *kernel_weight;
-    //
-    //    for (output_d = 0; output_d < info.output_dimension; ++output_d) {
-    //        Tensor *act_kernel = kernel + output_d;
-    //        bias = biases->getWeight();
-    //        offset_h = -info_more.padding;
-    //        kernel_width = act_kernel->getWidth();
-    //        kernel_height = act_kernel->getHeight();
-    //        kernel_dimension = act_kernel->getDimension();
-    //        kernel_weight = act_kernel->getWeight();
-    //        for (output_h = 0; output_h < output_height; ++output_h, offset_h += xy_stride) {
-    //            offset_w = -info_more.padding;
-    //            for (output_w = 0; output_w < output_width; ++output_w, offset_w += xy_stride) {
-    //                sum = 0.0;
-    //                for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-    //                    act_h = kernel_h + offset_h;
-    //                    for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-    //                        act_w = kernel_w + offset_w;
-    //                        if (act_h >= 0 && act_h < input_height && act_w >= 0 && act_w < input_width) {
-    //                            for (kernel_d = 0; kernel_d < kernel_dimension; ++kernel_d) {
-    //                                sum += kernel_weight[((kernel_width * kernel_h) + kernel_w) * kernel_dimension + kernel_d] * input_weight[((input_width * act_h) + act_w) * info_more.input_dimension + kernel_d];
-    //                            }
-    //
-    //                        }
-    //                    }
-    //                }
-    //                sum += bias[output_d];
-    //                act_tensor->set(output_w, output_h, output_d, sum);
-    //            }
-    //        }
-    //    }
-    
+Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {    
     input_tensor = input_tensor_;
     Tensor *result_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
     int width = input_tensor->getWidth();

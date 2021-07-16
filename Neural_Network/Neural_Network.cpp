@@ -451,6 +451,7 @@ vector<vfloat> Neural_Network::getDetailParameter() {
 void Neural_Network::UpdateNet() {
     for (int i = 0; i < layer.size(); ++i) {
         layer[i].Update();
+        layer[i].ClearGrad();
     }
 }
 
@@ -576,8 +577,8 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
 //                    printf("gsumi: %.2f xsumi: %.2f\n", gsumi[j], xsumi[j]);
                     gsumi[j] = beta_1 * gsumi[j] + (1 - beta_1) * grad_ij;
                     xsumi[j] = beta_2 * xsumi[j] + (1 - beta_2) * grad_ij * grad_ij;
-                    float nor_gsumi = gsumi[j] / (1 - pow(beta_1, iter + 1));
-                    float nor_xsumi = xsumi[j] / (1 - pow(beta_2, iter + 1));
+                    float nor_gsumi = gsumi[j] / (1 - pow(beta_1, (iter / batch_size) + 1));
+                    float nor_xsumi = xsumi[j] / (1 - pow(beta_2, (iter / batch_size) + 1));
                     float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
 //                    grad[j] = delta_weight;
                     weight[j] += delta_weight;

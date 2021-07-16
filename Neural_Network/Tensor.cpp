@@ -17,10 +17,8 @@ Tensor::Tensor() {
 }
 
 Tensor::~Tensor() {
-    if (weight)
-        delete [] weight;
-    if (delta_weight)
-        delete [] delta_weight;
+    delete [] weight;
+    delete [] delta_weight;
 }
 
 Tensor::Tensor(const Tensor &T) {
@@ -55,12 +53,10 @@ Tensor& Tensor::operator=(const Tensor &T) {
         height = T.height;
         dimension = T.dimension;
         size = T.size;
-        if (weight)
-            delete [] weight;
+        delete [] weight;
         weight = new float [size];
         
-        if (delta_weight)
-            delete [] delta_weight;
+        delete [] delta_weight;
         delta_weight = new float [size];
         for (int i = 0; i < size; ++i) {
             weight[i] = T.weight[i];
@@ -254,8 +250,7 @@ void Tensor::load(FILE *f) {
     fread(&height, sizeof(int), 1, f);
     fread(&dimension, sizeof(int), 1, f);
     fread(&size, sizeof(int), 1, f);
-    if (weight)
-        delete [] weight;
+    delete [] weight;
     weight = new float [size];
     fread(weight, sizeof(float), size, f);
 }
@@ -268,7 +263,7 @@ vfloat Tensor::toVector() {
     return result;
 }
 
-void Tensor::toIMG(char *filename) {
+void Tensor::toIMG(const char *filename) {
     FILE *f = fopen(filename, "wb");
     fprintf(f, "P6\n%d %d\n255\n", width, height);
     unsigned char *pixel = new unsigned char [3 * width * height];

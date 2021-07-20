@@ -32,3 +32,4 @@ vtensor Data::get(int num) {
     }
     return data_set;
 }
+

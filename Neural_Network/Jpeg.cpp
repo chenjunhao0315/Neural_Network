@@ -13,7 +13,8 @@ JPEG::~JPEG() {
     delete [] data.comp[0].pixels;
     delete [] data.comp[1].pixels;
     delete [] data.comp[2].pixels;
-    delete [] data.rgb;
+    if (data.status != DECODED_MODE)
+        delete [] data.rgb;
 }
 
 JPEG::JPEG(const char *filename) {
@@ -56,8 +57,27 @@ JPEG::JPEG(const char *filename) {
 //    }
 }
 
+JPEG::JPEG(unsigned char *rgb, int width, int height, int channel) {
+    data.comp[0].pixels = nullptr;
+    data.comp[1].pixels = nullptr;
+    data.comp[2].pixels = nullptr;
+    data.rgb = rgb;
+    Exif = nullptr;
+    data.pos = nullptr;
+    data.data_indicator = nullptr;
+    data.width = width;
+    data.height = height;
+    data.comp_number = channel;
+    char table[64] = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18,
+        11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35,
+        42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45,
+        38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
+    memcpy(ZigZag, table, sizeof(ZigZag));
+    data.status = DECODED_MODE;
+}
+
 void JPEG::convert_ppm(const char *filename) {
-    if (status() != DECODE_FINISH)
+    if ((status() != OK) && (status() != DECODED_MODE))
         return;
     FILE *f = fopen(filename, "wb");
     fprintf(f, "P%d\n%d %d\n255\n", data.comp_number == 3 ? 6 : 5, data.width, data.height);
@@ -564,37 +584,38 @@ JPEG::Status JPEG::decode() {
         skip(2);
         switch (data.pos[-1]) {
             case APP0_MARKER:
-                //                printf("APP0 MARKER\n");
+//                printf("APP0 MARKER\n");
                 skipMARKER();
                 break;
             case APP1_MARKER:
-                //                printf("APP1 MARKER\n");
+//                printf("APP1 MARKER\n");
                 readAPP1();
                 break;
             case DQT_MARKER:
-                //                printf("DQT MARKER\n");
+//                printf("DQT MARKER\n");
                 readDQT();
                 break;
             case SOF0_MARKER:
-                //                printf("SOF0 MARKER\n");
+//                printf("SOF0 MARKER\n");
                 readSOF0();
                 break;
             case SOF2_MARKER:
-                //                printf("SOF2 MARKER\n");
+//                printf("SOF2 MARKER\n");
                 break;
             case DHT_MARKER:
-                //                printf("DHT MARKER\n");
+//                printf("DHT MARKER\n");
                 readDHT();
                 break;
             case SOS_MARKER:
-                //                printf("SOS MARKER\n");
+//                printf("SOS MARKER\n");
                 readSOS();
                 readDATA();
                 toRGB();
                 break;
             case DRI_MARKER:
-                //                printf("DRI MARKER\n");
+//                printf("DRI MARKER\n");
                 readDRI();
+                data.status = UNSUPPORT;
                 break;
             default:
                 if ((data.pos[-1] & 0xF0) == 0xE0)
@@ -956,4 +977,377 @@ void DATA_SET::show() {
             sub[Sub[i]].show();
         }
     }
+}
+
+template <typename Number, typename Limit>
+Number clamp(Number value, Limit minValue, Limit maxValue) {
+    if (value <= minValue)
+        return minValue;
+    if (value >= maxValue)
+        return maxValue;
+    return value;
+}
+
+void JPEG::generateHuffmanTable(const unsigned char numCodes[16], const unsigned char *values, BitCode result[256]) {
+    auto huffmanCode = 0;
+    for (int numBits = 1; numBits <= 16; numBits++) {
+        for (int i = 0; i < numCodes[numBits - 1]; i++)
+        result[*values++] = BitCode(huffmanCode++, numBits);
+        huffmanCode <<= 1;
+    }
+}
+
+float JPEG::convertRGBtoY(float r, float g, float b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+float JPEG::convertRGBtoCb(float r, float g, float b) {
+    return -0.16874 * r - 0.33126 * g + 0.5 * b;
+}
+
+float JPEG::convertRGBtoCr(float r, float g, float b) {
+    return 0.5 * r -0.41869 * g - 0.08131 * b;
+}
+
+Writer::Writer(const char *filename) {
+    f = fopen(filename, "wb");
+}
+
+Writer::~Writer() {
+    fclose(f);
+}
+
+void Writer::write(const void *data, int size) {
+    fwrite(data, size, 1, f);
+}
+
+void Writer::write_byte(unsigned char data) {
+    this->write(&data, 1);
+}
+
+void Writer::write_word(unsigned short data) {
+    unsigned short data_ = ((data >> 8) & 0xFF) | ((data & 0xFF) << 8);
+    this->write(&data_, 2);
+}
+
+void Writer::write_bits(const BitCode &data) {
+    buffer.numBits += data.numBits;
+    buffer.data   <<= data.numBits;
+    buffer.data    |= data.code;
+    while (buffer.numBits >= 8) {
+        buffer.numBits -= 8;
+        unsigned char oneByte = (unsigned char)(buffer.data >> buffer.numBits);
+        write_byte(oneByte);
+        if (oneByte == 0xFF)
+            write_byte(0x00);
+    }
+}
+
+void Writer::addMarker(unsigned char id, unsigned short length) {
+    this->write_byte(0xFF);
+    this->write_byte(id);
+    this->write_word(length);
+}
+
+void Writer::flush() {
+    this->write_bits(BitCode(0x7F, 7));
+}
+
+bool JPEG::save(const char *filename, float quality_, bool down_sample) {
+    Writer writer(filename);
+    if (data.rgb == nullptr)
+        return false;
+    if (data.width == 0 || data.height == 0)
+        return false;
+    
+    // Header
+    writer.write_word(0xFFD8);  // SOI
+    writer.write_word(0xFFE0);  // JFIF APP0
+    writer.write_word(16);
+    writer.write("JFIF", 5);    // JFIF
+    writer.write_byte(1);       // Version high bit 1
+    writer.write_byte(1);       // Version low bit 1
+    writer.write_byte(0);
+    writer.write_word(1);
+    writer.write_word(1);
+    writer.write_byte(0);       // ThumbWidth
+    writer.write_byte(0);       // ThumbHeight
+    
+    // DQT
+    float quality = clamp(quality_, 1, 100);
+    quality = quality < 50 ? 5000 / quality : 200 - quality * 2;
+    unsigned char quantLuminance  [8*8];
+    unsigned char quantChrominance[8*8];
+    for (int i = 0; i < 64; ++i) {
+        int luminance = (DefaultQuantLuminance[ZigZag[i]] * quality + 50) / 100;
+        int chrominance = (DefaultQuantChrominance[ZigZag[i]] * quality + 50) / 100;
+        
+        quantLuminance[i] = clamp(luminance, 1, 255);
+        quantChrominance[i] = clamp(chrominance, 1, 255);
+    }
+    writer.addMarker(DQT_MARKER, 132);
+    writer.write_byte(0x00);
+    writer.write(quantLuminance, 64);
+    writer.write_byte(0x01);
+    writer.write(quantChrominance, 64);
+    
+    // SOF0
+    writer.addMarker(SOF0_MARKER, 2 + 6 + 3 * data.comp_number);
+    writer.write_byte(0x08);
+    writer.write_byte((unsigned char)(data.height >> 8));
+    writer.write_byte((unsigned char)(data.height & 0xFF));
+    writer.write_byte((unsigned char)(data.width >> 8));
+    writer.write_byte((unsigned char)(data.width & 0xFF));
+
+    writer.write_byte((unsigned char)(data.comp_number));
+    for (unsigned char id = 1; id <= data.comp_number; ++id) {
+        writer.write_byte(id);
+        writer.write_byte((id == 1 && down_sample) ? 0x22 : 0x11);
+        writer.write_byte((id == 1) ? 0x00 : 0x01);
+    }
+    
+    // DHT
+    writer.addMarker(DHT_MARKER, 418);
+    writer.write_byte(0x00);
+    writer.write(DcLuminanceCodesPerBitsize, sizeof(DcLuminanceCodesPerBitsize));
+    writer.write(DcLuminanceValues, sizeof(DcLuminanceValues));
+    writer.write_byte(0x10);
+    writer.write(AcLuminanceCodesPerBitsize, sizeof(AcLuminanceCodesPerBitsize));
+    writer.write(AcLuminanceValues, sizeof(AcLuminanceValues));
+    writer.write_byte(0x01);
+    writer.write(DcChrominanceCodesPerBitsize, sizeof(DcChrominanceCodesPerBitsize));
+    writer.write(DcChrominanceValues, sizeof(DcChrominanceValues));
+    writer.write_byte(0x11);
+    writer.write(AcChrominanceCodesPerBitsize, sizeof(AcChrominanceCodesPerBitsize));
+    writer.write(AcChrominanceValues, sizeof(AcChrominanceValues));
+    
+    BitCode huffmanLuminanceDC[256];
+    BitCode huffmanLuminanceAC[256];
+    generateHuffmanTable(DcLuminanceCodesPerBitsize, DcLuminanceValues, huffmanLuminanceDC);
+    generateHuffmanTable(AcLuminanceCodesPerBitsize, AcLuminanceValues, huffmanLuminanceAC);
+    BitCode huffmanChrominanceDC[256];
+    BitCode huffmanChrominanceAC[256];
+    generateHuffmanTable(DcChrominanceCodesPerBitsize, DcChrominanceValues, huffmanChrominanceDC);
+    generateHuffmanTable(AcChrominanceCodesPerBitsize, AcChrominanceValues, huffmanChrominanceAC);
+    
+    // SOS
+    writer.addMarker(SOS_MARKER, 2 + 1 + 2 * data.comp_number + 3);
+    writer.write_byte(data.comp_number);
+    for (unsigned char id = 1; id <= data.comp_number; ++id) {
+        writer.write_byte(id);
+        writer.write_byte((id == 1) ? 0x00 : 0x11);
+    }
+    writer.write_byte(0);
+    writer.write_byte(63);
+    writer.write_byte(0);
+    
+    // Bits stream
+    float scaledLuminance[64];
+    float scaledChrominance[64];
+    for (int i = 0; i < 64; i++)
+    {
+        int row = ZigZag[i] / 8;
+        int column = ZigZag[i] % 8;
+        
+        static const float AanScaleFactors[8] = {
+            1, 1.387039845f, 1.306562965f, 1.175875602f, 1, 0.785694958f, 0.541196100f, 0.275899379f
+        };
+        float factor = 1 / (AanScaleFactors[row] * AanScaleFactors[column] * 8);
+        scaledLuminance[ZigZag[i]] = factor / quantLuminance  [i];
+        scaledChrominance[ZigZag[i]] = factor / quantChrominance[i];
+    }
+    
+    BitCode  codewordsArray[2 * CodeWordLimit];
+    BitCode* codewords = &codewordsArray[CodeWordLimit];
+    unsigned char numBits = 1;
+    int mask = 1;
+    for (int value = 1; value < CodeWordLimit; value++) {
+        if (value > mask) {
+            numBits++;
+            mask = (mask << 1) | 1;
+        }
+        codewords[-value] = BitCode(mask - value, numBits);
+        codewords[+value] = BitCode(value, numBits);
+    }
+    
+    unsigned char *pixels = data.rgb;
+    const int width = data.width;
+    const int height = data.height;
+    const int maxWidth = width - 1;
+    const int maxHeight = height - 1;
+    
+    const int sampling = (down_sample) ? 2 : 1;
+    const int mcuSize = 8 * sampling;
+    
+    int lastYDC = 0, lastCbDC = 0, lastCrDC = 0;
+    float Y[8][8], Cb[8][8], Cr[8][8];
+    
+    for (int mcuY = 0; mcuY < height; mcuY += mcuSize) {
+        for (int mcuX = 0; mcuX < width; mcuX += mcuSize) {
+            for (int blockY = 0; blockY < mcuSize; blockY += 8) {
+                for (int blockX = 0; blockX < mcuSize; blockX += 8) {
+                    
+                    // Convert color space
+                    for (int deltaY = 0; deltaY < 8; deltaY++)
+                    {
+                        int column = min(mcuX + blockX , maxWidth);
+                        int row = min(mcuY + blockY + deltaY, maxHeight);
+                        for (int deltaX = 0; deltaX < 8; deltaX++) {
+                            int pixelPos = row * int(width) + column;
+                            if (column < maxWidth)
+                                column++;
+                            unsigned char r = pixels[3 * pixelPos + 0];
+                            unsigned char g = pixels[3 * pixelPos + 1];
+                            unsigned char b = pixels[3 * pixelPos + 2];
+                            
+                            Y   [deltaY][deltaX] = convertRGBtoY(r, g, b) - 128;
+                            if (!down_sample) {
+                                Cb[deltaY][deltaX] = convertRGBtoCb(r, g, b);
+                                Cr[deltaY][deltaX] = convertRGBtoCr(r, g, b);
+                            }
+                        }
+                    }
+                    
+                    // encode Y channel
+                    lastYDC = encodeBlock(writer, Y, scaledLuminance, lastYDC, huffmanLuminanceDC, huffmanLuminanceAC, codewords);
+                    // Cb and Cr are encoded about 50 lines below
+                }
+                if (down_sample)
+                    for (short deltaY = 7; down_sample && deltaY >= 0; deltaY--) {
+                        int row = min(mcuY + 2 * deltaY, maxHeight);
+                        int column = mcuX;
+                        int pixelPos = (row * int(width) + column) * 3;
+                        int rowStep = (row < maxHeight) ? 3 * int(width) : 0;
+                        int columnStep = (column < maxWidth ) ? 3 : 0;
+                        
+                        for (short deltaX = 0; deltaX < 8; deltaX++) {
+                            int right = pixelPos + columnStep;
+                            int down = pixelPos + rowStep;
+                            int downRight = pixelPos + columnStep + rowStep;
+                            
+                            unsigned char r = short(pixels[pixelPos]) + pixels[right] + pixels[down] + pixels[downRight];
+                            unsigned char g = short(pixels[pixelPos + 1]) + pixels[right + 1] + pixels[down + 1] + pixels[downRight + 1];
+                            unsigned char b = short(pixels[pixelPos + 2]) + pixels[right + 2] + pixels[down + 2] + pixels[downRight + 2];
+                            
+                            Cb[deltaY][deltaX] = convertRGBtoCb(r, g, b) / 4;
+                            Cr[deltaY][deltaX] = convertRGBtoCr(r, g, b) / 4;
+                            
+                            pixelPos += 2 * 3;
+                            column += 2;
+                            
+                            if (column >= maxWidth) {
+                                columnStep = 0;
+                                pixelPos = ((row + 1) * int(width) - 1) * 3;
+                            }
+                        }
+                    }
+                lastCbDC = encodeBlock(writer, Cb, scaledChrominance, lastCbDC, huffmanChrominanceDC, huffmanChrominanceAC, codewords);
+                lastCrDC = encodeBlock(writer, Cr, scaledChrominance, lastCrDC, huffmanChrominanceDC, huffmanChrominanceAC, codewords);
+            }
+        }
+    }
+    
+    writer.flush();
+
+    // EOI
+    writer.write_byte(0xFF);
+    writer.write_byte(0xD9);
+    return true;
+}
+
+int JPEG::encodeBlock(Writer& writer, float block[8][8], const float scaled[64], int lastDC, const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords) {
+    float *block64 = (float*)block;
+    
+    for (int offset = 0; offset < 8; offset++) {
+        DCT(block64 + offset * 8, 1);
+    }
+    for (int offset = 0; offset < 8; offset++) {
+        DCT(block64 + offset * 1, 8);
+    }
+    
+    for (int i = 0; i < 64; i++) {
+        block64[i] *= scaled[i];
+    }
+    
+    int dc = int(block64[0] + (block64[0] >= 0 ? +0.5 : -0.5));
+    
+    int posNonZero = 0;
+    short int quantized[64];
+    for (short int i = 1; i < 64; i++) {
+        float value = block64[ZigZag[i]];
+        quantized[i] = int(value + (value >= 0 ? +0.5f : -0.5f));
+        if (quantized[i] != 0)
+            posNonZero = i;
+    }
+    
+    int diff = dc - lastDC;
+    if (diff == 0)
+        writer.write_bits(huffmanDC[0x00]);
+    else {
+        BitCode bits = codewords[diff];
+        writer.write_bits(huffmanDC[bits.numBits]);
+        writer.write_bits(bits);
+    }
+    
+    int offset = 0;
+    for (int i = 1; i <= posNonZero; i++) {
+        while (quantized[i] == 0) {
+            offset += 0x10;
+            if (offset > 0xF0) {
+                writer.write_bits(huffmanAC[0xF0]);
+                offset = 0;
+            }
+            i++;
+        }
+        BitCode encoded = codewords[quantized[i]];
+        writer.write_bits(huffmanAC[offset + encoded.numBits]);
+        writer.write_bits(encoded);
+        offset = 0;
+    }
+    
+    if (posNonZero < 64 - 1)
+        writer.write_bits(huffmanAC[0x00]);
+    return dc;
+}
+
+void JPEG::DCT(float block[8*8], unsigned short stride) {
+    const float SqrtHalfSqrt = 1.306562965;
+    const float InvSqrt = 0.707106781;
+    const float HalfSqrtSqrt = 0.382683432;
+    const float InvSqrtSqrt = 0.541196100;
+    
+    float& block0 = block[0         ];
+    float& block1 = block[1 * stride];
+    float& block2 = block[2 * stride];
+    float& block3 = block[3 * stride];
+    float& block4 = block[4 * stride];
+    float& block5 = block[5 * stride];
+    float& block6 = block[6 * stride];
+    float& block7 = block[7 * stride];
+    
+    float add07 = block0 + block7; float sub07 = block0 - block7;
+    float add16 = block1 + block6; float sub16 = block1 - block6;
+    float add25 = block2 + block5; float sub25 = block2 - block5;
+    float add34 = block3 + block4; float sub34 = block3 - block4;
+    
+    float add0347 = add07 + add34; float sub07_34 = add07 - add34;
+    float add1256 = add16 + add25; float sub16_25 = add16 - add25;
+    
+    block0 = add0347 + add1256; block4 = add0347 - add1256;
+    
+    float z1 = (sub16_25 + sub07_34) * InvSqrt;
+    block2 = sub07_34 + z1; block6 = sub07_34 - z1;
+    
+    float sub23_45 = sub25 + sub34;
+    float sub12_56 = sub16 + sub25;
+    float sub01_67 = sub16 + sub07;
+    
+    float z5 = (sub23_45 - sub01_67) * HalfSqrtSqrt;
+    float z2 = sub23_45 * InvSqrtSqrt  + z5;
+    float z3 = sub12_56 * InvSqrt;
+    float z4 = sub01_67 * SqrtHalfSqrt + z5;
+    float z6 = sub07 + z3;
+    float z7 = sub07 - z3;
+    block1 = z6 + z4; block7 = z6 - z4;
+    block5 = z7 + z2; block3 = z7 - z2;
 }

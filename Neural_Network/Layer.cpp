@@ -588,14 +588,14 @@ int BaseLayer::getParameter(int type) {
 
 void BaseLayer::UpdateWeight(string method, float learning_rate) {
     if (method == "SVG") {
-        float *bias_weight = biases->getWeight();
-        float *bias_grad = biases->getDeltaWeight();
+        float *bias_weight = biases->weight;
+        float *bias_grad = biases->delta_weight;
         int output_dimension = info.output_dimension;
         for (int i = 0; i < output_dimension; ++i) {
             Tensor *act_tensor = kernel + i;
             int length = (int)act_tensor->length();
-            float *weight = act_tensor->getWeight();
-            float *grad = act_tensor->getDeltaWeight();
+            float *weight = act_tensor->weight;
+            float *grad = act_tensor->delta_weight;
             for (int j = 0; j < length; j++) {
                 weight[j] -= learning_rate * grad[j];
                 //                if (abs(grad[j]) > 10) {
@@ -612,14 +612,14 @@ void BaseLayer::UpdateWeight(string method, float learning_rate) {
 
 void BaseLayer::Update() {
     if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
-        float *bias_weight = biases->getWeight();
-        float *bias_grad = biases->getDeltaWeight();
+        float *bias_weight = biases->weight;
+        float *bias_grad = biases->delta_weight;
         int output_dimension = info.output_dimension;
         for (int i = 0; i < output_dimension; ++i) {
             Tensor *act_tensor = kernel + i;
             int length = (int)act_tensor->length();
-            float *weight = act_tensor->getWeight();
-            float *grad = act_tensor->getDeltaWeight();
+            float *weight = act_tensor->weight;
+            float *grad = act_tensor->delta_weight;
             for (int j = 0; j < length; j++) {
                 weight[j] += grad[j];
             }
@@ -783,14 +783,14 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
 Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {    
     input_tensor = input_tensor_;
     Tensor *result_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
-    int width = input_tensor->getWidth();
-    int height = input_tensor->getHeight();
+    int width = input_tensor->width;
+    int height = input_tensor->height;
     int stride = info_more.stride;
     int neg_padding = -info_more.padding;
     
-    int input_dim = input_tensor->getDimension();
-    float *input_weight = input_tensor->getWeight();
-    float *bias = biases->getWeight();
+    int input_dim = input_tensor->dimension;
+    float *input_weight = input_tensor->weight;
+    float *bias = biases->weight;
     
     int out_dim, out_height, out_width;
     int x, y;
@@ -801,10 +801,10 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     
     for (out_dim = 0; out_dim < info.output_dimension; ++out_dim) {
         Tensor *filter = kernel + out_dim;
-        filter_weight = filter->getWeight();
-        filter_width = filter->getWidth();
-        filter_height = filter->getHeight();
-        filter_dimension = filter->getDimension();
+        filter_weight = filter->weight;
+        filter_width = filter->width;
+        filter_height = filter->height;
+        filter_dimension = filter->dimension;
         y = neg_padding;
         for (out_height = 0; out_height < info.output_height; y += stride, ++out_height) {
             x = neg_padding;
@@ -833,15 +833,15 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
 }
 
 void ConvolutionLayer::Backward() {
-    int width = input_tensor->getWidth();
-    int height = input_tensor->getHeight();
-    int dim = input_tensor->getDimension();
+    int width = input_tensor->width;
+    int height = input_tensor->height;
+    int dim = input_tensor->dimension;
     int stride = info_more.stride;
     int neg_padding = -info_more.padding;
     
-    float *input_weight = input_tensor->getWeight();
-    float *input_grad = input_tensor->getDeltaWeight();
-    float *bias = biases->getDeltaWeight();
+    float *input_weight = input_tensor->weight;
+    float *input_grad = input_tensor->delta_weight;
+    float *bias = biases->delta_weight;
     
     int out_dim, out_height, out_width;
     int output_dimension = info.output_dimension;
@@ -855,11 +855,11 @@ void ConvolutionLayer::Backward() {
     
     for (out_dim = 0; out_dim < output_dimension; ++out_dim) {
         Tensor *filter = kernel + out_dim;
-        filter_weight = filter->getWeight();
-        filter_grad = filter->getDeltaWeight();
-        filter_width = filter->getWidth();
-        filter_height = filter->getHeight();
-        filter_dimension = filter->getDimension();
+        filter_weight = filter->weight;
+        filter_grad = filter->delta_weight;
+        filter_width = filter->width;
+        filter_height = filter->height;
+        filter_dimension = filter->dimension;
         y = neg_padding;
         for (out_height = 0; out_height < output_height; y += stride, ++out_height) {
             x = neg_padding;
@@ -1009,9 +1009,9 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
 Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
     Tensor *cal = new Tensor(1, 1, info.output_dimension, 0);
-    float *pos = cal->getWeight();
-    float *input = input_tensor_->getWeight();
-    float *bias = biases->getWeight();
+    float *pos = cal->weight;
+    float *input = input_tensor_->weight;
+    float *bias = biases->weight;
     int output_dimension = info.output_dimension;
     int input_number = info.input_number;
     
@@ -1038,11 +1038,11 @@ Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
 void FullyConnectedLayer::Backward() {
     Tensor *cal = input_tensor;
     //cal->clearDeltaWeight();
-    float *cal_w = cal->getWeight();
-    float *cal_dw = cal->getDeltaWeight();
-    float *act_biases_grad = biases->getDeltaWeight();
+    float *cal_w = cal->weight;
+    float *cal_dw = cal->delta_weight;
+    float *act_biases_grad = biases->delta_weight;
     int output_dimension = info.output_dimension;
-    float *output_grad = output_tensor->getDeltaWeight();
+    float *output_grad = output_tensor->delta_weight;
     int input_number = info.input_number;
     
     float *act_weight, *act_grad;
@@ -1075,7 +1075,7 @@ ReluLayer::ReluLayer(LayerOption opt_) {
 Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
     Tensor *cal = new Tensor(input_tensor_);
-    float *val = cal->getWeight();
+    float *val = cal->weight;
     for (int i = 0; i < info.input_number; ++i) {
         if (val[i] < 0)
             val[i] = 0;
@@ -1089,9 +1089,9 @@ Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
 void ReluLayer::Backward() {
     Tensor *cal = input_tensor;
     //cal->clearDeltaWeight();
-    float *act_weight = output_tensor->getWeight();
-    float *act_grad = output_tensor->getDeltaWeight();
-    float *pos_grad = cal->getDeltaWeight();
+    float *act_weight = output_tensor->weight;
+    float *act_grad = output_tensor->delta_weight;
+    float *pos_grad = cal->delta_weight;
     
     for (int i = 0; i < info.input_number; ++i) {
         if (act_weight[i] <= 0)
@@ -1119,8 +1119,8 @@ PReluLayer::PReluLayer(LayerOption opt_) {
 Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
     Tensor *cal = new Tensor(input_tensor_);
-    float *val = cal->getWeight();
-    float *alpha = kernel->getWeight();
+    float *val = cal->weight;
+    float *alpha = kernel->weight;
     for (int i = 0; i < info.input_number; ++i) {
         if (val[i] < 0)
             val[i] *= alpha[i];
@@ -1134,11 +1134,11 @@ Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
 void PReluLayer::Backward() {
     Tensor *cal = input_tensor;
     //cal->clearDeltaWeight();
-    float *act_weight = output_tensor->getWeight();
-    float *act_grad = output_tensor->getDeltaWeight();
-    float *pos_grad = cal->getDeltaWeight();
-    float *alpha = kernel->getWeight();
-    float *alpha_grad = kernel->getDeltaWeight();
+    float *act_weight = output_tensor->weight;
+    float *act_grad = output_tensor->delta_weight;
+    float *pos_grad = cal->delta_weight;
+    float *alpha = kernel->weight;
+    float *alpha_grad = kernel->delta_weight;
     
     for (int i = 0; i < info.input_number; ++i) {
         if (act_weight[i] <= 0) {
@@ -1170,7 +1170,7 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
     Tensor *cal = new Tensor(1, 1, info.output_dimension, 0);
     int output_dimension = info.output_dimension;
     
-    float *act = input_tensor_->getWeight();
+    float *act = input_tensor_->weight;
     float max = act[0];
     for (int i = 1; i < output_dimension; ++i) {
         if (act[i] > max)
@@ -1186,7 +1186,7 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
         expo_sum_[i] = indiviual;
     }
     
-    float *cal_weight = cal->getWeight();
+    float *cal_weight = cal->weight;
     for (int i = 0; i < output_dimension; ++i) {
         expo_sum_[i] /= sum;
         cal_weight[i] = expo_sum_[i];
@@ -1206,7 +1206,7 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
 float SoftmaxLayer::Backward(vfloat& target) {
     Tensor *cal_tensor = input_tensor;
     cal_tensor->clearDeltaWeight();
-    float *cal_delta_weight = cal_tensor->getDeltaWeight();
+    float *cal_delta_weight = cal_tensor->delta_weight;
     int output_dimension = info.output_dimension;
     
     for (int i = 0; i < output_dimension; ++i) {
@@ -1237,8 +1237,8 @@ Tensor* EuclideanLossLayer::Forward(Tensor *input_tensor_) {
 float EuclideanLossLayer::Backward(vfloat& target) {
     Tensor *cal_tensor = input_tensor;
     cal_tensor->clearDeltaWeight();
-    float *cal_weight = cal_tensor->getWeight();
-    float *cal_delta_weight = cal_tensor->getDeltaWeight();
+    float *cal_weight = cal_tensor->weight;
+    float *cal_delta_weight = cal_tensor->delta_weight;
     int output_dimension = info.output_dimension;
     float loss = 0;
     

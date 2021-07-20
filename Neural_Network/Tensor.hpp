@@ -50,7 +50,7 @@ public:
     vfloat toVector();
     void toIMG(const char *filename);
     void shape();
-private:
+//private:
     int width;
     int height;
     int dimension;

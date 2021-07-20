@@ -13,6 +13,7 @@
 		76390E812666B45D00FFA5EC /* Layer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E7F2666B45D00FFA5EC /* Layer.cpp */; };
 		76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E832666B46F00FFA5EC /* Tensor.cpp */; };
 		76390E892666B78800FFA5EC /* Utilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E872666B78800FFA5EC /* Utilities.cpp */; };
+		76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76A40ED026A4CF4700A01830 /* Mtcnn.cpp */; };
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
 /* End PBXBuildFile section */
@@ -42,6 +43,8 @@
 		76390E842666B46F00FFA5EC /* Tensor.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Tensor.hpp; sourceTree = "<group>"; };
 		76390E872666B78800FFA5EC /* Utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utilities.cpp; sourceTree = "<group>"; };
 		76390E882666B78800FFA5EC /* Utilities.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Utilities.hpp; sourceTree = "<group>"; };
+		76A40ED026A4CF4700A01830 /* Mtcnn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mtcnn.cpp; sourceTree = "<group>"; };
+		76A40ED126A4CF4700A01830 /* Mtcnn.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mtcnn.hpp; sourceTree = "<group>"; };
 		76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Image_Process.cpp; sourceTree = "<group>"; };
 		76CD64E2269F8AF800A4EDFD /* Image_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Image_Process.hpp; sourceTree = "<group>"; };
 		76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Jpeg.cpp; sourceTree = "<group>"; };
@@ -93,6 +96,8 @@
 				76CD64E2269F8AF800A4EDFD /* Image_Process.hpp */,
 				76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */,
 				76CD64E6269F8B6D00A4EDFD /* Jpeg.hpp */,
+				76A40ED026A4CF4700A01830 /* Mtcnn.cpp */,
+				76A40ED126A4CF4700A01830 /* Mtcnn.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -153,6 +158,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */,
 				76390E812666B45D00FFA5EC /* Layer.cpp in Sources */,
 				760C6CA226696CED0098007D /* Data_Process.cpp in Sources */,
 				76390E742666B3D000FFA5EC /* main.cpp in Sources */,

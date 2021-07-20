@@ -275,21 +275,27 @@ void Neural_Network::shape() {
 
 vfloat Neural_Network::Forward(Tensor *input_tensor_) {
     Tensor *act = input_tensor_;
-    for (int i = 0; i < layer.size(); ++i) {
-        if ((opt_layer[i].find("input_name") == opt_layer[i].end()) || opt_layer[i]["input_name"] == "default" || opt_layer[i]["input_name"] == "") {
-            act = layer[i].Forward(input_tensor_);
-        }
-        else {
+    size_t layer_size = layer.size();
+    act = layer[0].Forward(input_tensor_);
+    terminal[opt_layer[0]["name"]] = act;
+    for (int i = 1; i < layer_size; ++i) {
+//    for (int i = 0; i < layer.size(); ++i) {
+//        if ((opt_layer[i].find("input_name") == opt_layer[i].end()) || opt_layer[i]["input_name"] == "default" || opt_layer[i]["input_name"] == "") {
+//            act = layer[i].Forward(input_tensor_);
+//        }
+//        else {
             act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
-        }
+//        }
 //        act->shape();
         terminal[opt_layer[i]["name"]] = act;
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();
-    for (int i = 1; i < output_layer.size(); ++i) {
+    size_t output_size = output.size();
+    for (int i = 1; i < output_size; ++i) {
         vfloat temp = terminal[output_layer[i]]->toVector();
-        for (int j = 0; j < temp.size(); ++j) {
+        size_t temp_size = temp.size();
+        for (int j = 0; j < temp_size; ++j) {
             output.push_back(temp[j]);
         }
     }
@@ -369,7 +375,8 @@ vfloat Neural_Network::train(string method, float learning_rate, Tensor *input, 
 void Neural_Network::train(string method, float learning_rate, vtensor &data_set, vector<vfloat> &target_set, int epoch) {
     auto rng = std::default_random_engine {};
     vector<int> index;
-    for (int i = 0; i < data_set.size(); ++i) {
+    size_t data_set_size = data_set.size();
+    for (int i = 0; i < data_set_size; ++i) {
         index.push_back(i);
     }
     for (int i = 0; i < epoch; ++i) {
@@ -381,9 +388,6 @@ void Neural_Network::train(string method, float learning_rate, vtensor &data_set
             train(method, learning_rate, &(data_set[index[j]]), target_set[index[j]]);
         }
         printf("]\n");
-        if ((i + 1) % 30 == 0) {
-            learning_rate *= 0.5;
-        }
         //float accuracy = evaluate(data_set, target_set);
         //printf("Accuracy: %.2f%%\n", accuracy * 100);
     }
@@ -483,15 +487,16 @@ vfloat Trainer::train(vtensor &data_set, vector<vfloat> &target_set, int epoch) 
     auto rng = std::default_random_engine((unsigned)time(NULL));
     vector<int> index;
     float loss = 0;
-    for (int i = 0; i < data_set.size(); ++i) {
+    size_t data_set_size = data_set.size();
+    for (int i = 0; i < data_set_size; ++i) {
         index.push_back(i);
     }
     for (int i = 0; i < epoch; ++i) {
         printf("Epoch %d Training[", i + 1);
         loss = 0;
         shuffle(index.begin(), index.end(), rng);
-        for (int j = 0; j < data_set.size(); ++j) {
-            if (!(j % (data_set.size() / 20))) printf("*");
+        for (int j = 0; j < data_set_size; ++j) {
+            if (!(j % (data_set_size / 20))) printf("*");
             loss += train(data_set[index[j]], target_set[index[j]])[0];
             //            printf("%d ", index[j]);
         }
@@ -517,7 +522,8 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
         vector<float*> grad_list;
         vector<int> len_list;
         vector<vfloat> decay_list;
-        for (int i = 0; i < detail_set.size(); i += 2) {
+        size_t detail_set_size = detail_set.size();
+        for (int i = 0; i < detail_set_size; i += 2) {
             Tensor* kernel = detail_set[i];
             for (int j = 0; j < detail_parameter[i / 2][0]; ++j) {
                 int len = detail_parameter[i / 2][1] * detail_parameter[i / 2][2] * detail_parameter[i / 2][3];
@@ -533,8 +539,9 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
             decay_list.push_back(vfloat{detail_parameter[i / 2][5], detail_parameter[i / 2][6]});
         }
         
+        size_t len_list_size = len_list.size();
         if (gsum.empty() && (method != SGD || momentum > 0)) {
-            for (int i = 0; i < len_list.size(); ++i) {
+            for (int i = 0; i < len_list_size; ++i) {
                 float *new_gsum = new float [len_list[i]];
                 fill(new_gsum, new_gsum + len_list[i], 0);
                 gsum.push_back(new_gsum);
@@ -548,7 +555,7 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
             }
         }
         
-        for (int i = 0; i < len_list.size(); ++i) {
+        for (int i = 0; i < len_list_size; ++i) {
             float *weight = weight_list[i];
             float *grad = grad_list[i];
             

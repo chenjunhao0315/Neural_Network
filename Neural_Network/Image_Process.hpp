@@ -11,13 +11,8 @@
 #include <stdio.h>
 #include "Jpeg.hpp"
 
-enum ImageType {
-    PPM,
-    JPEG,
-    UNSUPPORT
-};
-
 struct PIXEL {
+    PIXEL(unsigned char R_ = 0, unsigned char G_ = 0, unsigned char B_ = 0) : R(R_), G(G_), B(B_) {}
     unsigned char R, G, B;
 };
 
@@ -27,12 +22,23 @@ struct Size {
 };
 
 struct Rect {
+    Rect(int x1_, int y1_, int x2_, int y2_) : x1(x1_), y1(y1_), x2(x2_), y2(y2_) {}
     int x1, y1, x2, y2;
+};
+
+struct Point {
+    Point(int x_, int y_) : x(x_), y(y_) {}
+    int x, y;
 };
 
 typedef PIXEL Color;
 
 class IMG {
+    enum ImageType {
+        PPM,
+        JPEG,
+        UNSUPPORT
+    };
 public:
     ~IMG();
     IMG();
@@ -47,19 +53,25 @@ public:
     int getChannel();
     unsigned char * toRGB();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1);
+    IMG crop(Rect rect);
     void drawRectangle(Rect rect, Color color, int width = 0);
-    void drawPixel(int x, int y, Color color);
+    void drawLine(Point p1, Point p2, Color color);
+    void drawPixel(Point p, Color color);
+    void drawCircle(Point center_point, int radius, Color color);
+    void save(const char *filename = "out.jpg", float quality = 100);
     
     int width, height, channel;
 private:
     PIXEL **PX;
     unsigned char *rgb;
     
-    ImageType getType(const char *filename);
+    IMG::ImageType getType(const char *filename);
+    IMG::ImageType phraseType(const char *name);
     void allocPX();
     void copyPX(PIXEL **PX_src);
     void freePX();
     void storeRGB(unsigned char *rgb);
+    void subCircle(int xc, int yc, int x, int y, Color color);
 };
 
 int clip(int value, int min, int max);

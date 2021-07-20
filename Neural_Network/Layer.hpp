@@ -102,7 +102,7 @@ public:
     Tensor* getKernel();
     Tensor* getBiases();
     vfloat getDetailParameter();
-protected:
+//protected:
     LayerType type;
     string name;
     string input_name;
@@ -127,6 +127,7 @@ protected:
         int padding;
         float alpha;
     } info_more;
+    float *workspace;
 };
 
 // Input layer

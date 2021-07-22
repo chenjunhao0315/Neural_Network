@@ -17,7 +17,7 @@ IMG::IMG() {
     rgb = nullptr;
 }
 
-IMG::IMG(int width_, int height_, int channel_) {
+IMG::IMG(int width_, int height_, int channel_, bool isRGB) {
     width = width_;
     height = height_;
     channel = channel_;
@@ -257,6 +257,19 @@ IMG IMG::crop(Rect rect) {
         }
     }
     return result;
+}
+
+IMG IMG::filter(int channel, Mat kernel) {
+    if (kernel.size() != kernel[0].size()) {
+        printf("Unsupport!\n");
+        return IMG();
+    }
+    int padding = kernel.size();
+    return IMG();
+}
+
+IMG IMG::guassian_blur(float radius) {
+    return IMG();
 }
 
 void IMG::drawPixel(Point p, Color color) {

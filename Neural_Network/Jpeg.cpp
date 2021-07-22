@@ -405,9 +405,20 @@ void JPEG::readDHT() {
     GetLength();
     while (data.length >= 17) {
         i = data.pos[0];
-        i = (i | (i >> 3)) & 3;  // combined DC/AC + tableid value
-        for (codelen = 1; codelen <= 16; ++codelen)
-        counts[codelen - 1] = data.pos[codelen];
+        if (i & 0xEC) {
+            printf("DHT Syntax Error!\n");
+            data.status = SYNTAX_ERROR;
+            return;
+        }
+        if (i & 0x02) {
+            printf("DHT unsupport!\n");
+            data.status = UNSUPPORT;
+            return;
+        }
+        i = (i | (i >> 3)) & 3;
+        for (codelen = 1; codelen <= 16; ++codelen) {
+            counts[codelen - 1] = data.pos[codelen];
+        }
         skip(17);
         //        printf("DHT id: %d\n", i);
         vlc = &data.vlctab[i][0];
@@ -417,7 +428,7 @@ void JPEG::readDHT() {
             currcnt = counts[codelen - 1];
             if (!currcnt) continue;
             remain -= currcnt << (16 - codelen);
-            for (i = 0;  i < currcnt;  ++i) {
+            for (i = 0; i < currcnt; ++i) {
                 unsigned char code = data.pos[i];
                 for (j = spread; j; --j) {
                     vlc->bits = (unsigned char) codelen;
@@ -433,7 +444,7 @@ void JPEG::readDHT() {
         }
     }
     if (data.length) {
-        printf("read DHT Syntax Error!\n");
+        printf("DHT Syntax Error!\n");
         data.status = SYNTAX_ERROR;
         return;
     }
@@ -455,6 +466,21 @@ void JPEG::readSOF0() {
         c->samplex = data.pos[1] >> 4;
         c->sampley = data.pos[1] & 0x0F;
         c->quant = data.pos[2];
+        if (c->samplex & (c->samplex - 1)) {
+            printf("SOF0 samplex is non power of two!\n");
+            data.status = UNSUPPORT;
+            return;
+        }
+        if (c->sampley & (c->sampley - 1)) {
+            printf("SOF0 sampley is non power of two!\n");
+            data.status = UNSUPPORT;
+            return;
+        }
+        if (!(c->samplex) || !(c->sampley)) {
+            printf("SOF0 syntax error!\n");
+            data.status = SYNTAX_ERROR;
+            return;
+        }
         //        printf("ID: %d width: %d height: %d quant: %d\n", c->id, c->samplex, c->sampley, c->quant);
         data.samplemaxx = (data.samplemaxx > c->samplex ? data.samplemaxx : c->samplex);
         data.samplemaxy = (data.samplemaxy > c->sampley ? data.samplemaxy : c->sampley);

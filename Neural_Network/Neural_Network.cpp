@@ -291,13 +291,10 @@ vfloat Neural_Network::Forward(Tensor *input_tensor_) {
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();
-    size_t output_size = output.size();
+    size_t output_size = output_layer.size();
     for (int i = 1; i < output_size; ++i) {
         vfloat temp = terminal[output_layer[i]]->toVector();
-        size_t temp_size = temp.size();
-        for (int j = 0; j < temp_size; ++j) {
-            output.push_back(temp[j]);
-        }
+        output.insert(output.end(), temp.begin(), temp.end());
     }
     return output;
 }

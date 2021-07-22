@@ -9,6 +9,7 @@
 #define Image_Process_hpp
 
 #include <stdio.h>
+#include <vector>
 #include "Jpeg.hpp"
 
 struct PIXEL {
@@ -32,6 +33,11 @@ struct Point {
 };
 
 typedef PIXEL Color;
+#define RED Color(255, 0, 0)
+#define GREEN Color(0, 255, 0)
+#define BLUE Color(0, 0, 255)
+
+typedef vector<vector<int >> Mat;
 
 class IMG {
     enum ImageType {
@@ -42,18 +48,17 @@ class IMG {
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel);
+    IMG(int width, int height, int channel, bool isRGB = true);
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
     IMG& operator=(const IMG &I);
     void convertPPM(const char *filename);
-    int getWidth();
-    int getHeight();
-    int getChannel();
     unsigned char * toRGB();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1);
     IMG crop(Rect rect);
+    IMG guassian_blur(float radius);
+    IMG filter(int channel, Mat kernel);
     void drawRectangle(Rect rect, Color color, int width = 0);
     void drawLine(Point p1, Point p2, Color color);
     void drawPixel(Point p, Color color);
@@ -64,6 +69,7 @@ public:
 private:
     PIXEL **PX;
     unsigned char *rgb;
+    bool isRGB;
     
     IMG::ImageType getType(const char *filename);
     IMG::ImageType phraseType(const char *name);

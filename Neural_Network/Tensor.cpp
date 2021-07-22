@@ -94,9 +94,10 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     // initialize
     weight = new float [n];
     delta_weight = new float [n];
-    for (int i = 0; i < n; ++i) {
-        weight[i] = parameter;
-    }
+    fill(weight, weight + n, parameter);
+//    for (int i = 0; i < n; ++i) {
+//        weight[i] = parameter;
+//    }
     fill(delta_weight, delta_weight + n, 0);
 }
 

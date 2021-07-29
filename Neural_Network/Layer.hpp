@@ -128,6 +128,8 @@ public:
         float alpha;
     } info_more;
     float *workspace;
+    int *input_index;
+    int *weight_index;
 };
 
 // Input layer

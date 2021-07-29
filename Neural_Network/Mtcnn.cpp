@@ -47,6 +47,11 @@ vector<Bbox> PNet::detect(IMG &img) {
     float current_scale = float(net_size) / min_face_size;
 //    float current_scale = (float)1000 / max(img.width, img.height);
 //    float current_scale = 1.0;
+//    if (min(img.width, img.height) > 325) {
+//        current_scale = 325.0 / min(img.height, img.width);
+//    } else if (max(img.width, img.height) < 325) {
+//        current_scale = 325.0 / max(img.height, img.width);
+//    }
 //    if (min(img.width, img.height) > 1000) {
 //        current_scale = 1000.0 / min(img.height, img.width);
 //    } else if (max(img.width, img.height) < 1000) {
@@ -115,7 +120,7 @@ Feature_map PNet::predict(IMG &img) {
     int coordinate_h, coordinate_w;
     Tensor input(12, 12, 3, 0);
     
-    unsigned char *rgb = img.toRGB();
+    unsigned char *rgb = img.toPixelArray();
     int img_size = img.width * img.height * img.channel;
     float *img_data = new float [img_size];
     for (int i = 0; i < img_size; ++i) {
@@ -173,7 +178,7 @@ vector<Bbox> generate_bbox(Feature_map map, float scale, float threshold) {
 }
 
 vector<Bbox> nms(vector<Bbox> &Bbox_list, float threshold, int mode) {
-    auto cmpScore = [](Bbox box1, Bbox box2) {
+    auto cmpScore = [](Bbox &box1, Bbox &box2) {
         return box1.score < box2.score;
     };
     sort(Bbox_list.begin(), Bbox_list.end(), cmpScore);
@@ -244,7 +249,7 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
     for (int i = 0; i < square_bbox_size; ++i) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(24, 24));
-        unsigned char *pixel = crop.toRGB();
+        unsigned char *pixel = crop.toPixelArray();
         float *pixel_c = new float [3 * 24 * 24];
         for (int i = 0; i < 3 * 24 * 24; ++i) {
             pixel_c[i] = ((float)pixel[i] - 127.5) / 128;
@@ -333,7 +338,7 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
     for (int i = 0; i < square_bbox_size; ++i) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(48, 48));
-        unsigned char *pixel = crop.toRGB();
+        unsigned char *pixel = crop.toPixelArray();
         Tensor crop_img(48, 48, 3);
         float *pixel_c = crop_img.weight;
         for (int i = 0; i < 3 * 48 * 48; ++i) {

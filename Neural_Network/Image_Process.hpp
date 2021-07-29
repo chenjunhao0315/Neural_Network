@@ -12,6 +12,8 @@
 #include <vector>
 #include "Jpeg.hpp"
 
+#define PI 3.1415926
+
 struct PIXEL {
     PIXEL(unsigned char R_ = 0, unsigned char G_ = 0, unsigned char B_ = 0) : R(R_), G(G_), B(B_) {}
     unsigned char R, G, B;
@@ -37,38 +39,43 @@ typedef PIXEL Color;
 #define GREEN Color(0, 255, 0)
 #define BLUE Color(0, 0, 255)
 
-typedef vector<vector<int >> Mat;
+typedef float* Mat;
 
 class IMG {
     enum ImageType {
         PPM,
+        PGM,
         JPEG,
         UNSUPPORT
     };
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel, bool isRGB = true);
+    IMG(int width, int height, int channel, Color color = Color(0, 0, 0));
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
     IMG& operator=(const IMG &I);
-    void convertPPM(const char *filename);
-    unsigned char * toRGB();
+    unsigned char * toPixelArray();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1);
     IMG crop(Rect rect);
-    IMG guassian_blur(float radius);
-    IMG filter(int channel, Mat kernel);
+    IMG convertGray();
+    IMG gaussian_blur(float radius, float sigma_x = -1, float sigma_y = -1);
+    IMG median_blur(int radius);
+    IMG filter(int channel, Mat kernel, Size kernel_size, bool normalize = true);
+    IMG sobel();
+    void histogram(Size size = Size(360, 240), int resolution = 1, const char *histogram_name = "histogram.jpg");
     void drawRectangle(Rect rect, Color color, int width = 0);
     void drawLine(Point p1, Point p2, Color color);
     void drawPixel(Point p, Color color);
-    void drawCircle(Point center_point, int radius, Color color);
-    void save(const char *filename = "out.jpg", float quality = 100);
+    void drawCircle(Point center_point, Color color, int radius = 0);
+    void fillRect(Rect rect, Color color);
+    bool save(const char *filename = "out.jpg", float quality = 80);
     
     int width, height, channel;
 private:
     PIXEL **PX;
-    unsigned char *rgb;
+    unsigned char *pixel_array;
     bool isRGB;
     
     IMG::ImageType getType(const char *filename);
@@ -76,10 +83,11 @@ private:
     void allocPX();
     void copyPX(PIXEL **PX_src);
     void freePX();
-    void storeRGB(unsigned char *rgb);
+    void storePixelArray(unsigned char *rgb);
     void subCircle(int xc, int yc, int x, int y, Color color);
 };
 
 int clip(int value, int min, int max);
+vector<int> normalize(vector<int> &src, int min, int max);
 
 #endif /* Image_Process_hpp */

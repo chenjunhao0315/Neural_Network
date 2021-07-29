@@ -98,6 +98,8 @@ int JPEG::getChannel() {
 }
 
 unsigned char * JPEG::getPixel() {
+    if (data.comp_number == 1)
+        return data.comp[0].pixels;
     return data.rgb;
 }
 
@@ -1079,12 +1081,18 @@ void Writer::flush() {
     this->write_bits(BitCode(0x7F, 7));
 }
 
-bool JPEG::save(const char *filename, float quality_, bool down_sample) {
+bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_sample) {
     Writer writer(filename);
     if (data.rgb == nullptr)
         return false;
     if (data.width == 0 || data.height == 0)
         return false;
+    if (!isRGB)
+        down_sample = false;
+    if (down_sample) {
+        printf("Unsupport now!\n");
+        return false;
+    }
     
     // Header
     writer.write_word(0xFFD8);  // SOI
@@ -1102,8 +1110,8 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
     // DQT
     float quality = clamp(quality_, 1, 100);
     quality = quality < 50 ? 5000 / quality : 200 - quality * 2;
-    unsigned char quantLuminance  [8*8];
-    unsigned char quantChrominance[8*8];
+    unsigned char quantLuminance[64];
+    unsigned char quantChrominance[64];
     for (int i = 0; i < 64; ++i) {
         int luminance = (DefaultQuantLuminance[ZigZag[i]] * quality + 50) / 100;
         int chrominance = (DefaultQuantChrominance[ZigZag[i]] * quality + 50) / 100;
@@ -1111,11 +1119,13 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
         quantLuminance[i] = clamp(luminance, 1, 255);
         quantChrominance[i] = clamp(chrominance, 1, 255);
     }
-    writer.addMarker(DQT_MARKER, 132);
+    writer.addMarker(DQT_MARKER, 2 + (isRGB ? 2 : 1) * 65);
     writer.write_byte(0x00);
     writer.write(quantLuminance, 64);
-    writer.write_byte(0x01);
-    writer.write(quantChrominance, 64);
+    if (isRGB) {
+        writer.write_byte(0x01);
+        writer.write(quantChrominance, 64);
+    }
     
     // SOF0
     writer.addMarker(SOF0_MARKER, 2 + 6 + 3 * data.comp_number);
@@ -1133,19 +1143,22 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
     }
     
     // DHT
-    writer.addMarker(DHT_MARKER, 418);
+    writer.addMarker(DHT_MARKER, isRGB ? 418 : 210);
     writer.write_byte(0x00);
     writer.write(DcLuminanceCodesPerBitsize, sizeof(DcLuminanceCodesPerBitsize));
     writer.write(DcLuminanceValues, sizeof(DcLuminanceValues));
     writer.write_byte(0x10);
     writer.write(AcLuminanceCodesPerBitsize, sizeof(AcLuminanceCodesPerBitsize));
     writer.write(AcLuminanceValues, sizeof(AcLuminanceValues));
-    writer.write_byte(0x01);
-    writer.write(DcChrominanceCodesPerBitsize, sizeof(DcChrominanceCodesPerBitsize));
-    writer.write(DcChrominanceValues, sizeof(DcChrominanceValues));
-    writer.write_byte(0x11);
-    writer.write(AcChrominanceCodesPerBitsize, sizeof(AcChrominanceCodesPerBitsize));
-    writer.write(AcChrominanceValues, sizeof(AcChrominanceValues));
+    
+    if (isRGB) {
+        writer.write_byte(0x01);
+        writer.write(DcChrominanceCodesPerBitsize, sizeof(DcChrominanceCodesPerBitsize));
+        writer.write(DcChrominanceValues, sizeof(DcChrominanceValues));
+        writer.write_byte(0x11);
+        writer.write(AcChrominanceCodesPerBitsize, sizeof(AcChrominanceCodesPerBitsize));
+        writer.write(AcChrominanceValues, sizeof(AcChrominanceValues));
+    }
     
     BitCode huffmanLuminanceDC[256];
     BitCode huffmanLuminanceAC[256];
@@ -1153,8 +1166,11 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
     generateHuffmanTable(AcLuminanceCodesPerBitsize, AcLuminanceValues, huffmanLuminanceAC);
     BitCode huffmanChrominanceDC[256];
     BitCode huffmanChrominanceAC[256];
-    generateHuffmanTable(DcChrominanceCodesPerBitsize, DcChrominanceValues, huffmanChrominanceDC);
-    generateHuffmanTable(AcChrominanceCodesPerBitsize, AcChrominanceValues, huffmanChrominanceAC);
+    
+    if (isRGB) {
+        generateHuffmanTable(DcChrominanceCodesPerBitsize, DcChrominanceValues, huffmanChrominanceDC);
+        generateHuffmanTable(AcChrominanceCodesPerBitsize, AcChrominanceValues, huffmanChrominanceAC);
+    }
     
     // SOS
     writer.addMarker(SOS_MARKER, 2 + 1 + 2 * data.comp_number + 3);
@@ -1222,14 +1238,19 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
                             int pixelPos = row * int(width) + column;
                             if (column < maxWidth)
                                 column++;
-                            unsigned char r = pixels[3 * pixelPos + 0];
-                            unsigned char g = pixels[3 * pixelPos + 1];
-                            unsigned char b = pixels[3 * pixelPos + 2];
                             
-                            Y   [deltaY][deltaX] = convertRGBtoY(r, g, b) - 128;
-                            if (!down_sample) {
-                                Cb[deltaY][deltaX] = convertRGBtoCb(r, g, b);
-                                Cr[deltaY][deltaX] = convertRGBtoCr(r, g, b);
+                            if (!isRGB) {
+                                Y[deltaY][deltaX] = pixels[pixelPos] - 128.f;
+                            } else {
+                                unsigned char r = pixels[3 * pixelPos + 0];
+                                unsigned char g = pixels[3 * pixelPos + 1];
+                                unsigned char b = pixels[3 * pixelPos + 2];
+                                
+                                Y[deltaY][deltaX] = convertRGBtoY(r, g, b) - 128;
+                                if (!down_sample) {
+                                    Cb[deltaY][deltaX] = convertRGBtoCb(r, g, b);
+                                    Cr[deltaY][deltaX] = convertRGBtoCr(r, g, b);
+                                }
                             }
                         }
                     }
@@ -1238,6 +1259,9 @@ bool JPEG::save(const char *filename, float quality_, bool down_sample) {
                     lastYDC = encodeBlock(writer, Y, scaledLuminance, lastYDC, huffmanLuminanceDC, huffmanLuminanceAC, codewords);
                     // Cb and Cr are encoded about 50 lines below
                 }
+                if (!isRGB)
+                    continue;
+                
                 if (down_sample)
                     for (short deltaY = 7; down_sample && deltaY >= 0; deltaY--) {
                         int row = min(mcuY + 2 * deltaY, maxHeight);

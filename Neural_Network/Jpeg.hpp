@@ -120,7 +120,7 @@ public:
     int status() {return data.status;}
     void showPicInfo();
     void convert_ppm(const char *filename = "out.ppm");
-    bool save(const char *filename = "out.jpg", float quality = 90, bool down_sample = false);
+    bool save(const char *filename = "out.jpg", float quality = 90, bool isRGB = true, bool down_sample = false);
     int getWidth();
     int getHeight();
     int getChannel();

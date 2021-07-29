@@ -46,6 +46,7 @@ IMG::IMG(const char *filename) {
         channel = img.getChannel();
         this->allocPX();
         storePixelArray(img.getPixel());
+        Info = img.getPicInfo();
     } else if (type == ImageType::PPM) {
         FILE *f = fopen(filename, "r");
         fscanf(f, "P6\n%d %d\n255\n", &width, &height);
@@ -188,6 +189,11 @@ unsigned char * IMG::toPixelArray() {
         }
     }
     return pixel_array;
+}
+
+void IMG::showPicInfo() {
+    for (int i = 0; i < Info.size(); ++i)
+        printf("%s", Info[i].c_str());
 }
 
 IMG::ImageType IMG::phraseType(const char *name) {

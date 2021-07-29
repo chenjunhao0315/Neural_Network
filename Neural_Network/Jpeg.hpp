@@ -58,6 +58,8 @@ public:
     int getHeight() {return height;}
     int getChannel() {return channel;}
     unsigned char * getPixel() {return pixelArray;}
+    void showPicInfo();
+    vector<string> getPicInfo() {return Info;}
     
     int width;
     int height;

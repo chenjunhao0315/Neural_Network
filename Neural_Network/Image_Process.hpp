@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <vector>
 #include "Jpeg.hpp"
+#include <string>
 
 using namespace std;
 
@@ -67,6 +68,7 @@ public:
     IMG median_blur(int radius);
     IMG filter(int channel, Mat kernel, Size kernel_size, bool normalize = true);
     IMG sobel();
+    void showPicInfo();
     void histogram(Size size = Size(360, 240), int resolution = 1, const char *histogram_name = "histogram.jpg");
     void drawRectangle(Rect rect, Color color, int width = 0);
     void drawLine(Point p1, Point p2, Color color);
@@ -80,6 +82,7 @@ private:
     PIXEL **PX;
     unsigned char *pixel_array;
     bool isRGB;
+    vector<string> Info;
     
     IMG::ImageType getType(const char *filename);
     IMG::ImageType phraseType(const char *name);

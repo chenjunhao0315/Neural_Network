@@ -36,6 +36,12 @@ JPEG::~JPEG() {
     delete encoder;
 }
 
+void JPEG::showPicInfo() {
+    for (int i = 0; i < Info.size(); ++i) {
+        printf("%s", Info[i].c_str());
+    }
+}
+
 bool JPEG::save(const char *filename, float quality, bool isRGB, bool down_sample) {
     if (!pixelArray)
         return false;

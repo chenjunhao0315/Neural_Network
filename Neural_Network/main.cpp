@@ -18,7 +18,7 @@ using namespace std::chrono;
 
 int main(int argc, const char * argv[]) {
     
-//    JPEG img("pic1.jpg");
+//    JPEG img("5D4A0379.JPG");
 //    img.save();
 //    img.showPicInfo();
     // This is a good day to learn.
@@ -213,7 +213,7 @@ int main(int argc, const char * argv[]) {
     pnet.min_face_size = 50;
     pnet.threshold[0] = 0.97;
     IMG img("pic1.jpg");
-    
+
     auto start = high_resolution_clock::now();
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
@@ -221,38 +221,38 @@ int main(int argc, const char * argv[]) {
     stop = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(stop - start);
     printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
-    
+
     IMG pnet_detect(img);
     for (int i = 0; i < bbox.size(); ++i) {
         pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
     }
     pnet_detect.save("pnet_predict.jpg", 80);
-    
-    
+
+
     RNet rnet("rnet_v1.bin");
     rnet.threshold[0] = 0.7;
-    
+
     start = high_resolution_clock::now();
     vector<Bbox> rnet_bbox = rnet.detect(img, bbox);
     stop = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(stop - start);
     printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
-    
+
     IMG rnet_detect(img);
     for (int i = 0; i < rnet_bbox.size(); ++i) {
         rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, RED);
     }
     rnet_detect.save("rnet_predict.jpg", 80);
-    
+
     ONet onet("onet_9981_all.bin");
     onet.threshold[0] = 0.8;
-    
+
     start = high_resolution_clock::now();
     vector<Bbox> onet_bbox = onet.detect(img, rnet_bbox);
     stop = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(stop - start);
     printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
-    
+
     IMG onet_detect(img);
     for (int i = 0; i < onet_bbox.size(); ++i) {
         int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;

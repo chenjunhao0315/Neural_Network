@@ -12,6 +12,8 @@
 #include <vector>
 #include "Jpeg.hpp"
 
+using namespace std;
+
 #define PI 3.1415926
 
 struct PIXEL {
@@ -35,6 +37,7 @@ struct Point {
 };
 
 typedef PIXEL Color;
+
 #define RED Color(255, 0, 0)
 #define GREEN Color(0, 255, 0)
 #define BLUE Color(0, 0, 255)

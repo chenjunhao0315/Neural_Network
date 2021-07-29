@@ -8,11 +8,6 @@
 #ifndef Jpeg_hpp
 #define Jpeg_hpp
 
-#include <stdio.h>
-#include <iostream>
-#include <cstring>
-#include <math.h>
-
 #define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
 #define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */
 #define W3 2408 /* 2048*sqrt(2)*cos(3*pi/16) */
@@ -20,10 +15,208 @@
 #define W6 1108 /* 2048*sqrt(2)*cos(6*pi/16) */
 #define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
 
-#define DC 0
-#define AC 1
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <math.h>
+#include <vector>
 
 using namespace std;
+
+class JPEG;
+class JPEG_ENCODER;
+class JPEG_DECODER;
+class BIT_WRITER;
+class JFIF;
+
+enum Jpeg_Status {
+    OK = 0,
+    NOT_JPEG,
+    SYNTAX_ERROR,
+    UNSUPPORT,
+    DECODE_FINISH,
+    DECODED_MODE,
+    FREE
+};
+
+struct BitCode {
+    BitCode() = default;
+    BitCode(unsigned short code_, unsigned short numBits_) : code(code_), numBits(numBits_) {}
+    unsigned short code;
+    unsigned char numBits;
+};
+
+class JPEG {
+public:
+    ~JPEG();
+    JPEG(const char *filename);
+    JPEG(unsigned char *pixelArray, int width, int height, int channel);
+    int status() {return decode_status;}
+    bool save(const char *filename = "out.jpg", float quality = 90, bool isRGB = true, bool down_sample = false);
+    int getWidth() {return width;}
+    int getHeight() {return height;}
+    int getChannel() {return channel;}
+    unsigned char * getPixel() {return pixelArray;}
+    
+    int width;
+    int height;
+    int channel;
+private:
+    unsigned char *pixelArray;
+    JPEG_DECODER *decoder;
+    JPEG_ENCODER *encoder;
+    vector<string> Info;
+    Jpeg_Status decode_status;
+};
+
+class JPEG_DECODER {
+public:
+    JPEG_DECODER(const char *filename);
+    
+    Jpeg_Status status() {return data.status;}
+    void getPicInfo(vector<string> &Info);
+    
+    int getWidth() {return data.width;}
+    int getHeight() {return data.height;}
+    int getChannel() {return data.comp_number;}
+    unsigned char * getPixel();
+private:
+    struct Component {
+        unsigned char id;
+        unsigned char samplex;
+        unsigned char sampley;
+        int width;
+        int height;
+        int stride;
+        unsigned char quant;
+        unsigned char dctable;
+        unsigned char actable;
+        int dc;
+        unsigned char *pixels;
+    };
+    
+    struct Data {
+        int width, height;
+        unsigned char color_mode;
+        Jpeg_Status status;
+        unsigned char *data_indicator;
+        unsigned char *pos;
+        int size;
+        int length;
+        unsigned char qtab[4][64];
+        Component comp[3];
+        int comp_number;
+        int samplemaxx, samplemaxy;
+        int mcusizex, mcusizey;
+        int mcuwidth, mcuheight;
+        BitCode vlctab[4][65536];
+        int mcu[64];
+        int buf, bufbits;
+        int resetinterval;
+        unsigned char *rgb;
+    };
+    
+    inline void skip(int number);
+    inline void GetLength();
+    
+    Jpeg_Status decode();
+    void skipMARKER();
+    void readAPP1();
+    void readJFIF(JFIF *d, unsigned char *read_pos);
+    void readDQT();
+    void readSOF0();
+    void readDHT();
+    void readDRI();
+    void readSOS();
+    void readDATA();
+    void decodeMCU(Component *c, unsigned char *out);
+    
+    int GetVLC(BitCode *vlc, unsigned char *code);
+    int showBits(int bits);
+    void skipBits(int bits);
+    int GetBits(int bits);
+    
+    void IDCTRow(int *mcu);
+    void IDCTCol(const int *mcu, unsigned char *out, int stride);
+    unsigned char clip(const int x);
+    inline unsigned char CF(const int x);
+    void toRGB();
+    void upSampleV(Component *c);
+    void upSampleH(Component *c);
+    
+    JFIF *Exif;
+    Data data;
+};
+
+struct JFIF {
+//public:
+    ~JFIF();
+    JFIF(unsigned int num = 0, unsigned char *_start_pos = nullptr) {
+        Init(num, _start_pos);
+    }
+    void Init(unsigned int num, unsigned char *_start_pos);
+    void getInfo(vector<string> &Info);
+    
+//private:
+    enum decode_method {
+        TIFF, EXIF, GPS
+    };
+    
+    void str(unsigned char *pos, unsigned int len);
+    float ration64u(unsigned char *pos);
+    float ration64s(unsigned char *pos);
+    
+    unsigned int Tag_num;
+    unsigned char method;
+    unsigned int *Tag, *Format, *Components, *Offset, *Sub;
+    JFIF *sub;
+    unsigned char *start_pos;
+};
+
+class JPEG_ENCODER {
+public:
+    JPEG_ENCODER(unsigned char *pixelArray_, int width_, int height_, int channel_) : pixelArray(pixelArray_), width(width_), height(height_), channel(channel_) {}
+    bool write(const char *filename, float quality_, bool down_sample);
+private:
+    void generateHuffmanTable(const unsigned char numCodes[16], const unsigned char *values, BitCode result[256]);
+    float convertRGBtoY(float r, float g, float b);
+    float convertRGBtoCb(float r, float g, float b);
+    float convertRGBtoCr(float r, float g, float b);
+    int encodeBlock(BIT_WRITER& writer, float block[8][8], const float scaled[64], int lastDC, const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords);
+    void DCT(float block[8*8], unsigned short stride);
+    
+    int width;
+    int height;
+    int channel;
+    unsigned char *pixelArray;
+};
+
+inline unsigned short Decode16(const unsigned char *pos);
+inline unsigned short Get16u(const unsigned char *pos);
+inline unsigned int Get32u(const unsigned char *pos);
+inline int Get32s(const unsigned char *pos);
+
+class BIT_WRITER {
+public:
+    ~BIT_WRITER();
+    BIT_WRITER(const char *filename);
+    void write(const void *data, int size);
+    void write_byte(unsigned char data);
+    void write_word(unsigned short data);
+    void write_bits(const BitCode &data);
+    void addMarker(unsigned char id, unsigned short length);
+    void flush();
+private:
+    struct BitBuffer {
+        int data = 0;
+        unsigned char numBits = 0;
+    } buffer;
+    FILE *f;
+};
+
+template <typename Number, typename Limit>
+Number clamp(Number value, Limit minValue, Limit maxValue);
 
 enum MARKER {
     APP0_MARKER = 0xE0, APP1_MARKER = 0xE1,
@@ -49,171 +242,15 @@ enum EXIF_PARAMETER {
     LensSpecification = 42034, LensModel = 42036, LensSerialNumber = 42037
 };
 
-struct DATA_SET {
-    enum decode_method {
-        TIFF, EXIF, GPS
-    };
-    ~DATA_SET() {
-        delete [] Tag;
-        delete [] Format;
-        delete [] Components;
-        delete [] Offset;
-        delete [] Sub;
-    }
-    DATA_SET(unsigned int num = 0, unsigned char *_start_pos = nullptr) {
-        Init(num, _start_pos);
-    }
-    void Init(unsigned int num, unsigned char *_start_pos) {
-        Tag = new unsigned int [num];
-        Format = new unsigned int [num];
-        Components = new unsigned int [num];
-        Offset = new unsigned int [num];
-        Sub = new unsigned int [num];
-        Tag_num = num;
-        method = TIFF;
-        start_pos = _start_pos;
-    }
-    void show();
-    void str(unsigned char *pos, unsigned int len);
-    float ration64u(unsigned char *pos);
-    float ration64s(unsigned char *pos);
-    
-    unsigned int Tag_num;
-    unsigned char method;
-    unsigned int *Tag, *Format, *Components, *Offset, *Sub;
-    DATA_SET *sub;
-    unsigned char *start_pos;
-};
-
-struct BitCode
-{
-    BitCode() = default;
-    BitCode(unsigned short code_, unsigned short numBits_)
-    : code(code_), numBits(numBits_) {}
-    unsigned short code;
-    unsigned char  numBits;
-};
-
-class Writer {
-public:
-    ~Writer();
-    Writer(const char *filename);
-    void write(const void *data, int size);
-    void write_byte(unsigned char data);
-    void write_word(unsigned short data);
-    void write_bits(const BitCode &data);
-    void addMarker(unsigned char id, unsigned short length);
-    void flush();
-private:
-    struct BitBuffer {
-        int data = 0;
-        unsigned char numBits = 0;
-    } buffer;
-    FILE *f;
-};
-
-class JPEG {
-public:
-    ~JPEG();
-    JPEG(const char *filename);
-    JPEG(unsigned char *rgb, int width, int height, int channel);
-    int status() {return data.status;}
-    void showPicInfo();
-    void convert_ppm(const char *filename = "out.ppm");
-    bool save(const char *filename = "out.jpg", float quality = 90, bool isRGB = true, bool down_sample = false);
-    int getWidth();
-    int getHeight();
-    int getChannel();
-    unsigned char * getPixel();
-    
-    enum Status{
-        OK = 0,
-        NOT_JPEG,
-        SYNTAX_ERROR,
-        UNSUPPORT,
-        DECODE_FINISH,
-        DECODED_MODE,
-        FREE
-    };
-    
-private:
-    struct VlcCode {
-        unsigned char bits, code;
-    };
-    
-    struct Component {
-        unsigned char id;
-        unsigned char samplex;
-        unsigned char sampley;
-        int width;
-        int height;
-        int stride;
-        unsigned char quant;
-        unsigned char dctable;
-        unsigned char actable;
-        int dc;
-        unsigned char *pixels;
-    };
-    
-    struct DATA {
-        int width, height;
-        unsigned char color_mode;
-        Status status;
-        unsigned char *data_indicator;
-        unsigned char *pos;
-        int size;
-        int length;
-        unsigned char qtab[4][64];
-        Component comp[3];
-        int comp_number;
-        int samplemaxx, samplemaxy;
-        int mcusizex, mcusizey;
-        int mcuwidth, mcuheight;
-        VlcCode vlctab[4][65536];
-        int mcu[64];
-        int buf, bufbits;
-        int resetinterval;
-        unsigned char *rgb;
-    };
-    
-    inline unsigned char CF(const int x) {
-        return clip((x + 64) >> 7);
-    }
-    
-    inline void skip(int number);
-    inline void GetLength();
-    Status decode();
-    void skipMARKER();
-    void readAPP1();
-    void readDataSet(DATA_SET *d, unsigned char *read_pos);
-    void readDQT();
-    void readSOF0();
-    void readDHT();
-    void readDRI();
-    void readSOS();
-    void readDATA();
-    void decodeMCU(Component *c, unsigned char *out);
-    int GetVLC(VlcCode *vlc, unsigned char *code);
-    int showBits(int bits);
-    void skipBits(int bits);
-    int GetBits(int bits);
-    void IDCTRow(int *mcu);
-    void IDCTCol(const int *mcu, unsigned char *out, int stride);
-    unsigned char clip(const int x);
-    void toRGB();
-    void upSampleV(Component *c);
-    void upSampleH(Component *c);
-    
-    void generateHuffmanTable(const unsigned char numCodes[16], const unsigned char *values, BitCode result[256]);
-    float convertRGBtoY(float r, float g, float b);
-    float convertRGBtoCb(float r, float g, float b);
-    float convertRGBtoCr(float r, float g, float b);
-    int encodeBlock(Writer& writer, float block[8][8], const float scaled[64], int lastDC, const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords);
-    void DCT(float block[8*8], unsigned short stride);
-    
-    unsigned char ZigZag[64];
-    DATA_SET *Exif;
-    DATA data;
+const char ZigZagInv[64] = {
+    0, 1, 8, 16, 9, 2, 3, 10,
+    17, 24, 32, 25, 18, 11, 4, 5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13, 6, 7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
 };
 
 enum {
@@ -230,14 +267,6 @@ enum {
     CF2A = (139),
     CF2B = (-11),
 };
-
-inline unsigned short Decode16(const unsigned char *pos);
-inline unsigned short Get16u(const unsigned char *pos);
-inline unsigned int Get32u(const unsigned char *pos);
-inline int Get32s(const unsigned char *pos);
-
-template <typename Number, typename Limit>
-Number clamp(Number value, Limit minValue, Limit maxValue);
 
 const unsigned char DefaultQuantLuminance[8 * 8] =
 { 16, 11, 10, 16, 24, 40, 51, 61,

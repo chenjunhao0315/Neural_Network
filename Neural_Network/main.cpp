@@ -9,7 +9,7 @@
 #include <chrono>
 
 #include "Neural_Network.hpp"
-#include "Data_Process.hpp"
+//#include "Data_Process.hpp"
 #include "Image_Process.hpp"
 #include "Mtcnn.hpp"
 
@@ -17,82 +17,88 @@ using namespace std;
 using namespace std::chrono;
 
 int main(int argc, const char * argv[]) {
+    
+//    JPEG img("pic1.jpg");
+//    img.save();
+//    img.showPicInfo();
     // This is a good day to learn.
     
-        Neural_Network nn;
-         nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
-         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
-         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-         nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//         nn.addOutput("8");
-         nn.makeLayer();
-//         nn.load("model.bin");
-         nn.shape();
-     
-     
-         Data bee("bee.npy", 28, 28);
-         vtensor data_bee = bee.get(500);
-         vector<vfloat> label_bee(500, vfloat(1, 0));
-         Data cat("cat.npy", 28, 28);
-         vtensor data_cat = cat.get(500);
-         vector<vfloat> label_cat(500, vfloat(1, 1));
-         Data fish("fish.npy", 28, 28);
-         vtensor data_fish = fish.get(500);
-         vector<vfloat> label_fish(500, vfloat(1, 2));
-     
-         vtensor data_train;
-         vector<vfloat> data_label;
-         for (int i = 0; i < 300; ++i) {
-             data_train.push_back(data_bee[i]);
-             data_train.push_back(data_cat[i]);
-             data_train.push_back(data_fish[i]);
-             data_label.push_back(label_bee[i]);
-             data_label.push_back(label_cat[i]);
-             data_label.push_back(label_fish[i]);
-         }
-     
-         vtensor data_valid;
-         vector<vfloat> label_valid;
-         for (int i = 300; i < 500; ++i) {
-             data_valid.push_back(data_bee[i]);
-             data_valid.push_back(data_cat[i]);
-             data_valid.push_back(data_fish[i]);
-             label_valid.push_back(label_bee[i]);
-             label_valid.push_back(label_cat[i]);
-             label_valid.push_back(label_fish[i]);
-         }
-     
-         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
-     
-         Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 2}});
-         trainer.train(data_train, data_label, 1);
-         //nn.train("SVG", 0.001, data_train, data_label, 1);
-     
-         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+//        Neural_Network nn;
+//         nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
+//         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
+//         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
+//         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//         nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
+////         nn.addOutput("8");
+//         nn.makeLayer();
+////         nn.load("model.bin");
 //         nn.shape();
-     
-         vfloat out = nn.predict(&data_bee[0]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_bee[327]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_bee[376]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-     
-         out = nn.predict(&data_cat[15]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_cat[312]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_cat[305]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-     
-         out = nn.predict(&data_fish[98]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_fish[312]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
-         out = nn.predict(&data_fish[456]);
-         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//
+//
+//         Data bee("bee.npy", 28, 28);
+//         vtensor data_bee = bee.get(500);
+//         vector<vfloat> label_bee(500, vfloat(1, 0));
+//         Data cat("cat.npy", 28, 28);
+//         vtensor data_cat = cat.get(500);
+//         vector<vfloat> label_cat(500, vfloat(1, 1));
+//         Data fish("fish.npy", 28, 28);
+//         vtensor data_fish = fish.get(500);
+//         vector<vfloat> label_fish(500, vfloat(1, 2));
+//
+//         vtensor data_train;
+//         vector<vfloat> data_label;
+//         for (int i = 0; i < 300; ++i) {
+//             data_train.push_back(data_bee[i]);
+//             data_train.push_back(data_cat[i]);
+//             data_train.push_back(data_fish[i]);
+//             data_label.push_back(label_bee[i]);
+//             data_label.push_back(label_cat[i]);
+//             data_label.push_back(label_fish[i]);
+//         }
+//
+//         vtensor data_valid;
+//         vector<vfloat> label_valid;
+//         for (int i = 300; i < 500; ++i) {
+//             data_valid.push_back(data_bee[i]);
+//             data_valid.push_back(data_cat[i]);
+//             data_valid.push_back(data_fish[i]);
+//             label_valid.push_back(label_bee[i]);
+//             label_valid.push_back(label_cat[i]);
+//             label_valid.push_back(label_fish[i]);
+//         }
+//
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+//
+//         Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 2}});
+//         trainer.train(data_train, data_label, 1);
+//         //nn.train("SVG", 0.001, data_train, data_label, 1);
+//
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+////         nn.shape();
+//
+//         vfloat out = nn.predict(&data_bee[0]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_bee[327]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_bee[376]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//
+//         out = nn.predict(&data_cat[15]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_cat[312]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_cat[305]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//
+//         out = nn.predict(&data_fish[98]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_fish[312]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+//         out = nn.predict(&data_fish[456]);
+//         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
+    
+    
     
     //    vtensor data_set_pnet;
     //    vector<vfloat> label_set_pnet;
@@ -203,60 +209,61 @@ int main(int argc, const char * argv[]) {
     
     
     
-//    PNet pnet("pnet_9446_250k.bin");
-//    pnet.min_face_size = 25;
-//    pnet.threshold[0] = 0.96;
-//    IMG img("0.jpg");
-//    
-//    auto start = high_resolution_clock::now();
-//    auto stop = high_resolution_clock::now();
-//    auto duration = duration_cast<milliseconds>(stop - start);
-//    vector<Bbox> bbox = pnet.detect(img);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
-//    
-//    IMG pnet_detect(img);
-//    for (int i = 0; i < bbox.size(); ++i) {
-//        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
-//    }
-//    pnet_detect.save("pnet_predict.jpg", 80);
-//    
-//    
-//    RNet rnet("rnet_ensure_9721.bin");
-//    rnet.threshold[0] = 0.7;
-//    
-//    start = high_resolution_clock::now();
-//    vector<Bbox> rnet_bbox = rnet.detect(img, bbox);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
-//    
-//    IMG rnet_detect(img);
-//    for (int i = 0; i < rnet_bbox.size(); ++i) {
-//        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, Color(255, 0, 0));
-//    }
-//    rnet_detect.save("rnet_predict.jpg", 80);
-//    
-//    ONet onet("onet_ensure_9925.bin");
-//    onet.threshold[0] = 0.7;
-//    
-//    start = high_resolution_clock::now();
-//    vector<Bbox> onet_bbox = onet.detect(img, rnet_bbox);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
-//    
-//    IMG onet_detect(img);
-//    for (int i = 0; i < onet_bbox.size(); ++i) {
-//        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, Color(255, 0, 0));
-//        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), 3, RED);
-//        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), 3, RED);
-//        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), 3, RED);
-//        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), 3, RED);
-//        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), 3, RED);
-//    }
-//    onet_detect.save("onet_predict.jpg", 80);
+    PNet pnet("pnet_9446_250k.bin");
+    pnet.min_face_size = 50;
+    pnet.threshold[0] = 0.97;
+    IMG img("pic1.jpg");
+    
+    auto start = high_resolution_clock::now();
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    vector<Bbox> bbox = pnet.detect(img);
+    stop = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(stop - start);
+    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
+    
+    IMG pnet_detect(img);
+    for (int i = 0; i < bbox.size(); ++i) {
+        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
+    }
+    pnet_detect.save("pnet_predict.jpg", 80);
+    
+    
+    RNet rnet("rnet_v1.bin");
+    rnet.threshold[0] = 0.7;
+    
+    start = high_resolution_clock::now();
+    vector<Bbox> rnet_bbox = rnet.detect(img, bbox);
+    stop = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(stop - start);
+    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
+    
+    IMG rnet_detect(img);
+    for (int i = 0; i < rnet_bbox.size(); ++i) {
+        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, RED);
+    }
+    rnet_detect.save("rnet_predict.jpg", 80);
+    
+    ONet onet("onet_9981_all.bin");
+    onet.threshold[0] = 0.8;
+    
+    start = high_resolution_clock::now();
+    vector<Bbox> onet_bbox = onet.detect(img, rnet_bbox);
+    stop = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(stop - start);
+    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
+    
+    IMG onet_detect(img);
+    for (int i = 0; i < onet_bbox.size(); ++i) {
+        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
+        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius);
+    }
+    onet_detect.save("onet_predict.jpg", 80);
     
     
     //    ONet onet;

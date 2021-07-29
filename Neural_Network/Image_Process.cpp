@@ -37,7 +37,7 @@ IMG::IMG(const char *filename) {
     ImageType type = getType(filename);
     if (type == ImageType::JPEG) {
         class JPEG img(filename);
-        if (img.status() == JPEG::Status::NOT_JPEG) {
+        if (img.status() == Jpeg_Status::NOT_JPEG) {
             printf("Open file fail!\n");
             return;
         }

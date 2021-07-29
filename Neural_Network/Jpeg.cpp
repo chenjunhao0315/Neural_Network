@@ -7,23 +7,51 @@
 
 #include "Jpeg.hpp"
 
-JPEG::~JPEG() {
-    delete Exif;
-    delete [] data.data_indicator;
-    delete [] data.comp[0].pixels;
-    delete [] data.comp[1].pixels;
-    delete [] data.comp[2].pixels;
-    if (data.status != DECODED_MODE)
-        delete [] data.rgb;
+JPEG::JPEG(const char *filename) {
+//    printf("Decode mode!\n");
+    decoder = new JPEG_DECODER(filename);
+    encoder = nullptr;
+    pixelArray = nullptr;
+    if ((decode_status = decoder->status()) != Jpeg_Status::OK)
+        return;
+    width = decoder->getWidth();
+    height = decoder->getHeight();
+    channel = decoder->getChannel();
+    pixelArray = decoder->getPixel();
+    decoder->getPicInfo(Info);
 }
 
-JPEG::JPEG(const char *filename) {
+JPEG::JPEG(unsigned char *pixelArray_, int width_, int height_, int channel_) {
+//    printf("Encode mode!\n");
+    decoder = nullptr;
+    encoder = nullptr;
+    width = width_;
+    height = height_;
+    channel = channel_;
+    pixelArray = pixelArray_;
+}
+
+JPEG::~JPEG() {
+    delete decoder;
+    delete encoder;
+}
+
+bool JPEG::save(const char *filename, float quality, bool isRGB, bool down_sample) {
+    if (!pixelArray)
+        return false;
+    encoder = new JPEG_ENCODER(pixelArray, width, height, channel);
+    encoder->write(filename, quality, down_sample);
+    return true;
+}
+
+JPEG_DECODER::JPEG_DECODER(const char *filename) {
     FILE *f = fopen(filename, "rb");
     size_t size;
     if (!f) {
         printf("Error opening the input file!\n");
         return;
     }
+    
     memset(&data, 0, sizeof(data));
     data.comp[0].pixels = nullptr;
     data.comp[1].pixels = nullptr;
@@ -31,6 +59,7 @@ JPEG::JPEG(const char *filename) {
     data.rgb = nullptr;
     Exif = nullptr;
     data.pos = nullptr;
+    
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     data.data_indicator = data.pos = new unsigned char [size];
@@ -42,68 +71,80 @@ JPEG::JPEG(const char *filename) {
     fseek(f, 0, SEEK_SET);
     fread(data.pos, 1, size, f);
     fclose(f);
-    char table[64] = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18,
-        11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35,
-        42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45,
-        38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
-    memcpy(ZigZag, table, sizeof(ZigZag));
     data.status = decode();
-//    switch (data.status) {
-//        case OK: printf("Decode finish!\n"); break;
-//        case NOT_JPEG: printf("Not jpeg file!\n"); break;
-//        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
-//        case UNSUPPORT: printf("Unsupport!\n"); break;
-//        default: break;
-//    }
+    switch (data.status) {
+        case OK: printf("Decode finish!\n"); break;
+        case NOT_JPEG: printf("Not jpeg file!\n"); break;
+        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
+        case UNSUPPORT: printf("Unsupport!\n"); break;
+        default: break;
+    }
 }
 
-JPEG::JPEG(unsigned char *rgb, int width, int height, int channel) {
-    data.comp[0].pixels = nullptr;
-    data.comp[1].pixels = nullptr;
-    data.comp[2].pixels = nullptr;
-    data.rgb = rgb;
-    Exif = nullptr;
-    data.pos = nullptr;
-    data.data_indicator = nullptr;
-    data.width = width;
-    data.height = height;
-    data.comp_number = channel;
-    char table[64] = { 0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18,
-        11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35,
-        42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45,
-        38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
-    memcpy(ZigZag, table, sizeof(ZigZag));
-    data.status = DECODED_MODE;
-}
-
-void JPEG::convert_ppm(const char *filename) {
-    if ((status() != OK) && (status() != DECODED_MODE))
-        return;
-    FILE *f = fopen(filename, "wb");
-    fprintf(f, "P%d\n%d %d\n255\n", data.comp_number == 3 ? 6 : 5, data.width, data.height);
-    fwrite(data.rgb, 1, data.width * data.height * data.comp_number, f);
-    fclose(f);
-}
-
-int JPEG::getWidth() {
-    return data.width;
-}
-
-int JPEG::getHeight() {
-    return data.height;
-}
-
-int JPEG::getChannel() {
-    return data.comp_number;
-}
-
-unsigned char * JPEG::getPixel() {
+unsigned char * JPEG_DECODER::getPixel() {
     if (data.comp_number == 1)
         return data.comp[0].pixels;
     return data.rgb;
 }
 
-void JPEG::upSampleH(Component* c) {
+Jpeg_Status JPEG_DECODER::decode() {
+    //    printf("%d %d\n", data.pos[0], data.pos[1]);
+    if ((data.pos[0] ^ 0xFF) | (data.pos[1] ^ 0xD8)) {
+        printf("NOT JPEG!\n");
+        return NOT_JPEG;
+    }
+    skip(2);
+    while(!data.status) {
+        skip(2);
+        switch (data.pos[-1]) {
+            case APP0_MARKER:
+//                printf("APP0 MARKER\n");
+                skipMARKER();
+                break;
+            case APP1_MARKER:
+//                printf("APP1 MARKER\n");
+                readAPP1();
+                break;
+            case DQT_MARKER:
+//                printf("DQT MARKER\n");
+                readDQT();
+                break;
+            case SOF0_MARKER:
+//                printf("SOF0 MARKER\n");
+                readSOF0();
+                break;
+            case SOF2_MARKER:
+//                printf("SOF2 MARKER\n");
+                break;
+            case DHT_MARKER:
+//                printf("DHT MARKER\n");
+                readDHT();
+                break;
+            case SOS_MARKER:
+//                printf("SOS MARKER\n");
+                readSOS();
+                readDATA();
+                toRGB();
+                break;
+            case DRI_MARKER:
+//                printf("DRI MARKER\n");
+                readDRI();
+                data.status = UNSUPPORT;
+                break;
+            default:
+                if ((data.pos[-1] & 0xF0) == 0xE0)
+                    skipMARKER();
+                else
+                    return UNSUPPORT;
+                
+        }
+    }
+    if (data.status == DECODE_FINISH)
+        return OK;
+    return data.status;
+}
+
+void JPEG_DECODER::upSampleH(Component* c) {
     const int xmax = c->width - 3;
     unsigned char *out, *lin, *lout;
     int x, y;
@@ -130,7 +171,7 @@ void JPEG::upSampleH(Component* c) {
     c->pixels = out;
 }
 
-void JPEG::upSampleV(Component* c) {
+void JPEG_DECODER::upSampleV(Component* c) {
     const int w = c->width, s1 = c->stride, s2 = s1 + s1;
     unsigned char *out, *cin, *cout;
     int x, y;
@@ -158,7 +199,7 @@ void JPEG::upSampleV(Component* c) {
     c->pixels = out;
 }
 
-void JPEG::toRGB() {
+void JPEG_DECODER::toRGB() {
     int i;
     Component *c;
     for (i = 0, c = data.comp; i < data.comp_number; ++i, ++c) {
@@ -199,7 +240,7 @@ void JPEG::toRGB() {
     }
 }
 
-void JPEG::IDCTRow(int* mcu) {
+void JPEG_DECODER::IDCTRow(int* mcu) {
     int x0, x1, x2, x3, x4, x5, x6, x7, x8;
     if (!((x1 = mcu[4] << 11)
           | (x2 = mcu[6])
@@ -244,7 +285,7 @@ void JPEG::IDCTRow(int* mcu) {
     mcu[7] = (x7 - x1) >> 8;
 }
 
-void JPEG::IDCTCol(const int* mcu, unsigned char *out, int stride) {
+void JPEG_DECODER::IDCTCol(const int* mcu, unsigned char *out, int stride) {
     int x0, x1, x2, x3, x4, x5, x6, x7, x8;
     if (!((x1 = mcu[8 * 4] << 8)
           | (x2 = mcu[8 * 6])
@@ -293,19 +334,19 @@ void JPEG::IDCTCol(const int* mcu, unsigned char *out, int stride) {
     *out = clip(((x7 - x1) >> 14) + 128);
 }
 
-int JPEG::GetBits(int bits) {
+int JPEG_DECODER::GetBits(int bits) {
     int res = showBits(bits);
     skipBits(bits);
     return res;
 }
 
-void JPEG::skipBits(int bits) {
+void JPEG_DECODER::skipBits(int bits) {
     if (data.bufbits < bits)
         showBits(bits);
     data.bufbits -= bits;
 }
 
-int JPEG::showBits(int bits) {
+int JPEG_DECODER::showBits(int bits) {
     unsigned char neu;
     if (!bits)
         return 0;
@@ -324,9 +365,9 @@ int JPEG::showBits(int bits) {
     return (data.buf >> (data.bufbits - bits)) & ((1 << bits) - 1);
 }
 
-int JPEG::GetVLC(VlcCode* vlc, unsigned char* code) {
+int JPEG_DECODER::GetVLC(BitCode* vlc, unsigned char* code) {
     int value = showBits(16);
-    int bits = vlc[value].bits;
+    int bits = vlc[value].numBits;
     skipBits(bits);
     value = vlc[value].code;
     if (code)
@@ -340,7 +381,7 @@ int JPEG::GetVLC(VlcCode* vlc, unsigned char* code) {
     return value;
 }
 
-void JPEG::decodeMCU(Component *c, unsigned char *out) {
+void JPEG_DECODER::decodeMCU(Component *c, unsigned char *out) {
     unsigned char code;
     int value, coef = 0;
     memset(data.mcu, 0, sizeof(data.mcu));
@@ -351,7 +392,7 @@ void JPEG::decodeMCU(Component *c, unsigned char *out) {
         if (!code)
             break;
         coef += (code >> 4) + 1;
-        data.mcu[(int)ZigZag[coef]] = value * data.qtab[c->quant][coef];
+        data.mcu[(int)ZigZagInv[coef]] = value * data.qtab[c->quant][coef];
     } while (coef < 63);
     for (coef = 0; coef < 64; coef += 8)
     IDCTRow(&data.mcu[coef]);
@@ -359,7 +400,7 @@ void JPEG::decodeMCU(Component *c, unsigned char *out) {
     IDCTCol(&data.mcu[coef], &out[coef], c->stride);
 }
 
-void JPEG::readDATA() {
+void JPEG_DECODER::readDATA() {
     int mcuh, mcuw, h, w, i;
     Component *c;
     for (mcuh = 0; mcuh < data.mcuheight; ++mcuh) {
@@ -378,7 +419,7 @@ void JPEG::readDATA() {
     data.status = DECODE_FINISH;
 }
 
-void JPEG::readSOS() {
+void JPEG_DECODER::readSOS() {
     int i;
     Component* c;
     GetLength();
@@ -394,15 +435,15 @@ void JPEG::readSOS() {
     skip(data.length);
 }
 
-void JPEG::readDRI() {
+void JPEG_DECODER::readDRI() {
     GetLength();
     data.resetinterval = Decode16(data.pos);
     skip(data.length);
 }
 
-void JPEG::readDHT() {
+void JPEG_DECODER::readDHT() {
     int codelen, currcnt, remain, spread, i, j;
-    VlcCode *vlc;
+    BitCode *vlc;
     unsigned char counts[16];
     GetLength();
     while (data.length >= 17) {
@@ -433,7 +474,7 @@ void JPEG::readDHT() {
             for (i = 0; i < currcnt; ++i) {
                 unsigned char code = data.pos[i];
                 for (j = spread; j; --j) {
-                    vlc->bits = (unsigned char) codelen;
+                    vlc->numBits = (unsigned char) codelen;
                     vlc->code = code;
                     ++vlc;
                 }
@@ -441,7 +482,7 @@ void JPEG::readDHT() {
             skip(currcnt);
         }
         while (remain--) {
-            vlc->bits = 0;
+            vlc->numBits = 0;
             ++vlc;
         }
     }
@@ -452,7 +493,82 @@ void JPEG::readDHT() {
     }
 }
 
-void JPEG::readSOF0() {
+void JPEG_DECODER::readDQT() {
+    unsigned char c, precision, id;
+    unsigned char *table;
+    GetLength();
+    while(data.length) {
+        c = data.pos[0];
+        precision = c >> 4 == 0 ? 8 : 16;
+//        printf("precision: %d\n", precision);
+        precision /= 8;
+        id = c & 0x0F;
+//        printf("quan ID: %d\n", id);
+        table = &data.qtab[id][0];
+        skip(1);
+        for (c = 0; c < 64; ++c) {
+            table[c] = data.pos[c];
+        }
+        skip(64);
+    }
+    if (data.length) {
+        printf("read DQT Syntax Error!\n");
+        data.status = SYNTAX_ERROR;
+        return;
+    }
+}
+
+void JPEG_DECODER::readJFIF(JFIF *d, unsigned char *read_pos) {
+    int sub_count = -1;
+    for (int i = 0; i < d->Tag_num; ++i) {
+        d->Tag[i] = Get16u(read_pos + (i * 12));
+        d->Format[i] = Get16u(read_pos + (i * 12 + 2));
+        d->Components[i] = Get32u(read_pos + (i * 12 + 4));
+        d->Offset[i] = Get32u(read_pos + (i * 12 + 8));
+        switch (d->Tag[i]) {
+            case 34665:
+            case 34853: ++sub_count;
+            default: break;
+        }
+        d->Sub[i] = sub_count;
+    }
+    d->sub = new JFIF[sub_count + 1];
+    for (int i = 0; i < d->Tag_num; ++i) {
+        if (d->Sub[i] != -1) {
+            unsigned int len = Get16u(d->start_pos + d->Offset[i]);
+            d->sub[d->Sub[i]].Init(len, d->start_pos);
+            switch (d->Tag[i]) {
+                case 34665: d->sub[d->Sub[i]].method = JFIF::EXIF; break;
+                case 34853: d->sub[d->Sub[i]].method = JFIF::GPS; break;
+                default: break;
+            }
+            readJFIF(&d->sub[d->Sub[i]], d->start_pos + d->Offset[i] + 2);
+        }
+    }
+}
+
+void JPEG_DECODER::readAPP1() {
+    unsigned int IFD0_ptr;
+    unsigned int Tag_num;
+    
+    GetLength();
+    if (data.pos[0] == 'E' && data.pos[1] == 'x' && data.pos[6] == 'I' && data.pos[7] == 'I') {
+        //        printf("Get Exif\n");
+        skip(6);
+        IFD0_ptr = Get32u(data.pos + 4);
+        Tag_num = Get16u(data.pos + IFD0_ptr);
+        if (Exif)
+            skip(data.length - 6);
+        Exif = new JFIF(Tag_num, data.pos);
+        skip(IFD0_ptr + 2);
+        readJFIF(Exif, data.pos);
+    } else {
+        //printf("Unsupport APP1 format!\n");
+    }
+    skip(data.length);
+}
+
+void JPEG_DECODER::readSOF0() {
     int i;
     Component *c;
     unsigned char precision;
@@ -513,160 +629,53 @@ void JPEG::readSOF0() {
     }
 }
 
-void JPEG::readDQT() {
-    unsigned char c, precision, id;
-    unsigned char *table;
-    GetLength();
-    while(data.length) {
-        c = data.pos[0];
-        precision = c >> 4 == 0 ? 8 : 16;
-        //        printf("precision: %d\n", precision);
-        precision /= 8;
-        id = c & 0x0F;
-        //        printf("quan ID: %d\n", id);
-        table = &data.qtab[id][0];
-        skip(1);
-        for (c = 0; c < 64; ++c) {
-            table[c] = data.pos[c];
-        }
-        skip(64);
-    }
-    if (data.length) {
-        printf("read DQT Syntax Error!\n");
-        data.status = SYNTAX_ERROR;
-        return;
-    }
-}
-
-void JPEG::skipMARKER() {
+void JPEG_DECODER::skipMARKER() {
     GetLength();
     skip(data.length);
 }
 
-void JPEG::readAPP1() {
-    unsigned int IFD0_ptr;
-    unsigned int Tag_num;
-    
-    GetLength();
-    if (data.pos[0] == 'E' && data.pos[1] == 'x' && data.pos[6] == 'I' && data.pos[7] == 'I') {
-        //        printf("Get Exif\n");
-        skip(6);
-        IFD0_ptr = Get32u(data.pos + 4);
-        Tag_num = Get16u(data.pos + IFD0_ptr);
-        if (Exif)
-            skip(data.length - 6);
-        Exif = new DATA_SET(Tag_num, data.pos);
-        skip(IFD0_ptr + 2);
-        readDataSet(Exif, data.pos);
-    } else {
-        //        printf("Unsupport APP1 format!\n");
-    }
-    skip(data.length);
-}
-
-void JPEG::showPicInfo() {
-    if (Exif == NULL) {
-        printf("No information!\n");
-        return;
-    }
-    Exif->show();
-}
-
-void JPEG::readDataSet(DATA_SET *d, unsigned char *read_pos) {
-    int sub_count = -1;
-    for (int i = 0; i < d->Tag_num; ++i) {
-        d->Tag[i] = Get16u(read_pos + (i * 12));
-        d->Format[i] = Get16u(read_pos + (i * 12 + 2));
-        d->Components[i] = Get32u(read_pos + (i * 12 + 4));
-        d->Offset[i] = Get32u(read_pos + (i * 12 + 8));
-        switch (d->Tag[i]) {
-            case 34665:
-            case 34853: ++sub_count;
-            default: break;
-        }
-        d->Sub[i] = sub_count;
-    }
-    d->sub = new DATA_SET[sub_count + 1];
-    for (int i = 0; i < d->Tag_num; ++i) {
-        if (d->Sub[i] != -1) {
-            unsigned int len = Get16u(d->start_pos + d->Offset[i]);
-            d->sub[d->Sub[i]].Init(len, d->start_pos);
-            switch (d->Tag[i]) {
-                case 34665: d->sub[d->Sub[i]].method = DATA_SET::EXIF; break;
-                case 34853: d->sub[d->Sub[i]].method = DATA_SET::GPS; break;
-                default: break;
-            }
-            readDataSet(&d->sub[d->Sub[i]], d->start_pos + d->Offset[i] + 2);
-        }
-    }
-}
-
-JPEG::Status JPEG::decode() {
-    //    printf("%d %d\n", data.pos[0], data.pos[1]);
-    if ((data.pos[0] ^ 0xFF) | (data.pos[1] ^ 0xD8)) {
-        printf("NOT JPEG!\n");
-        return NOT_JPEG;
-    }
-    skip(2);
-    while(!data.status) {
-        skip(2);
-        switch (data.pos[-1]) {
-            case APP0_MARKER:
-//                printf("APP0 MARKER\n");
-                skipMARKER();
-                break;
-            case APP1_MARKER:
-//                printf("APP1 MARKER\n");
-                readAPP1();
-                break;
-            case DQT_MARKER:
-//                printf("DQT MARKER\n");
-                readDQT();
-                break;
-            case SOF0_MARKER:
-//                printf("SOF0 MARKER\n");
-                readSOF0();
-                break;
-            case SOF2_MARKER:
-//                printf("SOF2 MARKER\n");
-                break;
-            case DHT_MARKER:
-//                printf("DHT MARKER\n");
-                readDHT();
-                break;
-            case SOS_MARKER:
-//                printf("SOS MARKER\n");
-                readSOS();
-                readDATA();
-                toRGB();
-                break;
-            case DRI_MARKER:
-//                printf("DRI MARKER\n");
-                readDRI();
-                data.status = UNSUPPORT;
-                break;
-            default:
-                if ((data.pos[-1] & 0xF0) == 0xE0)
-                    skipMARKER();
-                else
-                    return UNSUPPORT;
-                
-        }
-    }
-    if (data.status == DECODE_FINISH)
-        return OK;
-    return data.status;
-}
-
-inline void JPEG::skip(int number) {
+inline void JPEG_DECODER::skip(int number) {
     data.pos += number;
     data.size -= number;
     data.length -= number;
 }
 
-void JPEG::GetLength() {
+void JPEG_DECODER::GetLength() {
     data.length = Decode16(data.pos);
     skip(2);
+}
+
+unsigned char JPEG_DECODER::clip(const int x) {
+    return (x < 0) ? 0 : ((x > 0xFF) ? 0xFF : (unsigned char) x);
+}
+
+inline unsigned char JPEG_DECODER::CF(const int x) {
+    return clip((x + 64) >> 7);
+}
+
+void JPEG_DECODER::getPicInfo(vector<string> &Info) {
+    if (!Exif)
+        return;
+    Exif->getInfo(Info);
+}
+
+JFIF::~JFIF() {
+    delete [] Tag;
+    delete [] Format;
+    delete [] Components;
+    delete [] Offset;
+    delete [] Sub;
+}
+
+void JFIF::Init(unsigned int num, unsigned char *_start_pos) {
+    Tag = new unsigned int [num];
+    Format = new unsigned int [num];
+    Components = new unsigned int [num];
+    Offset = new unsigned int [num];
+    Sub = new unsigned int [num];
+    Tag_num = num;
+    method = TIFF;
+    start_pos = _start_pos;
 }
 
 inline unsigned short Decode16(const unsigned char *pos) {
@@ -685,408 +694,14 @@ inline int Get32s(const unsigned char *pos) {
     return (pos[3] << 24) | (pos[2] << 16) | (pos[1] << 8) | pos[0];
 }
 
-unsigned char JPEG::clip(const int x) {
-    return (x < 0) ? 0 : ((x > 0xFF) ? 0xFF : (unsigned char) x);
-}
-
-void DATA_SET::str(unsigned char *pos, unsigned int len) {
-    for (int i = 0; i < len; ++i) {
-        printf("%c", pos[i]);
-    }
-    printf("\n");
-}
-
-float DATA_SET::ration64u(unsigned char *pos) {
-    unsigned int up, down;
-    up = Get32u(pos);
-    down = Get32u(pos + 4);
-    return 1.0 * up / down;
-}
-
-float DATA_SET::ration64s(unsigned char *pos) {
-    int up, down;
-    up = Get32s(pos);
-    down = Get32s(pos + 4);
-    return 1.0 * up / down;
-}
-
-void DATA_SET::show() {
-    unsigned char *ptr;
-    switch (method) {
-        case TIFF: printf("*************一般資訊*************\n"); break;
-        case EXIF: printf("*************EXIF*************\n"); break;
-        case GPS: printf("*************GPS*************\n"); break;
-        default: break;
-    }
+bool JPEG_ENCODER::write(const char *filename, float quality_, bool down_sample) {
+    BIT_WRITER writer(filename);
+    if (pixelArray == nullptr)
+        return false;
+    if (width == 0 || height == 0)
+        return false;
     
-    for (int i = 0; i < Tag_num; ++i) {
-        //        printf("Tag: %d Format: %d Components: %d Offset: %d\n", Tag[i], Format[i], Components[i], Offset[i]);
-        ptr = start_pos + Offset[i];
-        unsigned char c;
-        switch (Tag[i]) {
-            case 271:
-                printf("製造商: "); break;
-            case 272:
-                printf("型號: "); break;
-            case 274:
-                printf("轉向: ");
-                switch (Offset[i]) {
-                    case 1: printf("水平\n"); break;
-                    case 2: printf("水平鏡像\n"); break;
-                    case 3: printf("旋轉180度\n"); break;
-                    case 4: printf("垂直鏡像\n"); break;
-                    case 5: printf("水平鏡像順時針旋轉270度\n"); break;
-                    case 6: printf("順時針旋轉90度\n"); break;
-                    case 7: printf("水平鏡像順時針旋轉90度\n"); break;
-                    case 8: printf("順時針旋轉270度\n"); break;
-                    default: break;
-                }
-                break;
-            case 282:
-                printf("x解析度: "); break;
-            case 283:
-                printf("y解析度: "); break;
-            case 296:
-                printf("解析度單位: ");
-                switch (Offset[i]) {
-                    case 1: printf("無\n"); break;
-                    case 2: printf("英吋\n"); break;
-                    case 3: printf("公分\n"); break;
-                    default: break;
-                }
-                break;
-            case 305: printf("軟體: "); break;
-            case 306: printf("修改日期: "); break;
-            case 315: printf("Artist: "); break;
-            case 531:
-                printf("YCbCrPositioning: ");
-                switch (Offset[i]) {
-                    case 1: printf("center of pixel array\n"); break;
-                    case 2: printf("datum point\n"); break;
-                    default: break;
-                }
-                break;
-            case 33432: printf("Copyright: "); break;
-            case 0: printf("GPS版本: "); break;
-            case 1: printf("緯度: "); break;
-            case 2: break;
-            case 3: printf("經度: "); break;
-            case 4: break;
-            case 5: printf("海拔: "); break;
-            case 6: break;
-            case 7: printf("日期標記: "); break;
-            case 8: printf("衛星: "); break;
-            case 9: printf("狀態: "); break;
-            case 10: printf("測量模式: "); break;
-            case 11: printf("精準度: "); break;
-            case 18: printf("地圖基準面: "); break;
-            case 29: printf("日期標記: "); break;
-            case ExposureTime: printf("曝光時間: "); break;
-            case FNumber: printf("光圈: "); break;
-            case ExposureProgram:
-                printf("曝光模式: ");
-                switch (Offset[i]) {
-                    case 0: printf("未定義\n"); break;
-                    case 1: printf("手動\n"); break;
-                    case 2: printf("程式自動\n"); break;
-                    case 3: printf("光圈優先\n"); break;
-                    case 4: printf("快門優先\n"); break;
-                    case 5: printf("Creative\n"); break;
-                    case 6: printf("Action\n"); break;
-                    case 7: printf("Protrait\n"); break;
-                    case 8: printf("地景\n"); break;
-                    case 9: printf("B快門\n"); break;
-                    default: break;
-                }
-                break;
-            case ISOSpeedRatings: printf("ISO: %u\n", Offset[i]); break;
-            case SensitivityType:
-                printf("SensitivityType: ");
-                switch (Offset[i]) {
-                    case 0: printf("未知\n"); break;
-                    case 1: printf("Standard Output Sensitivity\n"); break;
-                    case 2: printf("Recommended Exposure Index\n"); break;
-                    case 3: printf("ISO Speed\n"); break;
-                    case 4: printf("Standard Output Sensitivity and Recommended Exposure Index\n"); break;
-                    case 5: printf("Standard Output Sensitivity and ISO Speed\n"); break;
-                    case 6: printf("Recommended Exposure Index and ISO Speed\n"); break;
-                    case 7: printf("Standard Output Sensitivity, Recommended Exposure Index and ISO Speed\n"); break;
-                    default:
-                        break;
-                }
-                break;
-            case RecommendedExposureIndex: printf("RecommendedExposureIndex: %u\n", Offset[i]); break;
-            case ExifVersion: break;
-            case DateTimeOriginal: printf("DateTimeOriginal: "); break;
-            case CreateDate: printf("創建日期: "); break;
-            case OffsetTime: printf("修改日期時區: "); break;
-            case OffsetTimeOriginal: printf("DateTimeOriginal日期時區: "); break;
-            case OffsetTimeDigitized: printf("創建日期時區: "); break;
-            case ShutterSpeedValue: printf("快門: "); break;
-            case ApertureValue: printf("光圈值: "); break;
-            case ExposureBiasValue: printf("曝光補償: "); break;
-            case MaxApertureValue: printf("最大光圈值: "); break;
-            case MeteringMode:
-                printf("測光模式: ");
-                switch (Offset[i]) {
-                    case 0: printf("未知\n"); break;
-                    case 1: printf("平均\n"); break;
-                    case 2: printf("中央權衡\n"); break;
-                    case 3: printf("Spot\n"); break;
-                    case 4: printf("Multi-spot\n"); break;
-                    case 5: printf("Multi-segment\n"); break;
-                    case 6: printf("Partial\n"); break;
-                    case 255: printf("其他\n"); break;
-                    default:
-                        break;
-                }
-                break;
-            case Flash:
-                printf("閃光燈: ");
-                switch (Offset[i]) {
-                    case 0x0: printf("無\n"); break;
-                    case 0x1: printf("Fired\n"); break;
-                    case 0x5: printf("Fired, Return not detected\n"); break;
-                    case 0x7: printf("Fired, Return detected\n"); break;
-                    case 0x8: printf("On, Did not fire\n"); break;
-                    case 0x9: printf("On, Fired\n"); break;
-                    case 0xd: printf("On, Return not detected\n"); break;
-                    case 0xf: printf("On, Return detected\n"); break;
-                    case 0x10: printf("Off, Did not fire\n"); break;
-                    case 0x14: printf("Off, Did not fire, Return not detected\n"); break;
-                    case 0x18: printf("Auto, Did not fire\n"); break;
-                    case 0x19: printf("Auto, Fired\n"); break;
-                    case 0x1d: printf("Auto, Fired, Return not detected\n"); break;
-                    case 0x1f: printf("Auto, Fired, Return detected\n"); break;
-                    case 0x20: printf("No flash function\n"); break;
-                    case 0x30: printf("Off, No flash function\n"); break;
-                    case 0x41: printf("Fired, Red-eye reduction\n"); break;
-                    case 0x45: printf("Fired, Red-eye reduction, Return not detected\n"); break;
-                    case 0x47: printf("Fired, Red-eye reduction, Return detected\n"); break;
-                    case 0x49: printf("On, Red-eye reduction\n"); break;
-                    case 0x4d: printf("On, Red-eye reduction, Return not detected\n"); break;
-                    case 0x4f: printf("On, Red-eye reduction, Return detected\n"); break;
-                    case 0x50: printf("Off, Red-eye reduction\n"); break;
-                    case 0x58: printf("Auto, Did not fire, Red-eye reduction\n"); break;
-                    case 0x59: printf("Auto, Fired, Red-eye reduction\n"); break;
-                    case 0x5d: printf("Auto, Fired, Red-eye reduction, Return not detected\n"); break;
-                    case 0x5f: printf("Auto, Fired, Red-eye reduction, Return detected\n"); break;
-                    default:
-                        break;
-                }
-                break;
-            case FocalLength: printf("焦距: "); break;
-            case SubSecTime: printf("SubSecTime: "); break;
-            case SubSecTimeOriginal: printf("SubSecTimeOriginal: "); break;
-            case SubSecTimeDigitized: printf("SubSecTimeDigitized: "); break;
-            case FlashPixVersion: printf("FlashPixVersion: "); break;
-            case ColorSpace:
-                printf("色彩空間: ");
-                switch (Offset[i]) {
-                    case 1: printf("SRGB\n"); break;
-                    case 65535: printf("未矯正\n"); break;
-                    default: break;
-                }
-                break;
-            case PixelXDimension: printf("X像素數: %u\n", Offset[i]); break;
-            case PixelYDimension: printf("Y像素數: %u\n", Offset[i]); break;
-            case FocalPlaneXResolution: printf("焦點平面X解析度: "); break;
-            case FocalPlaneYResolution: printf("焦點平面Y解析度: "); break;
-            case FocalPlaneResolutionUnit:
-                printf("焦點平面解析度單位: ");
-                switch (Offset[i]) {
-                    case 1: printf("無\n"); break;
-                    case 2: printf("英吋\n"); break;
-                    case 3: printf("公分\n"); break;
-                    default: break;
-                }
-                break;
-            case CustomRendered:
-                printf("自定義渲染: ");
-                switch (Offset[i]) {
-                    case 0: printf("一般\n"); break;
-                    case 1: printf("自訂\n"); break;
-                    default: break;
-                }
-                break;
-            case ExposureMode:
-                printf("曝光模式: ");
-                switch (Offset[i]) {
-                    case 0: printf("自動曝光\n"); break;
-                    case 1: printf("手動曝光\n"); break;
-                    case 2: printf("Auto bracket\n"); break;
-                    default: break;
-                }
-                break;
-            case WhiteBalance:
-                printf("白平衡: ");
-                switch (Offset[i]) {
-                    case 0: printf("自動\n"); break;
-                    case 1: printf("手動\n"); break;
-                    default: break;
-                }
-                break;
-            case SceneCaptureType:
-                printf("SceneCaptureType: ");
-                switch (Offset[i]) {
-                    case 0: printf("標準\n"); break;
-                    case 1: printf("地景\n"); break;
-                    case 2: printf("自拍\n"); break;
-                    case 3: printf("夜景\n"); break;
-                    default: break;
-                }
-                break;
-            case CameraOwnerName: printf("相機擁有者: "); break;
-            case BodySerialNumber: printf("機身序號: "); break;
-            case LensSpecification: printf("鏡頭焦距: "); break;
-            case LensModel: printf("鏡頭型號: "); break;
-            case LensSerialNumber: printf("鏡頭序號: "); break;
-            default: break;
-        }
-        switch (method) {
-            case TIFF:
-                switch (Format[i]) {
-                    case 5: printf("%g\n", ration64u(ptr)); break;
-                    case 2: str(ptr, Components[i]); break;
-                    default:
-                        break;
-                }
-                break;
-            case EXIF:
-                switch (Format[i]) {
-                    case 10:
-                        printf("%g\n", pow(2, -(ration64s(ptr))));
-                        break;
-                    case 5: printf("%g\n", ration64u(ptr)); break;
-                    case 2: str(ptr, Components[i]); break;
-                    default:
-                        break;
-                }
-                break;
-            case GPS:
-                switch (Format[i]) {
-                    case 5:
-                        for (int k = 0; k < Components[i]; ++k) {
-                            printf("%g", ration64u(ptr + k * 8));
-                            if (k != Components[i] - 1)
-                                printf(", ");
-                        }
-                        printf("\n");
-                        break;
-                    case 2:
-                        if (Components[i] <= 4) {
-                            for (int k = 0; k < Components[i]; ++k) {
-                                c = Offset[i] >> k * 8;
-                                printf("%c", c);
-                            }
-                            printf("\n");
-                        } else {
-                            str(ptr, Components[i]);
-                        }
-                        break;
-                    case 1:
-                        for (int k = 0; k < Components[i]; ++k) {
-                            c = Offset[i] >> k * 8;
-                            printf("%d", c);
-                            if (k != Components[i] - 1)
-                                printf(".");
-                        }
-                        printf("\n");
-                        break;
-                    default: break;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-    for (int i = 0; i < Tag_num; ++i) {
-        if (Sub[i] != -1) {
-            sub[Sub[i]].show();
-        }
-    }
-}
-
-template <typename Number, typename Limit>
-Number clamp(Number value, Limit minValue, Limit maxValue) {
-    if (value <= minValue)
-        return minValue;
-    if (value >= maxValue)
-        return maxValue;
-    return value;
-}
-
-void JPEG::generateHuffmanTable(const unsigned char numCodes[16], const unsigned char *values, BitCode result[256]) {
-    auto huffmanCode = 0;
-    for (int numBits = 1; numBits <= 16; numBits++) {
-        for (int i = 0; i < numCodes[numBits - 1]; i++)
-        result[*values++] = BitCode(huffmanCode++, numBits);
-        huffmanCode <<= 1;
-    }
-}
-
-float JPEG::convertRGBtoY(float r, float g, float b) {
-    return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-float JPEG::convertRGBtoCb(float r, float g, float b) {
-    return -0.16874 * r - 0.33126 * g + 0.5 * b;
-}
-
-float JPEG::convertRGBtoCr(float r, float g, float b) {
-    return 0.5 * r -0.41869 * g - 0.08131 * b;
-}
-
-Writer::Writer(const char *filename) {
-    f = fopen(filename, "wb");
-}
-
-Writer::~Writer() {
-    fclose(f);
-}
-
-void Writer::write(const void *data, int size) {
-    fwrite(data, size, 1, f);
-}
-
-void Writer::write_byte(unsigned char data) {
-    this->write(&data, 1);
-}
-
-void Writer::write_word(unsigned short data) {
-    unsigned short data_ = ((data >> 8) & 0xFF) | ((data & 0xFF) << 8);
-    this->write(&data_, 2);
-}
-
-void Writer::write_bits(const BitCode &data) {
-    buffer.numBits += data.numBits;
-    buffer.data   <<= data.numBits;
-    buffer.data    |= data.code;
-    while (buffer.numBits >= 8) {
-        buffer.numBits -= 8;
-        unsigned char oneByte = (unsigned char)(buffer.data >> buffer.numBits);
-        write_byte(oneByte);
-        if (oneByte == 0xFF)
-            write_byte(0x00);
-    }
-}
-
-void Writer::addMarker(unsigned char id, unsigned short length) {
-    this->write_byte(0xFF);
-    this->write_byte(id);
-    this->write_word(length);
-}
-
-void Writer::flush() {
-    this->write_bits(BitCode(0x7F, 7));
-}
-
-bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_sample) {
-    Writer writer(filename);
-    if (data.rgb == nullptr)
-        return false;
-    if (data.width == 0 || data.height == 0)
-        return false;
+    bool isRGB = (channel == 1) ? false : true;
     if (!isRGB)
         down_sample = false;
     if (down_sample) {
@@ -1113,8 +728,8 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
     unsigned char quantLuminance[64];
     unsigned char quantChrominance[64];
     for (int i = 0; i < 64; ++i) {
-        int luminance = (DefaultQuantLuminance[ZigZag[i]] * quality + 50) / 100;
-        int chrominance = (DefaultQuantChrominance[ZigZag[i]] * quality + 50) / 100;
+        int luminance = (DefaultQuantLuminance[ZigZagInv[i]] * quality + 50) / 100;
+        int chrominance = (DefaultQuantChrominance[ZigZagInv[i]] * quality + 50) / 100;
         
         quantLuminance[i] = clamp(luminance, 1, 255);
         quantChrominance[i] = clamp(chrominance, 1, 255);
@@ -1128,15 +743,15 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
     }
     
     // SOF0
-    writer.addMarker(SOF0_MARKER, 2 + 6 + 3 * data.comp_number);
+    writer.addMarker(SOF0_MARKER, 2 + 6 + 3 * channel);
     writer.write_byte(0x08);
-    writer.write_byte((unsigned char)(data.height >> 8));
-    writer.write_byte((unsigned char)(data.height & 0xFF));
-    writer.write_byte((unsigned char)(data.width >> 8));
-    writer.write_byte((unsigned char)(data.width & 0xFF));
+    writer.write_byte((unsigned char)(height >> 8));
+    writer.write_byte((unsigned char)(height & 0xFF));
+    writer.write_byte((unsigned char)(width >> 8));
+    writer.write_byte((unsigned char)(width & 0xFF));
 
-    writer.write_byte((unsigned char)(data.comp_number));
-    for (unsigned char id = 1; id <= data.comp_number; ++id) {
+    writer.write_byte((unsigned char)(channel));
+    for (unsigned char id = 1; id <= channel; ++id) {
         writer.write_byte(id);
         writer.write_byte((id == 1 && down_sample) ? 0x22 : 0x11);
         writer.write_byte((id == 1) ? 0x00 : 0x01);
@@ -1173,9 +788,9 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
     }
     
     // SOS
-    writer.addMarker(SOS_MARKER, 2 + 1 + 2 * data.comp_number + 3);
-    writer.write_byte(data.comp_number);
-    for (unsigned char id = 1; id <= data.comp_number; ++id) {
+    writer.addMarker(SOS_MARKER, 2 + 1 + 2 * channel + 3);
+    writer.write_byte(channel);
+    for (unsigned char id = 1; id <= channel; ++id) {
         writer.write_byte(id);
         writer.write_byte((id == 1) ? 0x00 : 0x11);
     }
@@ -1188,15 +803,15 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
     float scaledChrominance[64];
     for (int i = 0; i < 64; i++)
     {
-        int row = ZigZag[i] / 8;
-        int column = ZigZag[i] % 8;
+        int row = ZigZagInv[i] / 8;
+        int column = ZigZagInv[i] % 8;
         
         static const float AanScaleFactors[8] = {
             1, 1.387039845f, 1.306562965f, 1.175875602f, 1, 0.785694958f, 0.541196100f, 0.275899379f
         };
         float factor = 1 / (AanScaleFactors[row] * AanScaleFactors[column] * 8);
-        scaledLuminance[ZigZag[i]] = factor / quantLuminance  [i];
-        scaledChrominance[ZigZag[i]] = factor / quantChrominance[i];
+        scaledLuminance[ZigZagInv[i]] = factor / quantLuminance  [i];
+        scaledChrominance[ZigZagInv[i]] = factor / quantChrominance[i];
     }
     
     BitCode  codewordsArray[2 * CodeWordLimit];
@@ -1212,9 +827,7 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
         codewords[+value] = BitCode(value, numBits);
     }
     
-    unsigned char *pixels = data.rgb;
-    const int width = data.width;
-    const int height = data.height;
+    unsigned char *pixels = pixelArray;
     const int maxWidth = width - 1;
     const int maxHeight = height - 1;
     
@@ -1305,7 +918,7 @@ bool JPEG::save(const char *filename, float quality_, bool isRGB, bool down_samp
     return true;
 }
 
-int JPEG::encodeBlock(Writer& writer, float block[8][8], const float scaled[64], int lastDC, const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords) {
+int JPEG_ENCODER::encodeBlock(BIT_WRITER& writer, float block[8][8], const float scaled[64], int lastDC, const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords) {
     float *block64 = (float*)block;
     
     for (int offset = 0; offset < 8; offset++) {
@@ -1324,7 +937,7 @@ int JPEG::encodeBlock(Writer& writer, float block[8][8], const float scaled[64],
     int posNonZero = 0;
     short int quantized[64];
     for (short int i = 1; i < 64; i++) {
-        float value = block64[ZigZag[i]];
+        float value = block64[ZigZagInv[i]];
         quantized[i] = int(value + (value >= 0 ? +0.5f : -0.5f));
         if (quantized[i] != 0)
             posNonZero = i;
@@ -1360,7 +973,7 @@ int JPEG::encodeBlock(Writer& writer, float block[8][8], const float scaled[64],
     return dc;
 }
 
-void JPEG::DCT(float block[8*8], unsigned short stride) {
+void JPEG_ENCODER::DCT(float block[8*8], unsigned short stride) {
     const float SqrtHalfSqrt = 1.306562965;
     const float InvSqrt = 0.707106781;
     const float HalfSqrtSqrt = 0.382683432;
@@ -1400,4 +1013,421 @@ void JPEG::DCT(float block[8*8], unsigned short stride) {
     float z7 = sub07 - z3;
     block1 = z6 + z4; block7 = z6 - z4;
     block5 = z7 + z2; block3 = z7 - z2;
+}
+
+template <typename Number, typename Limit>
+Number clamp(Number value, Limit minValue, Limit maxValue) {
+    if (value <= minValue)
+        return minValue;
+    if (value >= maxValue)
+        return maxValue;
+    return value;
+}
+
+void JPEG_ENCODER::generateHuffmanTable(const unsigned char numCodes[16], const unsigned char *values, BitCode result[256]) {
+    auto huffmanCode = 0;
+    for (int numBits = 1; numBits <= 16; numBits++) {
+        for (int i = 0; i < numCodes[numBits - 1]; i++)
+        result[*values++] = BitCode(huffmanCode++, numBits);
+        huffmanCode <<= 1;
+    }
+}
+
+float JPEG_ENCODER::convertRGBtoY(float r, float g, float b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+float JPEG_ENCODER::convertRGBtoCb(float r, float g, float b) {
+    return -0.16874 * r - 0.33126 * g + 0.5 * b;
+}
+
+float JPEG_ENCODER::convertRGBtoCr(float r, float g, float b) {
+    return 0.5 * r -0.41869 * g - 0.08131 * b;
+}
+
+BIT_WRITER::BIT_WRITER(const char *filename) {
+    f = fopen(filename, "wb");
+}
+
+BIT_WRITER::~BIT_WRITER() {
+    fclose(f);
+}
+
+void BIT_WRITER::write(const void *data, int size) {
+    fwrite(data, size, 1, f);
+}
+
+void BIT_WRITER::write_byte(unsigned char data) {
+    this->write(&data, 1);
+}
+
+void BIT_WRITER::write_word(unsigned short data) {
+    unsigned short data_ = ((data >> 8) & 0xFF) | ((data & 0xFF) << 8);
+    this->write(&data_, 2);
+}
+
+void BIT_WRITER::write_bits(const BitCode &data) {
+    buffer.numBits += data.numBits;
+    buffer.data   <<= data.numBits;
+    buffer.data    |= data.code;
+    while (buffer.numBits >= 8) {
+        buffer.numBits -= 8;
+        unsigned char oneByte = (unsigned char)(buffer.data >> buffer.numBits);
+        write_byte(oneByte);
+        if (oneByte == 0xFF)
+            write_byte(0x00);
+    }
+}
+
+void BIT_WRITER::addMarker(unsigned char id, unsigned short length) {
+    this->write_byte(0xFF);
+    this->write_byte(id);
+    this->write_word(length);
+}
+
+void BIT_WRITER::flush() {
+    this->write_bits(BitCode(0x7F, 7));
+}
+
+void JFIF::str(unsigned char *pos, unsigned int len) {
+    for (int i = 0; i < len; ++i) {
+        printf("%c", pos[i]);
+    }
+    printf("\n");
+}
+
+float JFIF::ration64u(unsigned char *pos) {
+    unsigned int up, down;
+    up = Get32u(pos);
+    down = Get32u(pos + 4);
+    return 1.0 * up / down;
+}
+
+float JFIF::ration64s(unsigned char *pos) {
+    int up, down;
+    up = Get32s(pos);
+    down = Get32s(pos + 4);
+    return 1.0 * up / down;
+}
+
+void JFIF::getInfo(vector<string> &Info) {
+    unsigned char *ptr;
+    switch (method) {
+        case TIFF: Info.push_back(string("*************一般資訊*************\n")); break;
+        case EXIF: Info.push_back(string("*************EXIF*************\n")); break;
+        case GPS: Info.push_back(string("*************GPS*************\n")); break;
+        default: break;
+    }
+    for (int i = 0; i < Tag_num; ++i) {
+        ptr = start_pos + Offset[i];
+        unsigned char c;
+        string element;
+        bool new_line = true;
+        char element_detail[255];
+        switch (Tag[i]) {
+            case 271:
+                element += "製造商: "; break;
+            case 272:
+                element += "型號: "; break;
+            case 274:
+                element += "轉向: ";
+                switch (Offset[i]) {
+                    case 1: element += "水平\n"; break;
+                    case 2: element += "水平鏡像\n"; break;
+                    case 3: element += "旋轉180度\n"; break;
+                    case 4: element += "垂直鏡像\n"; break;
+                    case 5: element += "水平鏡像順時針旋轉270度\n"; break;
+                    case 6: element += "順時針旋轉90度\n"; break;
+                    case 7: element += "水平鏡像順時針旋轉90度\n"; break;
+                    case 8: element += "順時針旋轉270度\n"; break;
+                    default: break;
+                }
+                break;
+            case 282:
+                element += "x解析度: "; break;
+            case 283:
+                element += "y解析度: "; break;
+            case 296:
+                element += "解析度單位: ";
+                switch (Offset[i]) {
+                    case 1: element += "無\n"; break;
+                    case 2: element += "英吋\n"; break;
+                    case 3: element += "公分\n"; break;
+                    default: break;
+                }
+                break;
+            case 305: element += "軟體: "; break;
+            case 306: element += "修改日期: "; break;
+            case 315: element += "Artist: "; break;
+            case 531:
+                element += "YCbCrPositioning: ";
+                switch (Offset[i]) {
+                    case 1: element += "center of pixel array\n"; break;
+                    case 2: element += "datum point\n"; break;
+                    default: break;
+                }
+                break;
+            case 33432: element += "Copyright: "; break;
+            case 0: element += "GPS版本: "; break;
+            case 1: element += "緯度: "; new_line = false; break;
+            case 2: break;
+            case 3: element += "經度: "; new_line = false; break;
+            case 4: break;
+            case 5: element += "海拔模式: "; break;
+            case 6: element += "海拔: "; break;
+            case 7: element += "日期標記: "; break;
+            case 8: element += "衛星: "; break;
+            case 9: element += "狀態: "; break;
+            case 10: element += "測量模式: "; break;
+            case 11: element += "精準度: "; break;
+            case 18: element += "地圖基準面: "; break;
+            case 29: element += "日期標記: "; break;
+            case ExposureTime: element += "曝光時間: "; break;
+            case FNumber: element += "光圈: "; break;
+            case ExposureProgram:
+                element += "曝光模式: ";
+                switch (Offset[i]) {
+                    case 0: element += "未定義\n"; break;
+                    case 1: element += "手動\n"; break;
+                    case 2: element += "程式自動\n"; break;
+                    case 3: element += "光圈優先\n"; break;
+                    case 4: element += "快門優先\n"; break;
+                    case 5: element += "Creative\n"; break;
+                    case 6: element += "動態\n"; break;
+                    case 7: element += "Protrait\n"; break;
+                    case 8: element += "地景\n"; break;
+                    case 9: element += "B快門\n"; break;
+                    default: break;
+                }
+                break;
+            case ISOSpeedRatings:
+                sprintf(element_detail, "ISO: %u\n", Offset[i]);
+                element += string(element_detail); break;
+            case SensitivityType:
+                element += "SensitivityType: ";
+                switch (Offset[i]) {
+                    case 0: element += "未知\n"; break;
+                    case 1: element += "Standard Output Sensitivity\n"; break;
+                    case 2: element += "Recommended Exposure Index\n"; break;
+                    case 3: element += "ISO Speed\n"; break;
+                    case 4: element += "Standard Output Sensitivity and Recommended Exposure Index\n"; break;
+                    case 5: element += "Standard Output Sensitivity and ISO Speed\n"; break;
+                    case 6: element += "Recommended Exposure Index and ISO Speed\n"; break;
+                    case 7: element += "Standard Output Sensitivity, Recommended Exposure Index and ISO Speed\n"; break;
+                    default:
+                        break;
+                }
+                break;
+            case RecommendedExposureIndex:
+                sprintf(element_detail, "RecommendedExposureIndex: %u\n", Offset[i]);
+                element += string(element_detail); break;
+            case ExifVersion: break;
+            case DateTimeOriginal: element += "DateTimeOriginal: "; break;
+            case CreateDate: element += "創建日期: "; break;
+            case OffsetTime: element += "修改日期時區: "; break;
+            case OffsetTimeOriginal: element += "DateTimeOriginal日期時區: "; break;
+            case OffsetTimeDigitized: element += "創建日期時區: "; break;
+            case ShutterSpeedValue: element += "快門: "; break;
+            case ApertureValue: element += "光圈值: "; break;
+            case ExposureBiasValue: element += "曝光補償: "; break;
+            case MaxApertureValue: element += "最大光圈值: "; break;
+            case MeteringMode:
+                element += "測光模式: ";
+                switch (Offset[i]) {
+                    case 0: element += "未知\n"; break;
+                    case 1: element += "平均\n"; break;
+                    case 2: element += "中央權衡\n"; break;
+                    case 3: element += "Spot\n"; break;
+                    case 4: element += "Multi-spot\n"; break;
+                    case 5: element += "Multi-segment\n"; break;
+                    case 6: element += "Partial\n"; break;
+                    case 255: element += "其他\n"; break;
+                    default:
+                        break;
+                }
+                break;
+            case Flash:
+                element += "閃光燈: ";
+                switch (Offset[i]) {
+                    case 0x0: element += "無\n"; break;
+                    case 0x1: element += "Fired\n"; break;
+                    case 0x5: element += "Fired, Return not detected\n"; break;
+                    case 0x7: element += "Fired, Return detected\n"; break;
+                    case 0x8: element += "On, Did not fire\n"; break;
+                    case 0x9: element += "On, Fired\n"; break;
+                    case 0xd: element += "On, Return not detected\n"; break;
+                    case 0xf: element += "On, Return detected\n"; break;
+                    case 0x10: element += "Off, Did not fire\n"; break;
+                    case 0x14: element += "Off, Did not fire, Return not detected\n"; break;
+                    case 0x18: element += "Auto, Did not fire\n"; break;
+                    case 0x19: element += "Auto, Fired\n"; break;
+                    case 0x1d: element += "Auto, Fired, Return not detected\n"; break;
+                    case 0x1f: element += "Auto, Fired, Return detected\n"; break;
+                    case 0x20: element += "No flash function\n"; break;
+                    case 0x30: element += "Off, No flash function\n"; break;
+                    case 0x41: element += "Fired, Red-eye reduction\n"; break;
+                    case 0x45: element += "Fired, Red-eye reduction, Return not detected\n"; break;
+                    case 0x47: element += "Fired, Red-eye reduction, Return detected\n"; break;
+                    case 0x49: element += "On, Red-eye reduction\n"; break;
+                    case 0x4d: element += "On, Red-eye reduction, Return not detected\n"; break;
+                    case 0x4f: element += "On, Red-eye reduction, Return detected\n"; break;
+                    case 0x50: element += "Off, Red-eye reduction\n"; break;
+                    case 0x58: element += "Auto, Did not fire, Red-eye reduction\n"; break;
+                    case 0x59: element += "Auto, Fired, Red-eye reduction\n"; break;
+                    case 0x5d: element += "Auto, Fired, Red-eye reduction, Return not detected\n"; break;
+                    case 0x5f: element += "Auto, Fired, Red-eye reduction, Return detected\n"; break;
+                    default:
+                        break;
+                }
+                break;
+            case FocalLength: element += "焦距: "; break;
+            case SubSecTime: element += "SubSecTime: "; break;
+            case SubSecTimeOriginal: element += "SubSecTimeOriginal: "; break;
+            case SubSecTimeDigitized: element += "SubSecTimeDigitized: "; break;
+            case FlashPixVersion: element += "FlashPixVersion: "; break;
+            case ColorSpace:
+                element += "色彩空間: ";
+                switch (Offset[i]) {
+                    case 1: element += "SRGB\n"; break;
+                    case 65535: element += "未矯正\n"; break;
+                    default: break;
+                }
+                break;
+            case PixelXDimension:
+                sprintf(element_detail, "X像素數: %u\n", Offset[i]);
+                element += string(element_detail); break;
+            case PixelYDimension:
+                sprintf(element_detail, "Y像素數: %u\n", Offset[i]);
+                element += string(element_detail); break;
+            case FocalPlaneXResolution: element += "焦點平面X解析度: "; break;
+            case FocalPlaneYResolution: element += "焦點平面Y解析度: "; break;
+            case FocalPlaneResolutionUnit:
+                element += "焦點平面解析度單位: ";
+                switch (Offset[i]) {
+                    case 1: element += "無\n"; break;
+                    case 2: element += "英吋\n"; break;
+                    case 3: element += "公分\n"; break;
+                    default: break;
+                }
+                break;
+            case CustomRendered:
+                element += "自定義渲染: ";
+                switch (Offset[i]) {
+                    case 0: element += "一般\n"; break;
+                    case 1: element += "自訂\n"; break;
+                    default: break;
+                }
+                break;
+            case ExposureMode:
+                element += "曝光模式: ";
+                switch (Offset[i]) {
+                    case 0: element += "自動曝光\n"; break;
+                    case 1: element += "手動曝光\n"; break;
+                    case 2: element += "Auto bracket\n"; break;
+                    default: break;
+                }
+                break;
+            case WhiteBalance:
+                element += "白平衡: ";
+                switch (Offset[i]) {
+                    case 0: element += "自動\n"; break;
+                    case 1: element += "手動\n"; break;
+                    default: break;
+                }
+                break;
+            case SceneCaptureType:
+                element += "SceneCaptureType: ";
+                switch (Offset[i]) {
+                    case 0: element += "標準\n"; break;
+                    case 1: element += "地景\n"; break;
+                    case 2: element += "自拍\n"; break;
+                    case 3: element += "夜景\n"; break;
+                    default: break;
+                }
+                break;
+            case CameraOwnerName: element += "相機擁有者: "; break;
+            case BodySerialNumber: element += "機身序號: "; break;
+            case LensSpecification: element += "鏡頭焦距: "; break;
+            case LensModel: element += "鏡頭型號: "; break;
+            case LensSerialNumber: element += "鏡頭序號: "; break;
+            default: break;
+        }
+        switch (method) {
+            case TIFF:
+                switch (Format[i]) {
+                    case 5:
+                        sprintf(element_detail, "%g\n", ration64u(ptr));
+                        element += string(element_detail); break;
+                    case 2:
+                        memcpy(element_detail, ptr, Components[i]);
+                        element += string(element_detail) + "\n"; break;
+                    default:
+                        break;
+                }
+                break;
+            case EXIF:
+                switch (Format[i]) {
+                    case 10:
+                        sprintf(element_detail, "%g\n", pow(2, -(ration64s(ptr))));
+                        element += string(element_detail); break;
+                    case 5:
+                        sprintf(element_detail, "%g\n", ration64u(ptr));
+                        element += string(element_detail); break;
+                    case 2:
+                        memcpy(element_detail, ptr, Components[i]);
+                        element += string(element_detail) + "\n"; break;
+                    default:
+                        break;
+                }
+                break;
+            case GPS:
+                switch (Format[i]) {
+                    case 5:
+                        for (int k = 0; k < Components[i]; ++k) {
+                            sprintf(element_detail, "%g", ration64u(ptr + k * 8));
+                            element += string(element_detail);
+                            if (k != Components[i] - 1)
+                                element += ", ";
+                        }
+                        element += "\n";
+                        break;
+                    case 2:
+                        if (Components[i] <= 4) {
+                            for (int k = 0; k < Components[i]; ++k) {
+                                c = Offset[i] >> k * 8;
+                                sprintf(element_detail, "%c", c);
+                                element += string(element_detail);
+                            }
+                            if (new_line)
+                                element += "\n";
+                            else
+                                element += " ";
+                        } else {
+                            memcpy(element_detail, ptr, Components[i]);
+                            element += string(element_detail) + "\n";
+                        }
+                        break;
+                    case 1:
+                        for (int k = 0; k < Components[i]; ++k) {
+                            c = Offset[i] >> k * 8;
+                            sprintf(element_detail, "%d", c);
+                            element += string(element_detail);
+                            if (k != Components[i] - 1)
+                                element += ".";
+                        }
+                        element += "\n";
+                        break;
+                    default: break;
+                }
+                break;
+            default:
+                break;
+        }
+        Info.push_back(element);
+    }
+    for (int i = 0; i < Tag_num; ++i) {
+        if (Sub[i] != -1) {
+            sub[Sub[i]].getInfo(Info);
+        }
+    }
 }

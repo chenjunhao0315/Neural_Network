@@ -10,8 +10,12 @@
 
 #include <stdio.h>
 #include <vector>
-#include "Jpeg.hpp"
 #include <string>
+#include <algorithm>
+#include <initializer_list>
+
+#include "Jpeg.hpp"
+#include "Mat.hpp"
 
 using namespace std;
 
@@ -39,23 +43,31 @@ struct Point {
 
 typedef PIXEL Color;
 
+#define WHITE Color(255, 255, 255)
+#define BLACK Color(0, 0, 0)
 #define RED Color(255, 0, 0)
 #define GREEN Color(0, 255, 0)
 #define BLUE Color(0, 0, 255)
 
-typedef float* Mat;
+class Kernel;
 
 class IMG {
     enum ImageType {
         PPM,
         PGM,
         JPEG,
-        UNSUPPORT
+        UNSUPPORT,
+        OPEN_FAIL
+    };
+    enum Color_Space {
+        RGB,
+        GRAY,
+        BINARY
     };
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel, Color color = Color(0, 0, 0));
+    IMG(int width, int height, int channel, Color_Space cs = Color_Space::RGB, Color color = Color(0, 0, 0));
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
@@ -64,16 +76,22 @@ public:
     IMG resize(Size size, float factor_x = 1, float factor_y = 1);
     IMG crop(Rect rect);
     IMG convertGray();
-    IMG gaussian_blur(float radius, float sigma_x = -1, float sigma_y = -1);
+    IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
     IMG median_blur(int radius);
-    IMG filter(int channel, Mat kernel, Size kernel_size, bool normalize = true);
+    IMG filter(int channel, Kernel kernel, bool normalize = true);
     IMG sobel();
+    IMG threshold(unsigned char threshold, unsigned char max);
+    IMG dilate(Kernel kernel);
+    IMG erode(Kernel kernel);
+    IMG opening(Kernel kernel);
+    IMG closing(Kernel kernel);
+    void release();
     void showPicInfo();
     void histogram(Size size = Size(360, 240), int resolution = 1, const char *histogram_name = "histogram.jpg");
     void drawRectangle(Rect rect, Color color, int width = 0);
     void drawLine(Point p1, Point p2, Color color);
     void drawPixel(Point p, Color color);
-    void drawCircle(Point center_point, Color color, int radius = 0);
+    void drawCircle(Point center_point, Color color, int radius = 0, int width = 1);
     void fillRect(Rect rect, Color color);
     bool save(const char *filename = "out.jpg", float quality = 80);
     
@@ -81,8 +99,9 @@ public:
 private:
     PIXEL **PX;
     unsigned char *pixel_array;
-    bool isRGB;
+    bool *binary_array;
     vector<string> Info;
+    Color_Space color_space;
     
     IMG::ImageType getType(const char *filename);
     IMG::ImageType phraseType(const char *name);
@@ -90,10 +109,31 @@ private:
     void copyPX(PIXEL **PX_src);
     void freePX();
     void storePixelArray(unsigned char *rgb);
+    void drawCircle_Single(Point center_point, Color color, int radius = 0);
     void subCircle(int xc, int yc, int x, int y, Color color);
 };
 
 int clip(int value, int min, int max);
 vector<int> normalize(vector<int> &src, int min, int max);
+
+class Kernel {
+public:
+    ~Kernel();
+    Kernel(int width = 0, int height = 0, int dimension = 0, float parameter = 0);
+    Kernel(const Kernel &K);
+    Kernel(Kernel &&K);
+    Kernel& operator=(const Kernel &K);
+    Kernel& operator=(initializer_list<float> list);
+    float& operator[](int index);
+    const float& operator[](int index) const;
+    void show();
+    
+    int width;
+    int height;
+    int dimension;
+    float *data;
+};
+
+
 
 #endif /* Image_Process_hpp */

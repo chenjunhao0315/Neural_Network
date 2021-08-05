@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7605471A26BC17F900909C8B /* Mat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7605471826BC17F900909C8B /* Mat.cpp */; };
 		760C6CA226696CED0098007D /* Data_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 760C6CA026696CED0098007D /* Data_Process.cpp */; };
 		76390E742666B3D000FFA5EC /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E732666B3D000FFA5EC /* main.cpp */; };
 		76390E7D2666B44E00FFA5EC /* Neural_Network.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E7B2666B44E00FFA5EC /* Neural_Network.cpp */; };
@@ -31,8 +32,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7605471826BC17F900909C8B /* Mat.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mat.cpp; sourceTree = "<group>"; };
+		7605471926BC17F900909C8B /* Mat.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mat.hpp; sourceTree = "<group>"; };
 		760C6CA026696CED0098007D /* Data_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_Process.cpp; sourceTree = "<group>"; };
 		760C6CA126696CED0098007D /* Data_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_Process.hpp; sourceTree = "<group>"; };
+		761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = Neural_Network.profdata; sourceTree = "<group>"; };
 		76390E702666B3D000FFA5EC /* Neural_Network */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Neural_Network; sourceTree = BUILT_PRODUCTS_DIR; };
 		76390E732666B3D000FFA5EC /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		76390E7B2666B44E00FFA5EC /* Neural_Network.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Neural_Network.cpp; sourceTree = "<group>"; };
@@ -62,11 +66,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		761D5CF226B93FA1009A4FE3 /* OptimizationProfiles */ = {
+			isa = PBXGroup;
+			children = (
+				761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */,
+			);
+			path = OptimizationProfiles;
+			sourceTree = "<group>";
+		};
 		76390E672666B3D000FFA5EC = {
 			isa = PBXGroup;
 			children = (
 				76390E722666B3D000FFA5EC /* Neural_Network */,
 				76390E712666B3D000FFA5EC /* Products */,
+				761D5CF226B93FA1009A4FE3 /* OptimizationProfiles */,
 			);
 			sourceTree = "<group>";
 		};
@@ -98,6 +111,8 @@
 				76CD64E6269F8B6D00A4EDFD /* Jpeg.hpp */,
 				76A40ED026A4CF4700A01830 /* Mtcnn.cpp */,
 				76A40ED126A4CF4700A01830 /* Mtcnn.hpp */,
+				7605471826BC17F900909C8B /* Mat.cpp */,
+				7605471926BC17F900909C8B /* Mat.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -160,6 +175,7 @@
 			files = (
 				76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */,
 				76390E812666B45D00FFA5EC /* Layer.cpp in Sources */,
+				7605471A26BC17F900909C8B /* Mat.cpp in Sources */,
 				760C6CA226696CED0098007D /* Data_Process.cpp in Sources */,
 				76390E742666B3D000FFA5EC /* main.cpp in Sources */,
 				76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */,
@@ -287,6 +303,7 @@
 		76390E782666B3D000FFA5EC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -295,6 +312,7 @@
 		76390E792666B3D000FFA5EC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

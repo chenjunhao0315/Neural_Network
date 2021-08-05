@@ -52,6 +52,7 @@ public:
     ~JPEG();
     JPEG(const char *filename);
     JPEG(unsigned char *pixelArray, int width, int height, int channel);
+    bool close();
     int status() {return decode_status;}
     bool save(const char *filename = "out.jpg", float quality = 90, bool isRGB = true, bool down_sample = false);
     int getWidth() {return width;}

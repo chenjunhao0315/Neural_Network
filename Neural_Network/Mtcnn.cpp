@@ -8,7 +8,6 @@
 #include "Mtcnn.hpp"
 
 PNet::PNet(const char *model_name) {
-    min_face_size = 25;
     scale_factor = 0.709;
     threshold[0] = 0.97;
     pnet = Neural_Network("parallel");
@@ -16,9 +15,8 @@ PNet::PNet(const char *model_name) {
 }
 
 PNet::PNet() {
-    min_face_size = 25;
     scale_factor = 0.709;
-    threshold[0] = 0.96;
+    threshold[0] = 0.97;
     pnet = Neural_Network("parallel");
     pnet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "12"}, {"input_height", "12"}, {"input_dimension", "3"}, {"name", "input"}});
     pnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "10"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
@@ -42,22 +40,20 @@ PNet::PNet() {
     pnet.shape();
 }
 
-vector<Bbox> PNet::detect(IMG &img) {
+vector<Bbox> PNet::detect(IMG &img, int min_face_size) {
     int net_size = 12;
-    float current_scale = float(net_size) / min_face_size;
+//    float current_scale = float(net_size) / min_face_size;
 //    float current_scale = (float)1000 / max(img.width, img.height);
-//    float current_scale = 1.0;
-//    if (min(img.width, img.height) > 325) {
-//        current_scale = 325.0 / min(img.height, img.width);
-//    } else if (max(img.width, img.height) < 325) {
-//        current_scale = 325.0 / max(img.height, img.width);
-//    }
-//    if (min(img.width, img.height) > 1000) {
-//        current_scale = 1000.0 / min(img.height, img.width);
-//    } else if (max(img.width, img.height) < 1000) {
-//        current_scale = 1000.0 / max(img.height, img.width);
-//    }
-//    printf("scale: %.2f origin: %.2f\n", current_scale, float(net_size) / min_face_size);
+    float current_scale = 1.0;
+    if (min_face_size < 12) {
+        if (min(img.width, img.height) > 650) {
+            current_scale = 650.0 / min(img.height, img.width);
+        } else if (max(img.width, img.height) < 650) {
+            current_scale = 650.0 / max(img.height, img.width);
+        }
+    } else {
+        current_scale = float(net_size) / min_face_size;
+    }
     
     IMG img_resize = img.resize(Size(), current_scale, current_scale);
     int current_width = img_resize.width;
@@ -65,31 +61,13 @@ vector<Bbox> PNet::detect(IMG &img) {
     vector<Bbox> bbox_list;
     
     while(min(current_width, current_height) > net_size) {
-//        auto start = high_resolution_clock::now();
-//        auto stop = high_resolution_clock::now();
-//        auto duration = duration_cast<milliseconds>(stop - start);
         Feature_map map = this->predict(img_resize);
-//        stop = high_resolution_clock::now();
-//        duration = duration_cast<milliseconds>(stop - start);
-//        printf("Predict time: %lldms\n", duration.count());
-//        start = high_resolution_clock::now();
         vector<Bbox> list = generate_bbox(map, current_scale, threshold[0]);
-//        stop = high_resolution_clock::now();
-//        duration = duration_cast<milliseconds>(stop - start);
-//        printf("generate box time: %lldms\n", duration.count());
-//        start = high_resolution_clock::now();
         list = nms(list, 0.5);
-//        stop = high_resolution_clock::now();
-//        duration = duration_cast<milliseconds>(stop - start);
-//        printf("nms time: %lldms\n", duration.count());
         bbox_list.insert(bbox_list.end(), list.begin(), list.end());
         
         current_scale *= scale_factor;
-//        start = high_resolution_clock::now();
         img_resize = img.resize(Size(), current_scale, current_scale);
-//        stop = high_resolution_clock::now();
-//        duration = duration_cast<milliseconds>(stop - start);
-//        printf("resize time: %lldms\n", duration.count());
         current_width = img_resize.width;
         current_height = img_resize.height;
     }
@@ -124,7 +102,7 @@ Feature_map PNet::predict(IMG &img) {
     int img_size = img.width * img.height * img.channel;
     float *img_data = new float [img_size];
     for (int i = 0; i < img_size; ++i) {
-        img_data[i] = ((float)rgb[i] - 127.5) / 128.0;
+        img_data[i] = ((float)rgb[i] - 127.5) * 0.0078125;
     }
     float *data = input.weight;
     
@@ -149,6 +127,10 @@ Feature_map PNet::predict(IMG &img) {
     }
     delete [] img_data;
     return map;
+}
+
+bool PNet::ready() {
+    return (pnet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
 vector<Bbox> generate_bbox(Feature_map map, float scale, float threshold) {
@@ -217,8 +199,8 @@ float iou(Bbox box1, Bbox box2, int mode) {
 vector<Bbox> convert_to_square(vector<Bbox> &Bbox_list) {
     vector<Bbox> square_bbox = Bbox_list;
     for (int i = 0; i < square_bbox.size(); ++i) {
-        int h = Bbox_list[i].y2 - Bbox_list[i].y1;
-        int w = Bbox_list[i].x2 - Bbox_list[i].x1;
+        int h = Bbox_list[i].y2 - Bbox_list[i].y1 + 1;
+        int w = Bbox_list[i].x2 - Bbox_list[i].x1 + 1;
         int max_side = (h > w) ? h : w;
         square_bbox[i].x1 = round(Bbox_list[i].x1 + w * 0.5 - max_side * 0.5);
         square_bbox[i].y1 = round(Bbox_list[i].y1 + h * 0.5 - max_side * 0.5);
@@ -232,8 +214,8 @@ vector<Bbox> calibrate_box(vector<Bbox> &Bbox_list) {
     vector<Bbox> bbox_c = Bbox_list;
     size_t Bbox_c_size = bbox_c.size();
     for (int i = 0; i < Bbox_c_size; ++i) {
-        int width = bbox_c[i].x2 - bbox_c[i].x1;
-        int height = bbox_c[i].y2 - bbox_c[i].y1;
+        int width = bbox_c[i].x2 - bbox_c[i].x1 + 1;
+        int height = bbox_c[i].y2 - bbox_c[i].y1 + 1;
         bbox_c[i].x1 += bbox_c[i].dx1 * width;
         bbox_c[i].y1 += bbox_c[i].dy1 * height;
         bbox_c[i].x2 += bbox_c[i].dx2 * width;
@@ -246,15 +228,16 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
     vector<Bbox> square_bbox = convert_to_square(pnet_bbox);
     vector<Bbox> rnet_bbox;
     size_t square_bbox_size = square_bbox.size();
+    Tensor crop_img(24, 24, 3, 0);
     for (int i = 0; i < square_bbox_size; ++i) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(24, 24));
         unsigned char *pixel = crop.toPixelArray();
-        float *pixel_c = new float [3 * 24 * 24];
-        for (int i = 0; i < 3 * 24 * 24; ++i) {
-            pixel_c[i] = ((float)pixel[i] - 127.5) / 128;
+        float *pixel_c = crop_img.weight;
+        for (int i = 1728; i--; ) {
+            pixel_c[i] = ((float)pixel[i] - 127.5) * 0.0078125;
         }
-        Tensor crop_img(pixel_c, 24, 24, 3);
+        
         vfloat rnet_detect = rnet.Forward(&crop_img);
         if (rnet_detect[1] > threshold[0]) {
             Bbox rnet_detect_box(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2, rnet_detect[1], rnet_detect[2], rnet_detect[3], rnet_detect[4], rnet_detect[5]);
@@ -264,6 +247,10 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
     rnet_bbox = nms(rnet_bbox, 0.6);
     rnet_bbox = calibrate_box(rnet_bbox);
     return rnet_bbox;
+}
+
+bool RNet::ready() {
+    return (rnet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
 RNet::RNet() {
@@ -339,10 +326,10 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(48, 48));
         unsigned char *pixel = crop.toPixelArray();
-        Tensor crop_img(48, 48, 3);
+        Tensor crop_img(48, 48, 3, 0);
         float *pixel_c = crop_img.weight;
         for (int i = 0; i < 3 * 48 * 48; ++i) {
-            pixel_c[i] = ((float)pixel[i] - 127.5) / 128;
+            pixel_c[i] = ((float)pixel[i] - 127.5) * 0.0078125;
         }
         
         vfloat onet_detect = onet.Forward(&crop_img);
@@ -368,9 +355,13 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
     }
     
     onet_bbox = calibrate_box(onet_bbox);
-    onet_bbox = nms(onet_bbox, 0.6, 1);
+    onet_bbox = nms(onet_bbox, 0.7, 1);
     
     return onet_bbox;
+}
+
+bool ONet::ready() {
+    return (onet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
 void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vector<vfloat> &label_set, int width, int size) {
@@ -450,42 +441,125 @@ void mtcnn_evaluate(Neural_Network *nn, vtensor &data_set, vector<vfloat> &label
 Mtcnn::~Mtcnn() {
     delete pnet;
     delete rnet;
+    delete onet;
 }
 
 Mtcnn::Mtcnn(const char *model_pnet, const char *model_rnet, const char *model_onet) {
     pnet = new PNet(model_pnet);
     rnet = new RNet(model_rnet);
-    pnet->min_face_size = 50;
-    pnet->threshold[0] = 0.93;
+    onet = new ONet(model_onet);
+    pnet->threshold[0] = 0.96;
     rnet->threshold[0] = 0.7;
+    onet->threshold[0] = 0.8;
+    min_face_size = 0;
 }
 
 vector<Bbox> Mtcnn::detect(IMG &img) {
+    if (!(pnet->ready() && rnet->ready() && onet->ready())) {
+        printf("[Mtcnn] Network error!\n");
+        return vector<Bbox>();
+    }
+    if (img.channel != 3) {
+        printf("[Mtcnn] Image format unsupport!\n");
+        return vector<Bbox>();
+    }
     
     auto start = high_resolution_clock::now();
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    vector<Bbox> bbox = pnet->detect(img);
+    vector<Bbox> bbox = pnet->detect(img, min_face_size);
     stop = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(stop - start);
     printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
 
-    IMG pnet_detect(img);
-    for (int i = 0; i < bbox.size(); ++i) {
-        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
-    }
-    pnet_detect.save("pnet_predict.jpg", 80);
+//    IMG pnet_detect(img);
+//    for (int i = 0; i < bbox.size(); ++i) {
+//        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
+//    }
+//    pnet_detect.save("pnet_predict.jpg", 80);
 
     start = high_resolution_clock::now();
     vector<Bbox> rnet_bbox = rnet->detect(img, bbox);
     stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start); 
+    duration = duration_cast<milliseconds>(stop - start);
     printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
 
-    IMG rnet_detect(img);
-    for (int i = 0; i < rnet_bbox.size(); ++i) {
-        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, Color(255, 0, 0));
+//    IMG rnet_detect(img);
+//    for (int i = 0; i < rnet_bbox.size(); ++i) {
+//        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, Color(255, 0, 0));
+//    }
+//    rnet_detect.save("rnet_predict.jpg", 80);
+
+    start = high_resolution_clock::now();
+    vector<Bbox> onet_bbox = onet->detect(img, rnet_bbox);
+    stop = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(stop - start);
+    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
+
+//    IMG onet_detect(img);
+//    for (int i = 0; i < onet_bbox.size(); ++i) {
+//        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
+//        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED);
+//        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius, radius);
+//    }
+//    onet_detect.save("onet_predict.jpg", 80);
+    return onet_bbox;
+}
+
+void Mtcnn::mark(IMG &img, vector<Bbox> &bbox_list) {
+    for (int i = 0; i < bbox_list.size(); ++i) {
+        int radius = min(bbox_list[i].x2 - bbox_list[i].x1 + 1, bbox_list[i].y2 - bbox_list[i].y1 + 1) / 30 + 1;
+        img.drawRectangle(Rect{(bbox_list[i].x1), (bbox_list[i].y1), (bbox_list[i].x2), (bbox_list[i].y2)}, RED);
+        img.drawCircle(Point(bbox_list[i].lefteye_x, bbox_list[i].lefteye_y), RED, radius, radius);
+        img.drawCircle(Point(bbox_list[i].righteye_x, bbox_list[i].righteye_y), RED, radius, radius);
+        img.drawCircle(Point(bbox_list[i].nose_x, bbox_list[i].nose_y), RED, radius, radius);
+        img.drawCircle(Point(bbox_list[i].leftmouth_x, bbox_list[i].leftmouth_y), RED, radius, radius);
+        img.drawCircle(Point(bbox_list[i].rightmouth_x, bbox_list[i].rightmouth_y), RED, radius, radius);
     }
-    rnet_detect.save("rnet_predict.jpg", 80);
-    return rnet_bbox;
+}
+
+vector<vector<Bbox>> Mtcnn::detect(const char *filelist) {
+    fstream list;
+    list.open(filelist, ios::in);
+    while(!list.eof()) {
+        string filename;
+        list >> filename;
+        cout << "Processing: " << filename << endl;
+        IMG img(filename.c_str());
+        vector<Bbox> bbox_list = detect(img);
+        mark(img, bbox_list);
+        size_t pos = filename.find(".");
+        filename = filename.substr(0, pos) + "_detected.jpg";
+        img.save(filename.c_str(), 80);
+    }
+    return vector<vector<Bbox>>();
+}
+
+void Mtcnn::layout(vector<Bbox> &bbox_list, const char *filename) {
+    FILE *f = fopen(filename, "w");
+    int size = (int)bbox_list.size();
+    fprintf(f, "[\n");
+    for (int i = 0; i < size; ++i) {
+        Bbox &box = bbox_list[i];
+        fprintf(f, "\t{\n");
+        fprintf(f, "\t\t'box': [%d, %d, %d, %d],\n", box.x1, box.y1, box.x2, box.y2);
+        fprintf(f, "\t\t'keypoints':\n\t\t{\n");
+        fprintf(f, "\t\t\t'eye_right': (%d, %d),\n", (int)box.righteye_x, (int)box.righteye_y);
+        fprintf(f, "\t\t\t'eye_left': (%d, %d),\n", (int)box.lefteye_x, (int)box.lefteye_y);
+        fprintf(f, "\t\t\t'nose': (%d, %d),\n", (int)box.nose_x, (int)box.nose_y);
+        fprintf(f, "\t\t\t'mouth_right': (%d, %d),\n", (int)box.rightmouth_x, (int)box.rightmouth_y);
+        fprintf(f, "\t\t\t'mouth_left': (%d, %d)\n\t\t},\n", (int)box.leftmouth_x, (int)box.leftmouth_y);
+        fprintf(f, "\t\t'confidence': %f\n", box.score);
+        fprintf(f, "\t}");
+        if (i != size - 1)
+            fprintf(f, ",\n");
+        else
+            fprintf(f, "\n");
+    }
+    fprintf(f, "]");
+    fclose(f);
 }

@@ -22,11 +22,16 @@ typedef map<string, float> TrainerOption;
 
 class Neural_Network {
 public:
+    enum nn_status {
+        OK,
+        ERROR
+    };
     Neural_Network(string model_ = "sequential");
     void addLayer(LayerOption opt_);
     void addOutput(string name);
     void makeLayer();
     void shape();
+    nn_status status();
     vfloat Forward(Tensor *input_tensor_);
     float Backward(vfloat &target);
     vfloat train(string method, float learning_rate, Tensor *input, vfloat &target_set);

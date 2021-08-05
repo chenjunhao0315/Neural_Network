@@ -29,10 +29,9 @@ Tensor::Tensor(const Tensor &T) {
         size = T.size;
         weight = new float [size];
         delta_weight = new float [size];
-        for (int i = 0; i < size; ++i) {
-            weight[i] = T.weight[i];
-            delta_weight[i] = T.delta_weight[i];
-        }
+        int copy_size = sizeof(float) * size;
+        memcpy(weight, T.weight, copy_size);
+        memcpy(delta_weight, T.delta_weight, copy_size);
     }
 }
 
@@ -59,14 +58,8 @@ Tensor& Tensor::operator=(const Tensor &T) {
             delta_weight = new float [T.size];
         }
         size = T.size;
-        float *weight_src = T.weight;
-        float *weight_dst = weight;
-        float *delta_weight_src = T.delta_weight;
-        float *delta_weight_dst = delta_weight;
-        for (int i = 0; i < size; ++i) {
-            *(weight_dst++) = *(weight_src++);
-            *(delta_weight_dst++) = *(delta_weight_src++);
-        }
+        memcpy(weight, T.weight, sizeof(float) * size);
+        memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
     }
     return *this;
 }
@@ -75,17 +68,15 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     width = width_;
     height = height_;
     dimension = dimension_;
-    int n = size = width * height * dimension;
+    size = width * height * dimension;
     
     // initialize
-    weight = new float [n];
-    delta_weight = new float [n]();
-    //fill(weight, weight + n, 0);
-    //fill(delta_weight, delta_weight + n, 0);
+    weight = new float [size];
+    delta_weight = new float [size]();
     
     // assign random value
-    float scale = sqrt(1.0 / n);
-    for (int i = 0; i < n; ++i) {
+    float scale = sqrt(1.0 / size);
+    for (int i = size; --i; ) {
         weight[i] = randn(0.0, scale);
     }
 }
@@ -94,16 +85,12 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     width = width_;
     height = height_;
     dimension = dimension_;
-    int n = size = width * height * dimension;
+    size = width * height * dimension;
     
     // initialize
-    weight = new float [n];
-    delta_weight = new float [n]();
-    fill(weight, weight + n, parameter);
-//    for (int i = 0; i < n; ++i) {
-//        weight[i] = parameter;
-//    }
-    //fill(delta_weight, delta_weight + n, 0);
+    weight = new float [size];
+    delta_weight = new float [size]();
+    fill(weight, weight + size, parameter);
 }
 
 Tensor::Tensor(Tensor *T) {
@@ -119,11 +106,12 @@ Tensor::Tensor(Tensor *T) {
         //fill(weight, weight + size, 0);
         //fill(delta_weight, delta_weight + size, 0);
         
-        float *weight_src = T->weight;
-        float *weight_dst = weight;
-        for (int i = 0; i < size; ++i) {
+        //float *weight_src = T->weight;
+        //float *weight_dst = weight;
+        memcpy(weight, T->weight, sizeof(float) * size);
+        /*for (int i = 0; i < size; ++i) {
             *weight_dst++ = *weight_src++;
-        }
+        }*/
     }
 }
 
@@ -131,14 +119,13 @@ Tensor::Tensor(vfloat &V) {
     width = 1;
     height = 1;
     dimension = (int)V.size();
-    int n = size = width * height * dimension;
+    size = width * height * dimension;
     
     // initialize
-    weight = new float [n];
-    delta_weight = new float [n];
-    fill(delta_weight, delta_weight + n, 0);
-    
-    for (int i = 0; i < n; ++i) {
+    weight = new float [size];
+    delta_weight = new float [size]();
+    //fill(delta_weight, delta_weight + n, 0);
+    for (int i = 0; i < size; ++i) {
         weight[i] = V[i];
     }
 }
@@ -240,8 +227,6 @@ float Tensor::getGrad(int width_, int height_, int dimension_) {
 }
 
 void Tensor::addGrad(int width_, int height_, int dimension_, float value) {
-    if (width_ < 0 || height_ < 0 || width_ >= width || height_ >= height)
-        return;
     delta_weight[((width * height_) + width_) * dimension + dimension_] += value;
 }
 
@@ -251,15 +236,6 @@ void Tensor::save(FILE *f) {
     fwrite(&dimension, sizeof(int), 1, f);
     fwrite(&size, sizeof(int), 1, f);
     fwrite(weight, sizeof(float), size, f);
-    // convert
-//    float *convert = new float [size];
-//    int move = 0;
-//    for (int dim = 0; dim < dimension; ++dim) {
-//        for (int h = 0; h < height; ++h)
-//            for (int w = 0; w < width; ++w)
-//                convert[move++] = ((h * width) + w) * dimension + dim;
-//    }
-//    fwrite(convert, sizeof(float), size, f);
 }
 
 void Tensor::load(FILE *f) {
@@ -275,8 +251,9 @@ void Tensor::load(FILE *f) {
 vfloat Tensor::toVector() {
     vfloat result;
     result.reserve(size);
-    for (int i = 0; i < size; ++i) {
-        result.push_back(weight[i]);
+    float *weight_ptr = weight;
+    for (int i = size; i; --i) {
+        result.push_back(*(weight_ptr++));
     }
     return result;
 }

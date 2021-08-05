@@ -126,6 +126,9 @@ public:
         int stride;
         int padding;
         float alpha;
+        int workspace_size;
+        int input_index_size;
+        int weight_index_size;
     } info_more;
     float *workspace;
     int *input_index;

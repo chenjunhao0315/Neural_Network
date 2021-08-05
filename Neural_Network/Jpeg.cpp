@@ -36,6 +36,14 @@ JPEG::~JPEG() {
     delete encoder;
 }
 
+bool JPEG::close() {
+    delete decoder;
+    delete encoder;
+    decoder = nullptr;
+    encoder = nullptr;
+    return true;
+}
+
 void JPEG::showPicInfo() {
     for (int i = 0; i < Info.size(); ++i) {
         printf("%s", Info[i].c_str());
@@ -46,8 +54,7 @@ bool JPEG::save(const char *filename, float quality, bool isRGB, bool down_sampl
     if (!pixelArray)
         return false;
     encoder = new JPEG_ENCODER(pixelArray, width, height, channel);
-    encoder->write(filename, quality, down_sample);
-    return true;
+    return encoder->write(filename, quality, down_sample);
 }
 
 JPEG_DECODER::JPEG_DECODER(const char *filename) {
@@ -78,13 +85,13 @@ JPEG_DECODER::JPEG_DECODER(const char *filename) {
     fread(data.pos, 1, size, f);
     fclose(f);
     data.status = decode();
-    switch (data.status) {
-        case OK: printf("Decode finish!\n"); break;
-        case NOT_JPEG: printf("Not jpeg file!\n"); break;
-        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
-        case UNSUPPORT: printf("Unsupport!\n"); break;
-        default: break;
-    }
+//    switch (data.status) {
+//        case OK: printf("Decode finish!\n"); break;
+//        case NOT_JPEG: printf("Not jpeg file!\n"); break;
+//        case SYNTAX_ERROR: printf("Syntax error!\n"); break;
+//        case UNSUPPORT: printf("Unsupport!\n"); break;
+//        default: break;
+//    }
 }
 
 unsigned char * JPEG_DECODER::getPixel() {
@@ -1129,7 +1136,7 @@ void JFIF::getInfo(vector<string> &Info) {
         unsigned char c;
         string element;
         bool new_line = true;
-        char element_detail[255];
+        char element_detail[255] = {0};
         switch (Tag[i]) {
             case 271:
                 element += "製造商: "; break;
@@ -1243,10 +1250,10 @@ void JFIF::getInfo(vector<string> &Info) {
                     case 0: element += "未知\n"; break;
                     case 1: element += "平均\n"; break;
                     case 2: element += "中央權衡\n"; break;
-                    case 3: element += "Spot\n"; break;
-                    case 4: element += "Multi-spot\n"; break;
-                    case 5: element += "Multi-segment\n"; break;
-                    case 6: element += "Partial\n"; break;
+                    case 3: element += "重點測光\n"; break;
+                    case 4: element += "多點測光\n"; break;
+                    case 5: element += "權衡式測光\n"; break;
+                    case 6: element += "部分測光\n"; break;
                     case 255: element += "其他\n"; break;
                     default:
                         break;
@@ -1256,32 +1263,32 @@ void JFIF::getInfo(vector<string> &Info) {
                 element += "閃光燈: ";
                 switch (Offset[i]) {
                     case 0x0: element += "無\n"; break;
-                    case 0x1: element += "Fired\n"; break;
-                    case 0x5: element += "Fired, Return not detected\n"; break;
-                    case 0x7: element += "Fired, Return detected\n"; break;
-                    case 0x8: element += "On, Did not fire\n"; break;
-                    case 0x9: element += "On, Fired\n"; break;
-                    case 0xd: element += "On, Return not detected\n"; break;
-                    case 0xf: element += "On, Return detected\n"; break;
-                    case 0x10: element += "Off, Did not fire\n"; break;
-                    case 0x14: element += "Off, Did not fire, Return not detected\n"; break;
-                    case 0x18: element += "Auto, Did not fire\n"; break;
-                    case 0x19: element += "Auto, Fired\n"; break;
-                    case 0x1d: element += "Auto, Fired, Return not detected\n"; break;
-                    case 0x1f: element += "Auto, Fired, Return detected\n"; break;
-                    case 0x20: element += "No flash function\n"; break;
-                    case 0x30: element += "Off, No flash function\n"; break;
-                    case 0x41: element += "Fired, Red-eye reduction\n"; break;
-                    case 0x45: element += "Fired, Red-eye reduction, Return not detected\n"; break;
-                    case 0x47: element += "Fired, Red-eye reduction, Return detected\n"; break;
-                    case 0x49: element += "On, Red-eye reduction\n"; break;
-                    case 0x4d: element += "On, Red-eye reduction, Return not detected\n"; break;
-                    case 0x4f: element += "On, Red-eye reduction, Return detected\n"; break;
-                    case 0x50: element += "Off, Red-eye reduction\n"; break;
-                    case 0x58: element += "Auto, Did not fire, Red-eye reduction\n"; break;
-                    case 0x59: element += "Auto, Fired, Red-eye reduction\n"; break;
-                    case 0x5d: element += "Auto, Fired, Red-eye reduction, Return not detected\n"; break;
-                    case 0x5f: element += "Auto, Fired, Red-eye reduction, Return detected\n"; break;
+                    case 0x1: element += "觸發\n"; break;
+                    case 0x5: element += "觸發, Return not detected\n"; break;
+                    case 0x7: element += "觸發, Return detected\n"; break;
+                    case 0x8: element += "開啟, 無觸發\n"; break;
+                    case 0x9: element += "開啟, 觸發\n"; break;
+                    case 0xd: element += "開啟, Return not detected\n"; break;
+                    case 0xf: element += "開啟, Return detected\n"; break;
+                    case 0x10: element += "關閉, 無觸發\n"; break;
+                    case 0x14: element += "關閉, 無觸發, Return not detected\n"; break;
+                    case 0x18: element += "自動, 無觸發\n"; break;
+                    case 0x19: element += "自動, 觸發\n"; break;
+                    case 0x1d: element += "自動, 觸發, Return not detected\n"; break;
+                    case 0x1f: element += "自動, 觸發, Return detected\n"; break;
+                    case 0x20: element += "無閃光功能\n"; break;
+                    case 0x30: element += "關閉, 無閃光功能\n"; break;
+                    case 0x41: element += "觸發, 紅眼消除\n"; break;
+                    case 0x45: element += "觸發, 紅眼消除, Return not detected\n"; break;
+                    case 0x47: element += "觸發, 紅眼消除, Return detected\n"; break;
+                    case 0x49: element += "開啟, 紅眼消除\n"; break;
+                    case 0x4d: element += "開啟, 紅眼消除, Return not detected\n"; break;
+                    case 0x4f: element += "開啟, 紅眼消除, Return detected\n"; break;
+                    case 0x50: element += "關閉, 紅眼消除\n"; break;
+                    case 0x58: element += "自動, 無觸發, 紅眼消除\n"; break;
+                    case 0x59: element += "自動, 觸發, 紅眼消除\n"; break;
+                    case 0x5d: element += "自動, 觸發, 紅眼消除, Return not detected\n"; break;
+                    case 0x5f: element += "自動, 觸發, 紅眼消除, Return detected\n"; break;
                     default:
                         break;
                 }
@@ -1329,7 +1336,7 @@ void JFIF::getInfo(vector<string> &Info) {
                 switch (Offset[i]) {
                     case 0: element += "自動曝光\n"; break;
                     case 1: element += "手動曝光\n"; break;
-                    case 2: element += "Auto bracket\n"; break;
+                    case 2: element += "自動包圍曝光\n"; break;
                     default: break;
                 }
                 break;

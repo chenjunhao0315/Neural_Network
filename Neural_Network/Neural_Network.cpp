@@ -273,25 +273,20 @@ void Neural_Network::shape() {
     printf("======================================================\n");
 }
 
+Neural_Network::nn_status Neural_Network::status() {
+    return (layer_number > 0 ) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+}
+
 vfloat Neural_Network::Forward(Tensor *input_tensor_) {
-    Tensor *act = input_tensor_;
-    size_t layer_size = layer.size();
-    act = layer[0].Forward(input_tensor_);
+    Tensor *act = layer[0].Forward(input_tensor_);
     terminal[opt_layer[0]["name"]] = act;
-    for (int i = 1; i < layer_size; ++i) {
-//    for (int i = 0; i < layer.size(); ++i) {
-//        if ((opt_layer[i].find("input_name") == opt_layer[i].end()) || opt_layer[i]["input_name"] == "default" || opt_layer[i]["input_name"] == "") {
-//            act = layer[i].Forward(input_tensor_);
-//        }
-//        else {
-            act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
-//        }
-//        act->shape();
+    for (int i = 1; i < layer_number; ++i) {
+        act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
         terminal[opt_layer[i]["name"]] = act;
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();
-    size_t output_size = output_layer.size();
+    int output_size = (int)output_layer.size();
     for (int i = 1; i < output_size; ++i) {
         vfloat temp = terminal[output_layer[i]]->toVector();
         output.insert(output.end(), temp.begin(), temp.end());
@@ -302,9 +297,8 @@ vfloat Neural_Network::Forward(Tensor *input_tensor_) {
 float Neural_Network::Backward(vfloat& target) {
     float loss = 0;
     if (model == "sequential") {
-        int length = (int)layer.size();
-        loss = layer[length - 1].Backward(target);
-        for (int i = length - 2; i >= 0; --i) {
+        loss = layer[layer_number - 1].Backward(target);
+        for (int i = layer_number - 2; i; --i) {
             layer[i].Backward();
         }
     } else if (model == "parallel") {
@@ -522,29 +516,29 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
         size_t detail_set_size = detail_set.size();
         for (int i = 0; i < detail_set_size; i += 2) {
             Tensor* kernel = detail_set[i];
-            for (int j = 0; j < detail_parameter[i / 2][0]; ++j) {
-                int len = detail_parameter[i / 2][1] * detail_parameter[i / 2][2] * detail_parameter[i / 2][3];
-                weight_list.push_back(kernel[j].getWeight());
-                grad_list.push_back(kernel[j].getDeltaWeight());
+            for (int j = 0; j < detail_parameter[i >> 1][0]; ++j) {
+                int len = detail_parameter[i >> 1][1] * detail_parameter[i >> 1][2] * detail_parameter[i >> 1][3];
+                weight_list.push_back(kernel[j].weight);
+                grad_list.push_back(kernel[j].delta_weight);
                 len_list.push_back(len);
-                decay_list.push_back(vfloat{detail_parameter[i / 2][4], detail_parameter[i / 2][5]});
+                decay_list.push_back(vfloat{detail_parameter[i >> 1][4], detail_parameter[i >> 1][5]});
             }
             Tensor* biases = detail_set[i + 1];
-            weight_list.push_back(biases->getWeight());
-            grad_list.push_back(biases->getDeltaWeight());
-            len_list.push_back(detail_parameter[i / 2][4]);
-            decay_list.push_back(vfloat{detail_parameter[i / 2][5], detail_parameter[i / 2][6]});
+            weight_list.push_back(biases->weight);
+            grad_list.push_back(biases->delta_weight);
+            len_list.push_back(detail_parameter[i >> 1][4]);
+            decay_list.push_back(vfloat{detail_parameter[i >> 1][5], detail_parameter[i >> 1][6]});
         }
         
         size_t len_list_size = len_list.size();
         if (gsum.empty() && (method != SGD || momentum > 0)) {
             for (int i = 0; i < len_list_size; ++i) {
-                float *new_gsum = new float [len_list[i]];
-                fill(new_gsum, new_gsum + len_list[i], 0);
+                float *new_gsum = new float [len_list[i]]();
+                //fill(new_gsum, new_gsum + len_list[i], 0);
                 gsum.push_back(new_gsum);
                 if (method == ADADELTA || method == ADAM) {
-                    float *new_xsum = new float [len_list[i]];
-                    fill(new_xsum, new_xsum + len_list[i], 0);
+                    float *new_xsum = new float [len_list[i]]();
+                    //fill(new_xsum, new_xsum + len_list[i], 0);
                     xsum.push_back(new_xsum);
                 } else {
                     xsum.push_back(nullptr);
@@ -562,42 +556,48 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
             float l2_decay_local = l2_decay * l2_decay_mul;
             
             int len = len_list[i];
+            float *gsumi = gsum[i];
+            float *xsumi = xsum[i];
+            
+            float *weight_act = weight;
+            float *grad_act = grad;
+            float *gsum_act = gsumi;
+            float *xsum_act = xsumi;
+            
             for (int j = 0; j < len; ++j) {
-                l1_decay_loss += l1_decay_local * abs(weight[j]);
-                l2_decay_loss += l2_decay_local * weight[j] * weight[j] / 2;
-                float l1_grad = l1_decay_local * (weight[j] > 0 ? 1 : -1);
-                float l2_grad = l2_decay_local * weight[j];
-                float grad_ij = (l1_grad + l2_grad + grad[j]) / batch_size;
+                l1_decay_loss += l1_decay_local * abs(*weight_act);
+                l2_decay_loss += l2_decay_local * *weight_act * *weight_act / 2;
+                float l1_grad = l1_decay_local * (*weight_act > 0 ? 1 : -1);
+                float l2_grad = l2_decay_local * *weight_act;
+                float grad_ij = (l1_grad + l2_grad + *grad_act) / batch_size;
                 
-                float *gsumi = gsum[i];
-                float *xsumi = xsum[i];
                 if (method == ADADELTA) {
-                    gsumi[j] = ro * gsumi[j] + (1 - ro) * grad_ij * grad_ij;
-                    float delta_weight = -sqrt((xsumi[j] + eps) / (gsumi[j] + eps)) * grad_ij;
-                    xsumi[j] = ro * xsumi[j] + (1 - ro) * delta_weight * delta_weight;
-//                    grad[j] = delta_weight;
-                    weight[j] += delta_weight;
+                    *gsum_act = ro * *gsum_act + (1 - ro) * grad_ij * grad_ij;
+                    float delta_weight = -sqrt((*xsum_act + eps) / (*gsum_act + eps)) * grad_ij;
+                    *xsum_act = ro * *xsum_act + (1 - ro) * delta_weight * delta_weight;
+                    *weight_act += delta_weight;
                 } else if (method == ADAM) {
-//                    printf("gsumi: %.2f xsumi: %.2f\n", gsumi[j], xsumi[j]);
-                    gsumi[j] = beta_1 * gsumi[j] + (1 - beta_1) * grad_ij;
-                    xsumi[j] = beta_2 * xsumi[j] + (1 - beta_2) * grad_ij * grad_ij;
-                    float nor_gsumi = gsumi[j] / (1 - pow(beta_1, (iter / batch_size) + 1));
-                    float nor_xsumi = xsumi[j] / (1 - pow(beta_2, (iter / batch_size) + 1));
+                    *gsum_act = beta_1 * *gsum_act + (1 - beta_1) * grad_ij;
+                    *xsum_act = beta_2 * *xsum_act + (1 - beta_2) * grad_ij * grad_ij;
+                    float nor_gsumi = *gsum_act / (1 - pow(beta_1, (iter / batch_size) + 1));
+                    float nor_xsumi = *xsum_act / (1 - pow(beta_2, (iter / batch_size) + 1));
                     float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
-//                    grad[j] = delta_weight;
-                    weight[j] += delta_weight;
+                    *weight_act += delta_weight;
                 } else { // SGD
                     if (momentum > 0) {
-                        float delta_weight = momentum * gsumi[j] - learning_rate * grad_ij;
-                        gsumi[j] = delta_weight;
-                        weight[j] += delta_weight;
-//                        grad[j] = delta_weight;
+                        float delta_weight = momentum * *gsum_act - learning_rate * grad_ij;
+                        *gsum_act = delta_weight;
+                        *weight_act += delta_weight;
                     } else {
-//                        grad[j] = grad_ij * learning_rate;
-                        weight[j] += learning_rate * grad_ij;
+                        *weight_act += learning_rate * grad_ij;
                     }
                 }
-                grad[j] = 0;
+                *grad_act = 0;
+                
+                weight_act++;
+                grad_act++;
+                gsum_act++;
+                xsum_act++;
             }
         }
         

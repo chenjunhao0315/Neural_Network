@@ -47,38 +47,31 @@ class PNet {
 public:
     PNet();
     PNet(const char *model_name);
-    ~PNet() {
-        pnet.save("pnet_ensure.bin");
-    }
-    vector<Bbox> detect(IMG &img);
+    vector<Bbox> detect(IMG &img, int min_face_size = 0);
     Feature_map predict(IMG &img);
+    bool ready();
     //private:
     Neural_Network pnet;
-    int min_face_size;
     float scale_factor;
     float threshold[3];
 };
 
 class RNet {
 public:
-    ~RNet() {
-        rnet.save("rnet_ensure.bin");
-    }
     RNet();
     RNet(const char *model_name);
     vector<Bbox> detect(IMG &img, vector<Bbox> &pnet_bbox);
+    bool ready();
     Neural_Network rnet;
     float threshold[3];
 };
 
 class ONet {
 public:
-    ~ONet() {
-        onet.save("onet_ensure.bin");
-    }
     ONet();
     ONet(const char *model_name);
     vector<Bbox> detect(IMG &img, vector<Bbox> &rnet_bbox);
+    bool ready();
     Neural_Network onet;
     float threshold[3];
 };
@@ -87,11 +80,15 @@ class Mtcnn {
 public:
     ~Mtcnn();
     Mtcnn();
-    Mtcnn(const char *model_pnet, const char *model_rnet, const char *model_onet);
+    Mtcnn(const char *model_pnet = "pnet_model.bin", const char *model_rnet = "rnet_model.bin", const char *model_onet = "onet_model.bin");
     vector<Bbox> detect(IMG &img);
+    void mark(IMG &img, vector<Bbox> &bbox);
+    void layout(vector<Bbox> &bbox_list, const char *filename = "detected.txt");
+    vector<vector<Bbox>> detect(const char *filelist);
     PNet *pnet;
     RNet *rnet;
-    Neural_Network onet;
+    ONet *onet;
+    int min_face_size;
 };
 
 vector<Bbox> generate_bbox(Feature_map map, float scale, float threshold);

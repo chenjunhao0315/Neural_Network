@@ -9,7 +9,7 @@
 #include <chrono>
 
 #include "Neural_Network.hpp"
-//#include "Data_Process.hpp"
+#include "Data_Process.hpp"
 #include "Image_Process.hpp"
 #include "Mtcnn.hpp"
 
@@ -17,6 +17,14 @@ using namespace std;
 using namespace std::chrono;
 
 int main(int argc, const char * argv[]) {
+//    IMG img((argc >= 2) ? argv[1] : "target.jpg");
+//
+//    Mtcnn mtcnn("pnet_9446_250k.bin", "rnet_v1.bin", "onet_9998_all.bin");
+//    mtcnn.min_face_size = (argc >= 3) ? atoi(argv[2]) : 0;
+//    vector<Bbox> bbox_list = mtcnn.detect(img);
+//
+//    mtcnn.mark(img, bbox_list);
+//    img.save("result.jpg", 80);
     
 //    JPEG img("5D4A0379.JPG");
 //    img.save();
@@ -68,13 +76,20 @@ int main(int argc, const char * argv[]) {
 //             label_valid.push_back(label_fish[i]);
 //         }
 //
-//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //
-//         Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 2}});
+//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"batch_size", 2}, {"learning_rate", 0.001}});
+//
+//    auto start = high_resolution_clock::now();
+//    auto stop = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(stop - start);
 //         trainer.train(data_train, data_label, 1);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("Time: %lldms\n", duration.count());
 //         //nn.train("SVG", 0.001, data_train, data_label, 1);
 //
-//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 ////         nn.shape();
 //
 //         vfloat out = nn.predict(&data_bee[0]);
@@ -209,71 +224,90 @@ int main(int argc, const char * argv[]) {
     
     
     
-    PNet pnet("pnet_9446_250k.bin");
-    pnet.min_face_size = 50;
-    pnet.threshold[0] = 0.97;
-    IMG img("pic1.jpg");
-
-    auto start = high_resolution_clock::now();
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
-    vector<Bbox> bbox = pnet.detect(img);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
-
-    IMG pnet_detect(img);
-    for (int i = 0; i < bbox.size(); ++i) {
-        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
-    }
-    pnet_detect.save("pnet_predict.jpg", 80);
-
-
-    RNet rnet("rnet_v1.bin");
-    rnet.threshold[0] = 0.7;
-
-    start = high_resolution_clock::now();
-    vector<Bbox> rnet_bbox = rnet.detect(img, bbox);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
-
-    IMG rnet_detect(img);
-    for (int i = 0; i < rnet_bbox.size(); ++i) {
-        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, RED);
-    }
-    rnet_detect.save("rnet_predict.jpg", 80);
-
-    ONet onet("onet_9981_all.bin");
-    onet.threshold[0] = 0.8;
-
-    start = high_resolution_clock::now();
-    vector<Bbox> onet_bbox = onet.detect(img, rnet_bbox);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
-
-    IMG onet_detect(img);
-    for (int i = 0; i < onet_bbox.size(); ++i) {
-        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
-        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED, radius);
-        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius);
-        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius);
-        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius);
-        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius);
-        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius);
-    }
-    onet_detect.save("onet_predict.jpg", 80);
+//    PNet pnet("pnet_9446_250k.bin");
+//    pnet.min_face_size = 50;
+//    pnet.threshold[0] = 0.97;
+//    IMG img("pic1.jpg");
+//
+//    auto start = high_resolution_clock::now();
+//    auto stop = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(stop - start);
+//    vector<Bbox> bbox = pnet.detect(img);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
+//
+//    IMG pnet_detect(img);
+//    for (int i = 0; i < bbox.size(); ++i) {
+//        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
+//    }
+//    pnet_detect.save("pnet_predict.jpg", 80);
+//
+//
+//    RNet rnet("rnet_v1.bin");
+//    rnet.threshold[0] = 0.7;
+//
+//    start = high_resolution_clock::now();
+//    vector<Bbox> rnet_bbox = rnet.detect(img, bbox);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
+//
+//    IMG rnet_detect(img);
+//    for (int i = 0; i < rnet_bbox.size(); ++i) {
+//        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, RED);
+//    }
+//    rnet_detect.save("rnet_predict.jpg", 80);
+//
+//    ONet onet("onet_9998_all.bin");
+//    onet.threshold[0] = 0.8;
+//
+//    start = high_resolution_clock::now();
+//    vector<Bbox> onet_bbox = onet.detect(img, rnet_bbox);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
+//
+//    IMG onet_detect(img);
+//    for (int i = 0; i < onet_bbox.size(); ++i) {
+//        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
+//        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius);
+//        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius);
+//    }
+//    onet_detect.save("onet_predict.jpg", 80);
     
+//    Mtcnn mtcnn("pnet_9468_all.bin", "rnet_v1.bin", "onet_9998_all.bin");
+//    mtcnn.min_face_size = 50;
+//    IMG img("pic1.jpg");
+//    vector<Bbox> result = mtcnn.detect(img);
+//    mtcnn.mark(img, result);
+//    img.save("result.jpg", 80);
+//    mtcnn.layout(result);
     
-    //    ONet onet;
-    
-    //    IMG img("pic1.jpg");
-    //
-    //    Mtcnn detector("pnet_9402_250k.bin", "rnet_ensure_9721.bin", "");
-    //    detector.min_face_size = 50;
-    //    detector.detect(img);
-    
+//    IMG img("pic1.jpg");
+//    auto start = high_resolution_clock::now();
+//    auto stop = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(stop - start);
+//    img = img.gaussian_blur(3);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("Time: %lldms\n", duration.count());
+//    img.save("gaussian.jpg");
+//    Kernel k(3, 3, 1, 1);
+//    k = {0, 1, 0, 1, -4, 1, 0, 1, 0};
+//    Kernel g(1, 1, 1, 3);
+//    IMG gray = img.convertGray();
+//    IMG lap = gray.filter(1, k, false);
+//    lap = lap.filter(1, g, false);
+//    lap.save("lap.jpg");
+//    IMG sobel = gray.sobel();
+//    sobel.save("sobel.jpg");
+//    lap.histogram(Size(1000, 500), 1, "lap_histo.jpg");
+//    sobel.histogram(Size(1000, 500), 1, "sobel_histo.jpg");
     
     //    vtensor data_set_rnet;
     //    vector<vfloat> label_set_rnet;
@@ -289,8 +323,48 @@ int main(int argc, const char * argv[]) {
     //
     //    mtcnn_evaluate(&rnet.rnet, data_set_rnet, label_set_rnet);
     
+//    vtensor data_set_pnet;
+//    vector<vfloat> label_set_pnet;
+//    mtcnn_data_loader("img_data_250k.bin", "label_data_250k.bin", data_set_pnet, label_set_pnet, 12, 1429442);
+//    PNet pnet;
+//    Trainer trainer(&pnet.pnet, TrainerOption{{"method", Trainer::Method::ADAM}, {"eps", 1e-14}, {"batch_size", 384}, {"learning_rate", 0.001}});
+//    trainer.train(data_set_pnet, label_set_pnet, 240);
+//
+//    mtcnn_evaluate(&pnet.pnet, data_set_pnet, label_set_pnet);
+    
     
     //    IMG img("Carlos_Barra_0001.jpg");
+    
+    Mat mat(3, 3, Mat::MAT_32FC3), mat2(3, 3, Mat::MAT_32FC3);
+    
+    unsigned char *ptr = mat.ptr();
+    int step = mat.step[0];
+    int pix_size = mat.elemSize();
+    unsigned char *act_ptr;
+    float test[3] = {3, 4, 5};
+    
+    printf("pix_size: %d\n", pix_size);
+    
+    for (int i = 0; i < mat.height; ++i) {
+        for (int j = 0; j < mat.width; ++j) {
+            act_ptr = ptr + i * step + j * pix_size;
+            for (int k = 0; k < pix_size; ++k) {
+                act_ptr[k] = ((unsigned char *)&test)[k];
+            }
+        }
+    }
+    
+    Mat::MatIterator<Vec3f> it = mat.begin<Vec3f>();
+    for ( ; it != mat.end<Vec3f>(); ++it) {
+        printf("(%.2f %.2f %.2f) ", (*it)[0], (*it)[1], (*it)[2]);
+    }
+    
+//    for (int i = 0; i < mat.height; ++i) {
+//        for (int j = 0; j < mat.width; ++j) {
+//            printf("(%.2f %.2f %.2f) ", mat.at<Vec3f>(i, j)[0], mat.at<Vec3f>(i, j)[1], mat.at<Vec3f>(i, j)[2]);
+//        }
+//        printf("\n");
+//    }
     
     return 0;
 }

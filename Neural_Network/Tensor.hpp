@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <vector>
+#include <cstring>
 
 #include "Utilities.hpp"
 

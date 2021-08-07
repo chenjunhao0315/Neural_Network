@@ -34,6 +34,7 @@
 /* Begin PBXFileReference section */
 		7605471826BC17F900909C8B /* Mat.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mat.cpp; sourceTree = "<group>"; };
 		7605471926BC17F900909C8B /* Mat.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mat.hpp; sourceTree = "<group>"; };
+		7605471F26BDE05A00909C8B /* Cast.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Cast.hpp; sourceTree = "<group>"; };
 		760C6CA026696CED0098007D /* Data_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_Process.cpp; sourceTree = "<group>"; };
 		760C6CA126696CED0098007D /* Data_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_Process.hpp; sourceTree = "<group>"; };
 		761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = Neural_Network.profdata; sourceTree = "<group>"; };
@@ -113,6 +114,7 @@
 				76A40ED126A4CF4700A01830 /* Mtcnn.hpp */,
 				7605471826BC17F900909C8B /* Mat.cpp */,
 				7605471926BC17F900909C8B /* Mat.hpp */,
+				7605471F26BDE05A00909C8B /* Cast.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";

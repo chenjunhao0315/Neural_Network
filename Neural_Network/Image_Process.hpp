@@ -59,15 +59,10 @@ class IMG {
         UNSUPPORT,
         OPEN_FAIL
     };
-    enum Color_Space {
-        RGB,
-        GRAY,
-        BINARY
-    };
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel, Color_Space cs = Color_Space::RGB, Color color = Color(0, 0, 0));
+    IMG(int width, int height, int channel, MatType type = MAT_8UC3, Color color = Color(0, 0, 0));
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
@@ -78,13 +73,15 @@ public:
     IMG convertGray();
     IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
     IMG median_blur(int radius);
-    IMG filter(int channel, Kernel kernel, bool normalize = true);
+    IMG filter(Mat kernel, MatType dstType = MAT_UNDEFINED);
     IMG sobel();
     IMG threshold(unsigned char threshold, unsigned char max);
     IMG dilate(Kernel kernel);
     IMG erode(Kernel kernel);
     IMG opening(Kernel kernel);
     IMG closing(Kernel kernel);
+    Mat& getMat() {return mat;}
+    void convertTo(MatType type);
     void release();
     void showPicInfo();
     void histogram(Size size = Size(360, 240), int resolution = 1, const char *histogram_name = "histogram.jpg");
@@ -97,18 +94,19 @@ public:
     
     int width, height, channel;
 private:
-    PIXEL **PX;
-    unsigned char *pixel_array;
-    bool *binary_array;
+//    PIXEL **PX;
+//    unsigned char *pixel_array;
+//    bool *binary_array;
     vector<string> Info;
-    Color_Space color_space;
+    MatType type;
+    Mat mat;
     
     IMG::ImageType getType(const char *filename);
     IMG::ImageType phraseType(const char *name);
-    void allocPX();
-    void copyPX(PIXEL **PX_src);
-    void freePX();
-    void storePixelArray(unsigned char *rgb);
+//    void allocPX();
+//    void copyPX(PIXEL **PX_src);
+//    void freePX();
+//    void storePixelArray(unsigned char *rgb);
     void drawCircle_Single(Point center_point, Color color, int radius = 0);
     void subCircle(int xc, int yc, int x, int y, Color color);
 };

@@ -67,7 +67,10 @@ public:
     unsigned char * ptr() {return data;}
     
     Mat convertTo(MatType dstType, float scale = 0, float shift = 0);
+    
     Mat subtract(Mat &minuend, MatType dstType = MAT_UNDEFINED);
+    Mat add(Mat &addend, MatType dstType = MAT_UNDEFINED);
+    Mat addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType);
     
     template <typename T>
     T* ptr(int index);
@@ -127,6 +130,11 @@ template <typename srcType, typename dstType>
 void subtractMat(void *src1, void *src2, void *dst, int total_elements);
 
 TernaryFunc getsubtractMatFunc(MatType srcType, MatType dstType);
+
+template <typename srcType, typename dstType>
+void addMat(void *src1, void *src2, void *dst, int total_elements);
+
+TernaryFunc getaddMatFunc(MatType srcType, MatType dstType);
 
 template <typename T>
 class Vec3 {
@@ -207,6 +215,16 @@ void subtractMat(void *src1, void *src2, void *dst, int total_elements) {
     dstType *dst_ptr = (dstType*)dst;
     for (int i = total_elements; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) - *(src2_ptr++));
+    }
+}
+
+template <typename srcType, typename dstType>
+void addMat(void *src1, void *src2, void *dst, int total_elements) {
+    srcType *src1_ptr = (srcType*)src1;
+    srcType *src2_ptr = (srcType*)src2;
+    dstType *dst_ptr = (dstType*)dst;
+    for (int i = total_elements; i--; ) {
+        *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) + *(src2_ptr++));
     }
 }
 

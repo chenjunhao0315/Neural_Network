@@ -390,8 +390,8 @@ int main(int argc, const char * argv[]) {
 //        printf("%d ", *it);
 //    }
     
-    IMG img("pic1.jpg");
-    img.save("test.jpg");
+//    IMG img("pic1.jpg");
+//    img.save("test.jpg");
 //
 //    start = high_resolution_clock::now();
 //    IMG crop = img.crop(Rect(2476, 1431, 2547, 1519));
@@ -452,6 +452,13 @@ int main(int argc, const char * argv[]) {
 //    erode.save("erode.jpg");
 //    open.save("open.jpg");
 //    close.save("close.jpg");
+    
+    Mat a(3, 3, MAT_8UC1, Scalar(255));
+    Mat b(3, 3, MAT_8UC1, Scalar(1));
+    Mat c = a.add(b, MAT_32SC1);
+    for (auto it = c.begin<int>(); it != c.end<int>(); ++it) {
+        printf("%d ", *it);
+    }
     
     return 0;
 }

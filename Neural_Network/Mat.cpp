@@ -225,6 +225,32 @@ Mat Mat::subtract(Mat &minuend_, MatType dstType_) {
     return dst;
 }
 
+Mat Mat::add(Mat &addend_, MatType dstType_) {
+    if (depth() != addend_.depth()) {
+        printf("[Mat][Subtract] Channel unmatched!\n");
+        return Mat();
+    }
+    if (!(width == addend_.width && height == addend_.height)) {
+        printf("[Mat][Subtract] Size unmatched!\n");
+        return Mat();
+    }
+    
+    Mat addend = addend_.convertTo(type);
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat dst(width, height, dstType);
+    
+    TernaryFunc addFunc = getaddMatFunc(type, dstType);
+    if (getDepth(dstType) == 3)
+        addFunc(data, addend.ptr(), dst.ptr(), width * height * 3);
+    else
+        addFunc(data, addend.ptr(), dst.ptr(), width * height);
+    return dst;
+}
+
+Mat Mat::addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType) {
+    return Mat();
+}
+
 void Mat::fillWith(Scalar &s) {
     double buf[3];
     convertScalar(s, buf, type);
@@ -262,6 +288,18 @@ TernaryFunc getsubtractMatFunc(MatType srcType, MatType dstType) {
     };
     
     return subTable[srcType >> 1][dstType >> 1];
+}
+
+TernaryFunc getaddMatFunc(MatType srcType, MatType dstType) {
+    static TernaryFunc addTable[5][5] = {
+        {addMat<unsigned char, unsigned char>, addMat<unsigned char, char>, addMat<unsigned char, unsigned int>, addMat<unsigned char, int>, addMat<unsigned char, float>},
+        {addMat<char, unsigned char>, addMat<char, char>, addMat<char, unsigned int>, addMat<char, int>, addMat<char, float>},
+        {addMat<unsigned int, unsigned char>, addMat<unsigned int, char>, addMat<unsigned int, unsigned int>, addMat<unsigned int, int>, addMat<unsigned int, float>},
+        {addMat<int, unsigned char>, addMat<int, char>, addMat<int, unsigned int>, addMat<int, int>, addMat<int, float>},
+        {addMat<float, unsigned char>, addMat<float, char>, addMat<float, unsigned int>, addMat<float, int>, addMat<float, float>}
+    };
+    
+    return addTable[srcType >> 1][dstType >> 1];
 }
 
 int getDepth(MatType type) {

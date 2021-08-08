@@ -17,13 +17,13 @@ IMG::IMG() {
     channel = 0;
 }
 
-IMG::IMG(int width_, int height_, int channel_, MatType type_, Color color) {
+IMG::IMG(int width_, int height_, int channel_, MatType type_, Scalar color) {
     width = width_;
     height = height_;
     channel = channel_;
     type = type_;
-    if (!(color.R == 0 && color.G == 0 && color.B == 0)) {
-        mat = Mat(width_, height_, type_, Scalar(color.R, color.G, color.B));
+    if (!(color.val[0] == 0 && color.val[1] == 0 && color.val[2] == 0)) {
+        mat = Mat(width_, height_, type_, color);
     } else {
         mat = Mat(width_, height_, type_);
     }
@@ -299,7 +299,9 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
         return IMG();
     }
     
-    IMG result(width, height, (dstType % 2) ? 3 : 1, (dstType == MAT_UNDEFINED) ? type : dstType);
+    int result_channel = (dstType == MAT_UNDEFINED) ?  mat.depth() : ((dstType % 2) ? 3 : 1);
+    
+    IMG result(width, height, result_channel, (dstType == MAT_UNDEFINED) ? type : dstType);
     
     Mat &dst = result.getMat();
     
@@ -321,15 +323,14 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
 
     IMG result(width, height, channel, type);
     int radius = (radius_ == 0) ? floor(sigma_x_ * 2.57) + 1 : (int)radius_ + 1;
-    float *filter_x, *filter_y;
     float sigma_x = (sigma_x_ == 0) ? 1.0 * radius / 2.57 : sigma_x_;
     float sigma_y = (sigma_y_ == 0) ? 1.0 * radius / 2.57 : sigma_y_;
     float normal_x = 1.0 / (sigma_x * sqrt(2.0 * PI));
     float normal_y = 1.0 / (sigma_y * sqrt(2.0 * PI));
     float coef_x = -1.0 / (2 * sigma_x * sigma_x);
     float coef_y = -1.0 / (2 * sigma_y * sigma_y);
-    filter_x = new float [2 * (int)radius + 1];
-    filter_y = new float [2 * (int)radius + 1];
+    float filter_x[2 * (int)radius + 1];
+    float filter_y[2 * (int)radius + 1];
     float gaussianSum_x = 0, gaussianSum_y = 0;
     for (int i = 0, j = -radius; j <= radius; i++, j++) {
         gaussianSum_x += filter_x[i] = normal_x * exp(1.0 * coef_x * j * j);
@@ -343,6 +344,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
     Mat &src = mat;
     int src_depth = src.depth();
     int src_elemsize = src.elemSize();
+    int src_step = src.getStep();
     unsigned char *src_ptr = src.ptr();
     
     Mat mid(width, height, type);
@@ -352,11 +354,10 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
     
     Mat &res = result.getMat();
     int res_depth = res.depth();
-    int res_elemsize = res.elemSize();
     unsigned char *res_ptr = res.ptr();
     
     int index;
-    float filter_value, *filter_ptr;
+    float *filter_ptr;
     float blur[3] = {0.0f};
     
     // width direction
@@ -365,46 +366,45 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
             filter_ptr = filter_x;
             for (int k = -radius; k <= radius; ++k) {
                 int l = w + k;
-                filter_value = *(filter_ptr++);
                 if (l >= 0 && l < width) {
-                    index = (h * width + l) * src_elemsize;
-                    for (int d = 0; d < src_depth; ++d) {
-                        blur[d] += *(src_ptr + index + d) * filter_value;
+                    index = src_elemsize * l;
+                    for (int d = src_depth; d--; ) {
+                        blur[d] += src_ptr[index + d] * *(filter_ptr);
                     }
                 }
+                ++filter_ptr;
             }
             for (int d = 0; d < mid_depth; ++d) {
                 *(mid_ptr++) = saturate_cast<unsigned char>(blur[d]);
                 blur[d] = 0.0f;
             }
         }
+        src_ptr += src_step;
     }
     
     mid_ptr = mid.ptr();
     
     // height direction
-    for (int w = 0; w < width; ++w) {
-        for (int h = 0; h < height; ++h) {
+    for (int h = 0; h < height; ++h) {
+        for (int w = 0; w < width; ++w) {
             filter_ptr = filter_y;
             for (int k = -radius; k <= radius; ++k) {
                 int l = h + k;
-                filter_value = *(filter_ptr++);
+//                filter_value = *(filter_ptr++);
                 if (l >= 0 && l < height) {
                     index = (l * width + w) * mid_elemsize;
-                    for (int d = 0; d < mid_depth; ++d) {
-                        blur[d] += *(mid_ptr + index + d) * filter_value;
+                    for (int d = mid_depth; d--; ) {
+                        blur[d] += *(mid_ptr + index + d) * *(filter_ptr);
                     }
                 }
+                ++filter_ptr;
             }
-            index = (h * width + w) * res_elemsize;
             for (int d = 0; d < res_depth; ++d) {
-                *(res_ptr + index + d) = saturate_cast<unsigned char>(blur[d]);
+                *(res_ptr++) = saturate_cast<unsigned char>(blur[d]);
                 blur[d] = 0.0f;
             }
         }
     }
-    delete [] filter_x;
-    delete [] filter_y;
     return result;
 }
 
@@ -590,6 +590,25 @@ IMG IMG::closing(Kernel kernel) {
     return result;
 }
 
+IMG IMG::subtract(IMG &minuend, MatType dstType) {
+    if (mat.depth() != minuend.mat.depth()) {
+        printf("[IMG][Subtract] Channel unmatched!\n");
+        return IMG();
+    }
+    if (!(width == minuend.width && height == minuend.height)) {
+        printf("[IMG][Subtract] Size unmatched!\n");
+        return IMG();
+    }
+    
+    IMG dst_img(width, height, mat.depth(), (dstType == MAT_UNDEFINED) ? type : dstType);
+    Mat &src1 = mat;
+    Mat &src2 = minuend.getMat();
+    Mat &dst = dst_img.getMat();
+    dst = src1.subtract(src2, dstType);
+    
+    return dst_img;
+}
+
 void IMG::histogram(Size size, int resolution, const char *histogram_name) {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
         printf("[IMG][Histogram] Unsupport data type!\n");
@@ -614,7 +633,7 @@ void IMG::histogram(Size size, int resolution, const char *histogram_name) {
         calc[d] = normalize(calc[d], 0, size.height);
     }
 
-    IMG histo(size.width, size.height, 3, MAT_8UC3, Color(255, 255, 255));
+    IMG histo(size.width, size.height, 3, MAT_8UC3, Scalar(255, 255, 255));
     Color color_table[3] = {RED, GREEN, BLUE};
     if (depth == 1)
         color_table[0] = BLACK;

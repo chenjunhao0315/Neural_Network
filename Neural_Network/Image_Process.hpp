@@ -62,7 +62,7 @@ class IMG {
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel, MatType type = MAT_8UC3, Color color = Color(0, 0, 0));
+    IMG(int width, int height, int channel, MatType type = MAT_8UC3, Scalar color = Scalar(0, 0, 0));
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
@@ -80,6 +80,7 @@ public:
     IMG erode(Kernel kernel);
     IMG opening(Kernel kernel);
     IMG closing(Kernel kernel);
+    IMG subtract(IMG &minuend, MatType dstType = MAT_UNDEFINED);
     Mat& getMat() {return mat;}
     void convertTo(MatType type);
     void release();
@@ -94,19 +95,12 @@ public:
     
     int width, height, channel;
 private:
-//    PIXEL **PX;
-//    unsigned char *pixel_array;
-//    bool *binary_array;
     vector<string> Info;
     MatType type;
     Mat mat;
     
     IMG::ImageType getType(const char *filename);
     IMG::ImageType phraseType(const char *name);
-//    void allocPX();
-//    void copyPX(PIXEL **PX_src);
-//    void freePX();
-//    void storePixelArray(unsigned char *rgb);
     void drawCircle_Single(Point center_point, Color color, int radius = 0);
     void subCircle(int xc, int yc, int x, int y, Color color);
 };

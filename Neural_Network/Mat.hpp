@@ -47,7 +47,8 @@ typedef Vec3<int> Vec3i;
 typedef Vec3<unsigned int> Vec3u;
 typedef Vec3<float> Vec3f;
 
-typedef void (*func)(void*, void*, int);
+typedef void (*BinaryFunc)(void*, void*, int);
+typedef void (*TernaryFunc)(void*, void*, void*, int);
 
 class Mat {
 public:
@@ -64,7 +65,9 @@ public:
     int getStep() {return step[0];}
     MatType getType() {return type;}
     unsigned char * ptr() {return data;}
+    
     Mat convertTo(MatType dstType, float scale = 0, float shift = 0);
+    Mat subtract(Mat &minuend, MatType dstType = MAT_UNDEFINED);
     
     template <typename T>
     T* ptr(int index);
@@ -113,13 +116,17 @@ private:
     unsigned char *data;
 };
 
+int getDepth(MatType type);
+
 template <typename srcType, typename dstType>
 void convertType(void *src, void *dst, int total_elements);
 
-func getConvertFunc(MatType srcType, MatType dstType);
+BinaryFunc getConvertTypeFunc(MatType srcType, MatType dstType);
 
-template <typename dstType, typename srcType>
-dstType sat_cast(srcType val);
+template <typename srcType, typename dstType>
+void subtractMat(void *src1, void *src2, void *dst, int total_elements);
+
+TernaryFunc getsubtractMatFunc(MatType srcType, MatType dstType);
 
 template <typename T>
 class Vec3 {
@@ -171,7 +178,7 @@ T& Mat::at(int width_, int height_) {
 
 template <typename T>
 T* Mat::ptr(int index) {
-    return *(T*)(data + step[0] * index);
+    return (T*)(data + step[0] * index);
 }
 
 template <typename T>
@@ -190,6 +197,16 @@ void convertType(void *src, void *dst, int total_elements) {
     dstType *dst_ptr = (dstType*)dst;
     for (int i = total_elements; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src_ptr++));
+    }
+}
+
+template <typename srcType, typename dstType>
+void subtractMat(void *src1, void *src2, void *dst, int total_elements) {
+    srcType *src1_ptr = (srcType*)src1;
+    srcType *src2_ptr = (srcType*)src2;
+    dstType *dst_ptr = (dstType*)dst;
+    for (int i = total_elements; i--; ) {
+        *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) - *(src2_ptr++));
     }
 }
 

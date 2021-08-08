@@ -187,30 +187,42 @@ Mat& Mat::operator=(std::initializer_list<float> list) {
 
 Mat Mat::convertTo(MatType dstType, float scale, float shift) {
     Mat dst(width, height, dstType);
-    func cvtFunc = getConvertFunc(type, dstType);
-    if (!cvtFunc) {
+    if (depth() != getDepth(dstType)) {
         printf("[Mat][Convert] Channel size unmatched!\n");
         return Mat();
     }
-    if (dstType % 2)
-        cvtFunc(data, dst.ptr(), 3 * width * height);
-    else
-        cvtFunc(data, dst.ptr(), width * height);
+    BinaryFunc cvtFunc = getConvertTypeFunc(type, dstType);
+    if (!cvtFunc) {
+        return *this;
+    } else {
+        if (getDepth(dstType) == 3)
+            cvtFunc(data, dst.ptr(), 3 * width * height);
+        else
+            cvtFunc(data, dst.ptr(), width * height);
+    }
     return dst;
 }
 
-func getConvertFunc(MatType srcType, MatType dstType) {
-    static func cvtTable[5][5] = {
-        {convertType<unsigned char, unsigned char>, convertType<unsigned char, char>, convertType<unsigned char, unsigned int>, convertType<unsigned char, int>, convertType<unsigned char, float>},
-        {convertType<char, unsigned char>, convertType<char, char>, convertType<char, unsigned int>, convertType<char, int>, convertType<char, float>},
-        {convertType<unsigned int, unsigned char>, convertType<unsigned int, char>, convertType<unsigned int, unsigned int>, convertType<unsigned int, int>, convertType<unsigned int, float>},
-        {convertType<int, unsigned char>, convertType<int, char>, convertType<int, unsigned int>, convertType<int, int>, convertType<int, float>},
-        {convertType<float, unsigned char>, convertType<float, char>, convertType<float, unsigned int>, convertType<float, int>, convertType<float, float>}
-    };
-    if (srcType % 2 != dstType % 2) {
-        return nullptr;
+Mat Mat::subtract(Mat &minuend_, MatType dstType_) {
+    if (depth() != minuend_.depth()) {
+        printf("[Mat][Subtract] Channel unmatched!\n");
+        return Mat();
     }
-    return cvtTable[srcType >> 1][dstType >> 1];
+    if (!(width == minuend_.width && height == minuend_.height)) {
+        printf("[Mat][Subtract] Size unmatched!\n");
+        return Mat();
+    }
+    
+    Mat minuend = minuend_.convertTo(type);
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat dst(width, height, dstType);
+    
+    TernaryFunc subFunc = getsubtractMatFunc(type, dstType);
+    if (getDepth(dstType) == 3)
+        subFunc(data, minuend.ptr(), dst.ptr(), width * height * 3);
+    else
+        subFunc(data, minuend.ptr(), dst.ptr(), width * height);
+    return dst;
 }
 
 void Mat::fillWith(Scalar &s) {
@@ -224,6 +236,52 @@ void Mat::fillWith(Scalar &s) {
             *(dst++) = *(src + j);
         }
     }
+}
+
+BinaryFunc getConvertTypeFunc(MatType srcType, MatType dstType) {
+    static BinaryFunc cvtTable[5][5] = {
+        {nullptr, convertType<unsigned char, char>, convertType<unsigned char, unsigned int>, convertType<unsigned char, int>, convertType<unsigned char, float>},
+        {convertType<char, unsigned char>, nullptr, convertType<char, unsigned int>, convertType<char, int>, convertType<char, float>},
+        {convertType<unsigned int, unsigned char>, convertType<unsigned int, char>, nullptr, convertType<unsigned int, int>, convertType<unsigned int, float>},
+        {convertType<int, unsigned char>, convertType<int, char>, convertType<int, unsigned int>, nullptr, convertType<int, float>},
+        {convertType<float, unsigned char>, convertType<float, char>, convertType<float, unsigned int>, convertType<float, int>, nullptr}
+    };
+    if (srcType % 2 != dstType % 2) {
+        return nullptr;
+    }
+    return cvtTable[srcType >> 1][dstType >> 1];
+}
+
+TernaryFunc getsubtractMatFunc(MatType srcType, MatType dstType) {
+    static TernaryFunc subTable[5][5] = {
+        {subtractMat<unsigned char, unsigned char>, subtractMat<unsigned char, char>, subtractMat<unsigned char, unsigned int>, subtractMat<unsigned char, int>, subtractMat<unsigned char, float>},
+        {subtractMat<char, unsigned char>, subtractMat<char, char>, subtractMat<char, unsigned int>, subtractMat<char, int>, subtractMat<char, float>},
+        {subtractMat<unsigned int, unsigned char>, subtractMat<unsigned int, char>, subtractMat<unsigned int, unsigned int>, subtractMat<unsigned int, int>, subtractMat<unsigned int, float>},
+        {subtractMat<int, unsigned char>, subtractMat<int, char>, subtractMat<int, unsigned int>, subtractMat<int, int>, subtractMat<int, float>},
+        {subtractMat<float, unsigned char>, subtractMat<float, char>, subtractMat<float, unsigned int>, subtractMat<float, int>, subtractMat<float, float>}
+    };
+    
+    return subTable[srcType >> 1][dstType >> 1];
+}
+
+int getDepth(MatType type) {
+    switch (type) {
+        case MAT_8UC1:
+        case MAT_8SC1:
+        case MAT_32UC1:
+        case MAT_32SC1:
+        case MAT_32FC1:
+            return 1; break;
+        case MAT_8UC3:
+        case MAT_8SC3:
+        case MAT_32UC3:
+        case MAT_32SC3:
+        case MAT_32FC3:
+            return 3; break;
+        default:
+            return -1;
+    }
+    return -1;
 }
 // End Mat
 

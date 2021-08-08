@@ -370,14 +370,28 @@ int main(int argc, const char * argv[]) {
 //
 //
 //    IMG img("pic1.jpg");
+////    img = img.convertGray();
+//    Mat kernel(3, 3, MAT_32FC1, Scalar(1.0 / 9));
 //    auto start = high_resolution_clock::now();
 //    auto stop = high_resolution_clock::now();
 //    auto duration = duration_cast<milliseconds>(stop - start);
-//    img = img.convertGray();
+//    img = img.filter(kernel, MAT_8UC3);
 //    stop = high_resolution_clock::now();
 //    duration = duration_cast<milliseconds>(stop - start);
 //    printf("Time: %lldms\n", duration.count());
+//    img.convertTo(MAT_8UC3);
 //    img.save("test.jpg");
+    
+//    Mat a(3, 3, MAT_8UC1, Scalar(3));
+//    Mat b(3, 3, MAT_8UC1, Scalar(5));
+//    Mat c = a.subtract(b, MAT_8UC1);
+//
+//    for (auto it = c.begin<unsigned char>(); it != c.end<unsigned char>(); ++it) {
+//        printf("%d ", *it);
+//    }
+    
+    IMG img("pic1.jpg");
+    img.save("test.jpg");
 //
 //    start = high_resolution_clock::now();
 //    IMG crop = img.crop(Rect(2476, 1431, 2547, 1519));
@@ -417,12 +431,14 @@ int main(int argc, const char * argv[]) {
 //        printf("(%u %u %u)", (*it)[0], (*it)[1], (*it)[2]);
 //    }
     
-    IMG img("pic1.jpg");
-    img.histogram(Size(1000, 500), 1, "rgb_histo.jpg");
-    img = img.convertGray();
-    img.histogram(Size(1000, 500), 1, "gray_histo.jpg");
-//    Mat kernel(3, 3, MAT_32FC1, Scalar(1.0 / 9));
-//    img = img.filter(kernel);
+//    IMG img("pic1.jpg");
+//    img.histogram(Size(1000, 500), 1, "rgb_histo.jpg");
+//    img = img.convertGray();
+//    img.histogram(Size(1000, 500), 1, "gray_histo.jpg");
+//    Mat kernel(5, 5, MAT_32FC1, Scalar(1.0 / 25));
+//    img = img.convertGray();
+//    img = img.gaussian_blur(50);
+//    img.save("filter.jpg");
 //    IMG sobel = img.sobel();
 //    IMG thres = sobel.threshold(127, 255);
 //    Kernel d(3, 3, 1, 1);

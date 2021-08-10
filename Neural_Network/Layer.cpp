@@ -1111,8 +1111,8 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     fill(input_index, input_index + output_dimension * output_width * output_height * kernel_width * kernel_height, -1);
     weight_index = new int [output_dimension * output_width * output_height];
     
-    int input_counter = -1;
-    int weight_counter = -1;
+    int input_counter = 0;
+    int weight_counter = 0;
     
     info_more.input_index_size = output_dimension * output_width * output_height * kernel_width * kernel_height;
     info_more.weight_index_size =output_dimension * output_width * output_height;
@@ -1124,19 +1124,18 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
             for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
                 for (int kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
                     for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                        int act_w = offset_w + output_w;
-                        int act_h = offset_h + output_h;
-                        ++input_counter;
+                        int act_w = offset_w + kernel_w;
+                        int act_h = offset_h + kernel_h;
                         if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
                             input_index[input_counter] = ((act_h * input_width) + act_w) * input_dimension + output_d;
                         }
+                        input_counter++;
                     }
                 }
-                weight_index[++weight_counter] = ((output_h * output_width) + output_w) * output_dimension + output_d;
+                weight_index[weight_counter++] = ((output_h * output_width) + output_w) * output_dimension + output_d;
             }
         }
     }
-    
 }
 
 Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
@@ -1152,7 +1151,7 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     int win_x = -1, win_y = -1;
     int kernel_w, kernel_h;
     float value = 0.0;
-    int neg_padding = info_more.padding;
+    int neg_padding = -info_more.padding;
     int kernel_width = info_more.kernel_width;
     int kernel_height = info_more.kernel_height;
     
@@ -1174,8 +1173,8 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
                             value = input_weight[index];
                             if (value > minimum) {
                                 minimum = value;
-                                win_x = offset_w + output_w;
-                                win_y = offset_h + output_h;
+                                win_x = offset_w + kernel_w;
+                                win_y = offset_h + kernel_h;
                             }
                         }
                     }

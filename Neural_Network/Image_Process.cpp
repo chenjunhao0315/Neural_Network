@@ -125,11 +125,12 @@ unsigned char * IMG::toPixelArray() {
 
 void IMG::showPicInfo() {
     for (int i = 0; i < Info.size(); ++i)
-        printf("%s", Info[i].c_str());
+    printf("%s", Info[i].c_str());
 }
 
 void IMG::release() {
     Info.clear();
+    mat.release();
 }
 
 void IMG::convertTo(MatType type_) {
@@ -281,7 +282,7 @@ IMG IMG::convertGray() {
     unsigned char *src_ptr = mat.ptr();
     unsigned char *dst_ptr = dst.ptr();
     int size = width * height;
-
+    
     for (int i = size; i--; ) {
         *(dst_ptr++) = 0.2127 * src_ptr[0] + 0.7152 * src_ptr[1] + 0.0722 * src_ptr[2];
         src_ptr += 3;
@@ -298,6 +299,10 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
         printf("Unsupport!\n");
         return IMG();
     }
+    //    if (mat.depth() != getDepth(dstType)) {
+    //        printf("[IMG][Filter] Channel unmatched!\n");
+    //        return IMG();
+    //    }
     
     int result_channel = (dstType == MAT_UNDEFINED) ?  mat.depth() : ((dstType % 2) ? 3 : 1);
     
@@ -307,7 +312,7 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
     
     ConvTool convtool(mat.getType(), dst.getType(), kernel);
     convtool.start(mat, dst);
-
+    
     return result;
 }
 
@@ -320,7 +325,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
         printf("[IMG][Gaussian_blur] Unsupport type!\n");
         return IMG();
     }
-
+    
     IMG result(width, height, channel, type);
     int radius = (radius_ == 0) ? floor(sigma_x_ * 2.57) + 1 : (int)radius_ + 1;
     float sigma_x = (sigma_x_ == 0) ? 1.0 * radius / 2.57 : sigma_x_;
@@ -390,7 +395,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
             filter_ptr = filter_y;
             for (int k = -radius; k <= radius; ++k) {
                 int l = h + k;
-//                filter_value = *(filter_ptr++);
+                //                filter_value = *(filter_ptr++);
                 if (l >= 0 && l < height) {
                     index = (l * width + w) * mid_elemsize;
                     for (int d = mid_depth; d--; ) {
@@ -456,6 +461,27 @@ IMG IMG::sobel() {
     return result;
 }
 
+IMG IMG::laplacian(float gain_) {
+    Mat kernel(3, 3, MAT_32FC1);
+    kernel = {0, 1, 0, 1, -4, 1, 0, 1, 0};
+    IMG dst = this->filter(kernel);
+    
+    if (gain_ != 1) {
+        Mat gain(1, 1, MAT_32FC1, Scalar(gain_));
+        dst = dst.filter(gain);
+    }
+    
+    return dst;
+}
+
+IMG IMG::canny(float threshold1, float threshold2) {
+    if (mat.depth() != 1) {
+        printf("[IMG][Canny] Only accept grayscale!\n");
+    }
+    Canny CannyTool(threshold1, threshold2);
+    return CannyTool.start(*this);
+}
+
 IMG IMG::threshold(unsigned char threshold, unsigned char max) {
     if (type != MAT_8UC1) {
         printf("[IMG][Threshold] Only accept grayscale!\n");
@@ -496,7 +522,7 @@ IMG IMG::dilate(Kernel kernel) {
     
     unsigned char *src_ptr = mat.ptr();
     unsigned char *dst_ptr = result.getMat().ptr();
-
+    
     y = -padding;
     for (int h = 0; h < height; ++h, ++y) {
         x = -padding;
@@ -538,7 +564,7 @@ IMG IMG::erode(Kernel kernel) {
     
     unsigned char *src_ptr = mat.ptr();
     unsigned char *dst_ptr = result.getMat().ptr();
-
+    
     y = -padding;
     for (int h = 0; h < height; ++h, ++y) {
         x = -padding;
@@ -590,6 +616,25 @@ IMG IMG::closing(Kernel kernel) {
     return result;
 }
 
+IMG IMG::add(IMG &addend, MatType dstType) {
+    if (mat.depth() != addend.mat.depth()) {
+        printf("[IMG][Add] Channel unmatched!\n");
+        return IMG();
+    }
+    if (!(width == addend.width && height == addend.height)) {
+        printf("[IMG][Add] Size unmatched!\n");
+        return IMG();
+    }
+    
+    IMG dst_img(width, height, mat.depth(), (dstType == MAT_UNDEFINED) ? type : dstType);
+    Mat &src1 = mat;
+    Mat &src2 = addend.getMat();
+    Mat &dst = dst_img.getMat();
+    dst = src1.add(src2, dstType);
+    
+    return dst_img;
+}
+
 IMG IMG::subtract(IMG &minuend, MatType dstType) {
     if (mat.depth() != minuend.mat.depth()) {
         printf("[IMG][Subtract] Channel unmatched!\n");
@@ -605,6 +650,36 @@ IMG IMG::subtract(IMG &minuend, MatType dstType) {
     Mat &src2 = minuend.getMat();
     Mat &dst = dst_img.getMat();
     dst = src1.subtract(src2, dstType);
+    
+    return dst_img;
+}
+
+IMG IMG::addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType dstType_) {
+    if (mat.depth() != addend.mat.depth()) {
+        printf("[IMG][AddWeighted] Channel unmatched!\n");
+        return IMG();
+    }
+    if (!(width == addend.width && height == addend.height)) {
+        printf("[IMG][AddWeighted] Size unmatched!\n");
+        return IMG();
+    }
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    
+    IMG dst_img(width, height, mat.depth(), dstType);
+    Mat &src1 = mat;
+    Mat &src2 = addend.getMat();
+    Mat &dst = dst_img.getMat();
+    dst = src1.addWeighted(alpha, src2, beta, gamma, dstType);
+    
+    return dst_img;
+}
+
+IMG IMG::convertScaleAbs(float scale, float alpha) {
+    MatType dstType = (mat.depth() == 3) ? MAT_8UC3 : MAT_8UC1;
+    IMG dst_img(width, height, mat.depth(), dstType);
+    Mat &dst = dst_img.getMat();
+    dst = mat.absScale(scale, alpha);
+    dst = dst.convertTo(dstType);
     
     return dst_img;
 }
@@ -632,7 +707,7 @@ void IMG::histogram(Size size, int resolution, const char *histogram_name) {
     for (int d = 0; d < depth; ++d) {
         calc[d] = normalize(calc[d], 0, size.height);
     }
-
+    
     IMG histo(size.width, size.height, 3, MAT_8UC3, Scalar(255, 255, 255));
     Color color_table[3] = {RED, GREEN, BLUE};
     if (depth == 1)
@@ -645,7 +720,7 @@ void IMG::histogram(Size size, int resolution, const char *histogram_name) {
             histo.drawLine(Point(int(step * i), size.height - calc[d][i]), Point(int(step * (i + 1)), size.height - calc[d][i + 1]), c);
         }
     }
-
+    
     histo.save(histogram_name, 100);
 }
 
@@ -654,7 +729,7 @@ void IMG::drawPixel(Point p, Color color) {
     px[0] = color.R;
     px[1] = color.G;
     px[2] = color.B;
-//    PX[p.y][p.x] = color;
+    //    PX[p.y][p.x] = color;
 }
 
 void IMG::drawRectangle(Rect rect, Color color, int width_) {
@@ -772,6 +847,161 @@ vector<int> normalize(vector<int> &src, int min, int max) {
         normalize[i] = src[i] * ratio + min;
     }
     return normalize;
+}
+
+IMG Canny::start(IMG &src) {
+    if (threshold1 > threshold2)
+        swap(threshold1, threshold2);
+    
+    IMG blur_img = src.gaussian_blur(3);
+    
+    Mat sobel_kernel_x(3, 3, MAT_32FC1);
+    sobel_kernel_x = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+    Mat sobel_kernel_y(3, 3, MAT_32FC1);
+    sobel_kernel_y = {1, 2, 1, 0, 0, 0, -1, -2, -1};
+    
+    IMG sobel_x_img = blur_img.filter(sobel_kernel_x, MAT_32FC1);
+    IMG sobel_y_img = blur_img.filter(sobel_kernel_y, MAT_32FC1);
+    blur_img.release();
+    sobel_kernel_x.release();
+    sobel_kernel_y.release();
+    
+    Mat &sobel_x = sobel_x_img.getMat();
+    Mat &sobel_y = sobel_y_img.getMat();
+    Mat eta(blur_img.width, blur_img.height, MAT_32FC1, Scalar(10E-4));
+    sobel_x = sobel_x.add(eta);
+    eta.release();
+    Mat tan = sobel_y.divide(sobel_x, MAT_32FC1);
+    Mat dir = direction(tan);
+    tan.release();
+    sobel_x_img = sobel_x_img.convertScaleAbs();
+    sobel_y_img = sobel_y_img.convertScaleAbs();
+    IMG sobel = sobel_x_img.add(sobel_y_img);
+    sobel_x_img.release();
+    sobel_y_img.release();
+    
+    non_max_suppression(sobel.getMat(), dir);
+    
+    IMG upper = sobel.threshold(threshold2, 255);
+    IMG lower = sobel.threshold(threshold1, 255);
+    sobel.release();
+    
+    hysteresis(upper.getMat(), lower.getMat(), dir);
+    
+    return upper;
+}
+
+Mat Canny::direction(Mat &tan) {
+    float *src = (float *)tan.ptr();
+    Mat dst_mat(tan.width, tan.height, MAT_8UC1);
+    unsigned char *dst = dst_mat.ptr();
+    for (int i = tan.width * tan.height; i--; ) {
+        float src_value = *(src++);
+        if (src_value < TAN67_5 && src_value >= TAN22_5) {
+            *(dst++) = DIRECTION::SLASH;
+        } else if (src_value < TAN22_5 && src_value >= -TAN22_5) {
+            *(dst++) = DIRECTION::HORIZONTAL;
+        } else if (src_value < -TAN22_5 && src_value >= -TAN67_5) {
+            *(dst++) = DIRECTION::BACK_SLASH;
+        } else {
+            *(dst++) = DIRECTION::VERTICAL;
+        }
+    }
+    return dst_mat;
+}
+
+void Canny::non_max_suppression(Mat &sobel, Mat &dir) {
+    int width = sobel.width;
+    int height = sobel.height;
+    unsigned char *dir_ptr = dir.ptr();
+    unsigned char *sobel_ptr = sobel.ptr();
+    
+    unsigned char v1, v2;
+    for (int j = 0; j < height; ++j) {
+        for (int i = 0; i < width; ++i) {
+            try {
+                switch(*(dir_ptr++)) {
+                    case DIRECTION::VERTICAL:
+                        v1 = sobel.at<unsigned char>(i, j + 1);
+                        v2 = sobel.at<unsigned char>(i, j - 1);
+                        break;
+                    case DIRECTION::HORIZONTAL:
+                        v1 = sobel.at<unsigned char>(i + 1, j);
+                        v2 = sobel.at<unsigned char>(i - 1, j);
+                        break;
+                    case DIRECTION::SLASH:
+                        v1 = sobel.at<unsigned char>(i + 1, j + 1);
+                        v2 = sobel.at<unsigned char>(i - 1, j - 1);
+                        break;
+                    case DIRECTION::BACK_SLASH:
+                        v1 = sobel.at<unsigned char>(i + 1, j - 1);
+                        v2 = sobel.at<unsigned char>(i - 1, j + 1);
+                        break;
+                    default:
+                        v1 = 255;
+                        v2 = 255;
+                        break;
+                }
+                if (*sobel_ptr <= v1 || *sobel_ptr <= v2) {
+                    *sobel_ptr = 0;
+                }
+            }
+            catch (...) {}
+            sobel_ptr++;
+        }
+    }
+}
+
+void Canny::hysteresis(Mat &upper, Mat &lower, Mat &dir) {
+    int width = upper.width;
+    int height = upper.height;
+    
+    Mat visited(width, height, MAT_8UC1);
+    
+    for (int j = 0; j < height; ++j) {
+        for (int i = 0; i < width; ++i) {
+            if (upper.at<unsigned char>(i, j) != 0 && visited.at<unsigned char>(i, j) == 0) {
+                queue<Point> q;
+                q.push(Point(i, j));
+                while(!q.empty()) {
+                    Point p = q.front(); q.pop();
+                    Point p1, p2;
+                    visited.at<unsigned char>(p.x, p.y) = 255;
+                    upper.at<unsigned char>(p.x, p.y) = 255;
+                    unsigned char d = dir.at<unsigned char>(p.x, p.y);
+                    try {
+                        switch (d) {
+                            case DIRECTION::VERTICAL:
+                                p1 = Point(p.x + 1, p.y);
+                                p2 = Point(p.x - 1, p.y);
+                                break;
+                            case DIRECTION::HORIZONTAL:
+                                p1 = Point(p.x, p.y + 1);
+                                p2 = Point(p.x, p.y - 1);
+                                break;
+                            case DIRECTION::SLASH:
+                                p1 = Point(p.x + 1, p.y - 1);
+                                p2 = Point(p.x - 1, p.y + 1);
+                                break;
+                            case DIRECTION::BACK_SLASH:
+                                p1 = Point(p.x + 1, p.y + 1);
+                                p2 = Point(p.x - 1, p.y - 1);
+                                break;
+                            default:
+                                p1 = p;
+                                p2 = p;
+                                break;
+                        }
+                        if (lower.at<unsigned char>(p1.x, p1.y) > 0 && visited.at<unsigned char>(p1.x, p1.y) == 0)
+                            q.push(p1);
+                        if (lower.at<unsigned char>(p2.x, p2.y) > 0 && visited.at<unsigned char>(p2.x, p2.y) == 0)
+                            q.push(p2);
+                    }
+                    catch (...) {}
+                }
+            }
+        }
+    }
 }
 
 Kernel::~Kernel() {

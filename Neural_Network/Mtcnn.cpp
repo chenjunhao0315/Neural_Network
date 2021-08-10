@@ -328,8 +328,8 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
         unsigned char *pixel = crop.toPixelArray();
         Tensor crop_img(48, 48, 3, 0);
         float *pixel_c = crop_img.weight;
-        for (int i = 0; i < 3 * 48 * 48; ++i) {
-            pixel_c[i] = ((float)pixel[i] - 127.5) * 0.0078125;
+        for (int j = 0; j < 3 * 48 * 48; ++j) {
+            pixel_c[j] = ((float)pixel[j] - 127.5) * 0.0078125;
         }
         
         vfloat onet_detect = onet.Forward(&crop_img);
@@ -562,4 +562,139 @@ void Mtcnn::layout(vector<Bbox> &bbox_list, const char *filename) {
     }
     fprintf(f, "]");
     fclose(f);
+}
+
+MtcnnLoader::MtcnnLoader(const char *img, const char *label, string net_name) {
+    img_ptr = fopen(img, "rb");
+    label_ptr = fopen(label, "rb");
+    if (net_name == "pnet") {
+        net_size = 12;
+        label_step = (sizeof(int) + sizeof(float) * 4 + sizeof(float) * 10);
+        image_step = (sizeof(unsigned char) * 3 * 12 * 12);
+    } else if (net_name == "rnet") {
+        net_size = 24;
+        label_step = (sizeof(int) + sizeof(float) * 4 + sizeof(float) * 10);
+        image_step = (sizeof(unsigned char) * 3 * 24 * 24);
+    } else if (net_name == "onet") {
+        net_size = 48;
+        label_step = (sizeof(int) + sizeof(float) * 4 + sizeof(float) * 10);
+        image_step = (sizeof(unsigned char) * 3 * 48 * 48);
+    } else {
+        printf("Error!\n");
+        net_size = 0;
+        label_step = 0;
+        image_step = 0;
+    }
+}
+
+Tensor MtcnnLoader::getImg(int index) {
+    fseek(img_ptr, index * image_step, SEEK_SET);
+    unsigned char pixel[image_step];
+    fread(pixel, 1, image_step, img_ptr);
+    float normal_pixel[image_step];
+    
+    if (0) {
+        unsigned char pixel_R[net_size * net_size];
+        unsigned char pixel_G[net_size * net_size];
+        unsigned char pixel_B[net_size * net_size];
+        for (int i = 0; i < net_size * net_size; ++i) {
+            pixel_R[i] = pixel[i * 3  +  0];
+            pixel_G[i] = pixel[i * 3  +  1];
+            pixel_B[i] = pixel[i * 3  +  2];
+        }
+        
+        string file_name = to_string(index);
+        FILE *f = fopen(file_name.c_str(), "wb");
+        fprintf(f, "P6\n%d %d\n255\n", net_size, net_size);
+        fwrite(pixel, sizeof(unsigned char), 3 * net_size * net_size, f);
+        fclose(f);
+    }
+    for (int i = image_step; i--; ) {
+        normal_pixel[i] = ((float)pixel[i] - 127.5) / 128.0;
+    }
+    return Tensor(normal_pixel, net_size, net_size, 3);
+}
+
+int MtcnnLoader::getSize() {
+    fseek(label_ptr, 0, SEEK_END);
+    size_t size = ftell(label_ptr);
+    int len = size & 0x7FFFFFFF;
+    len /= 60;
+    return len;
+}
+
+vfloat MtcnnLoader::getLabel(int index) {
+    fseek(label_ptr, index * label_step, SEEK_SET);
+    int cls;
+    float bbox[4];
+    float landmark[10];
+    fread(&cls, sizeof(int), 1, label_ptr);
+    fread(bbox, sizeof(float), 4, label_ptr);
+    fread(landmark, sizeof(float), 10, label_ptr);
+    vfloat label_data;
+    label_data.push_back((float)cls);
+    for (int i = 0; i < 4; ++i) {
+        label_data.push_back(bbox[i]);
+    }
+    for (int i = 0; i < 10; ++i) {
+        label_data.push_back(landmark[i]);
+    }
+    return label_data;
+}
+
+void MtcnnTrainer::train(int epoch) {
+    auto rng = std::default_random_engine((unsigned)time(NULL));
+    vector<int> index;
+    float loss = 0;
+    int data_set_size = loader->getSize();
+    printf("Total %d data\n", data_set_size);
+    for (int i = 0; i < data_set_size; ++i) {
+        index.push_back(i);
+    }
+    int interval = data_set_size / 100;
+    for (int i = 0; i < epoch; ++i) {
+        printf("Epoch %d Training...\n", i + 1);
+        loss = 0;
+        shuffle(index.begin(), index.end(), rng);
+        for (int j = 0; j < data_set_size; ++j) {
+            Tensor img = loader->getImg(index[j]);
+            vfloat label = loader->getLabel(index[j]);
+            loss += trainer->train(img, label)[0];
+            if (j % interval == 0) {
+                printf("[%.2f%%] loss: %f\n", 100.0 * j / data_set_size, loss);
+            }
+        }
+        printf("Epoch %d Total loss: %f\n", i + 1, loss);
+    }
+}
+
+void MtcnnTrainer::evaluate(Neural_Network &nn) {
+    int count = 0;
+    int correct = 0;
+    int pos = 0;
+    int neg = 0;
+    int data_set_size = loader->getSize();
+    int interval = data_set_size / 100;
+    for (int i = 0; i < data_set_size; ++i) {
+        Tensor img = loader->getImg(i);
+        vfloat label = loader->getLabel(i);
+        vfloat out = nn.Forward(&img);
+        if (label[0] == 1) {
+            if (out[1] > out[0]) {
+                correct++;
+                pos++;
+            }
+            count++;
+        } else if (label[0] == 0) {
+            if (out[0] > out[1]) {
+                correct++;
+                neg++;
+            }
+            count++;
+        }
+        if (i % interval == 0) {
+            printf("evaluating...%.2f%%\n", 100.0 * i / data_set_size);
+        }
+    }
+    printf("Acc: %.2f%% pos: %d neg: %d count: %d\n", (float)correct / count * 100, pos, neg, count);
 }

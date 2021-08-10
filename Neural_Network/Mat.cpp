@@ -14,6 +14,7 @@ Mat::~Mat() {
 
 void Mat::freeData() {
     delete [] data;
+    data = nullptr;
 }
 
 void Mat::copyFrom(void *src) {
@@ -170,6 +171,10 @@ Mat& Mat::operator=(const Mat &M) {
     return *this;
 }
 
+void Mat::release() {
+    freeData();
+}
+
 Mat& Mat::operator=(std::initializer_list<float> list) {
     unsigned char *dst_ptr = data;
     int elemSize1 = step[1] / depth();
@@ -213,8 +218,9 @@ Mat Mat::subtract(Mat &minuend_, MatType dstType_) {
         return Mat();
     }
     
-    Mat minuend = minuend_.convertTo(type);
+    
     MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat minuend = minuend_.convertTo(dstType);
     Mat dst(width, height, dstType);
     
     TernaryFunc subFunc = getsubtractMatFunc(type, dstType);
@@ -227,16 +233,17 @@ Mat Mat::subtract(Mat &minuend_, MatType dstType_) {
 
 Mat Mat::add(Mat &addend_, MatType dstType_) {
     if (depth() != addend_.depth()) {
-        printf("[Mat][Subtract] Channel unmatched!\n");
+        printf("[Mat][Add] Channel unmatched!\n");
         return Mat();
     }
     if (!(width == addend_.width && height == addend_.height)) {
-        printf("[Mat][Subtract] Size unmatched!\n");
+        printf("[Mat][Add] Size unmatched!\n");
         return Mat();
     }
     
-    Mat addend = addend_.convertTo(type);
+    
     MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat addend = addend_.convertTo(dstType);
     Mat dst(width, height, dstType);
     
     TernaryFunc addFunc = getaddMatFunc(type, dstType);
@@ -247,8 +254,70 @@ Mat Mat::add(Mat &addend_, MatType dstType_) {
     return dst;
 }
 
+Mat Mat::divide(Mat &dividend_, MatType dstType_) {
+    if (depth() != dividend_.depth()) {
+        printf("[Mat][Divide] Channel unmatched!\n");
+        return Mat();
+    }
+    if (!(width == dividend_.width && height == dividend_.height)) {
+        printf("[Mat][Divide] Size unmatched!\n");
+        return Mat();
+    }
+    
+    
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat dividend = dividend_.convertTo(dstType);
+    Mat dst(width, height, dstType);
+    
+    TernaryFunc divideFunc = getdivideMatFunc(type, dstType);
+    if (getDepth(dstType) == 3)
+        divideFunc(data, dividend.ptr(), dst.ptr(), width * height * 3);
+    else
+        divideFunc(data, dividend.ptr(), dst.ptr(), width * height);
+    return dst;
+}
+
 Mat Mat::addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType) {
-    return Mat();
+    
+    Mat src1(width, height, type);
+    Mat gain_alpha(1, 1, MAT_32FC1, Scalar(alpha));
+    ConvTool stage_1(type, dstType, gain_alpha);
+    stage_1.start(*this, src1);
+    Mat src2(width, height, type);
+    Mat gain_beta(1, 1, MAT_32FC1, Scalar(beta));
+    ConvTool stage_2(addend.getType(), dstType, gain_beta);
+    stage_2.start(addend, src2);
+    
+    Mat dst = src1.add(src2, dstType);
+    Mat gain_gamma(width, height, dstType, Scalar(gamma, gamma, gamma));
+    dst = dst.add(gain_gamma);
+    
+    return dst;
+}
+
+Mat Mat::absScale(float scale, float alpha) {
+    Mat dst(width, height, type);
+    
+    if (scale != 1) {
+        Mat gain(1, 1, MAT_32FC1, Scalar(scale));
+        ConvTool Amplifier(type, type, gain);
+        Amplifier.start(*this, dst);
+    }
+    if (alpha != 0) {
+        MatType offset_type = (depth() == 1) ? MAT_32FC1 : MAT_32FC3;
+        Mat offset(width, height, offset_type, Scalar(alpha, alpha, alpha));
+        dst.add(offset);
+    }
+
+    if (type == MAT_8SC1 || type == MAT_8SC3 || type == MAT_32SC1 || type == MAT_32SC3 || type == MAT_32FC1 || type == MAT_32FC3) {
+        BinaryFunc absFunc = getabsMatFunc(type);
+        if (depth() == 1) {
+            absFunc(data, dst.ptr(), width * height);
+        } else {
+            absFunc(data, dst.ptr(), width * height * 3);
+        }
+    }
+    return dst;
 }
 
 void Mat::fillWith(Scalar &s) {
@@ -278,6 +347,23 @@ BinaryFunc getConvertTypeFunc(MatType srcType, MatType dstType) {
     return cvtTable[srcType >> 1][dstType >> 1];
 }
 
+BinaryFunc getabsMatFunc(MatType type) {
+    switch (type) {
+        case MAT_8SC1:
+        case MAT_8SC3:
+            return absMat<char>; break;
+        case MAT_32SC1:
+        case MAT_32SC3:
+            return absMat<int>; break;
+        case MAT_32FC1:
+        case MAT_32FC3:
+            return absMat<float>; break;
+        default:
+            break;
+    }
+    return nullptr;
+}
+
 TernaryFunc getsubtractMatFunc(MatType srcType, MatType dstType) {
     static TernaryFunc subTable[5][5] = {
         {subtractMat<unsigned char, unsigned char>, subtractMat<unsigned char, char>, subtractMat<unsigned char, unsigned int>, subtractMat<unsigned char, int>, subtractMat<unsigned char, float>},
@@ -297,6 +383,18 @@ TernaryFunc getaddMatFunc(MatType srcType, MatType dstType) {
         {addMat<unsigned int, unsigned char>, addMat<unsigned int, char>, addMat<unsigned int, unsigned int>, addMat<unsigned int, int>, addMat<unsigned int, float>},
         {addMat<int, unsigned char>, addMat<int, char>, addMat<int, unsigned int>, addMat<int, int>, addMat<int, float>},
         {addMat<float, unsigned char>, addMat<float, char>, addMat<float, unsigned int>, addMat<float, int>, addMat<float, float>}
+    };
+    
+    return addTable[srcType >> 1][dstType >> 1];
+}
+
+TernaryFunc getdivideMatFunc(MatType srcType, MatType dstType) {
+    static TernaryFunc addTable[5][5] = {
+        {divideMat<unsigned char, unsigned char>, divideMat<unsigned char, char>, divideMat<unsigned char, unsigned int>, divideMat<unsigned char, int>, divideMat<unsigned char, float>},
+        {divideMat<char, unsigned char>, divideMat<char, char>, divideMat<char, unsigned int>, divideMat<char, int>, divideMat<char, float>},
+        {divideMat<unsigned int, unsigned char>, divideMat<unsigned int, char>, divideMat<unsigned int, unsigned int>, divideMat<unsigned int, int>, divideMat<unsigned int, float>},
+        {divideMat<int, unsigned char>, divideMat<int, char>, divideMat<int, unsigned int>, divideMat<int, int>, divideMat<int, float>},
+        {divideMat<float, unsigned char>, divideMat<float, char>, divideMat<float, unsigned int>, divideMat<float, int>, divideMat<float, float>}
     };
     
     return addTable[srcType >> 1][dstType >> 1];
@@ -327,6 +425,14 @@ int getDepth(MatType type) {
 void ConvTool::start(Mat &src, Mat &dst) {
     if (kernel.depth() != 1) {
         printf("[Mat][ConvTool] Only accept 1 channel kernel!\n");
+        return;
+    }
+    if (kernel.width != kernel.height) {
+        printf("[Mat][ConvTool] Only accept square kernel!\n");
+        return;
+    }
+    if (!(kernel.width % 2 && kernel.height % 2)) {
+        printf("[Mat][ConvTool] Only odd size kernel!\n");
         return;
     }
     kernel = kernel.convertTo(MAT_32FC1);

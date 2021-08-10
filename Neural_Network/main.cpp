@@ -282,7 +282,7 @@ int main(int argc, const char * argv[]) {
     
 //    Mtcnn mtcnn("pnet_9489_all.bin", "rnet_9885.bin", "onet_9998_all.bin");
 //    mtcnn.min_face_size = 50;
-//    IMG img("pic1.jpg");
+//    IMG img("nthuee.jpg");
 //    vector<Bbox> result = mtcnn.detect(img);
 //    mtcnn.mark(img, result);
 //    img.save("result.jpg", 80);
@@ -332,133 +332,44 @@ int main(int argc, const char * argv[]) {
 //
 //    mtcnn_evaluate(&pnet.pnet, data_set_pnet, label_set_pnet);
     
+//    Mtcnn mtcnn("pnet_9489_all.bin", "rnet_9885.bin", "onet_9998_all.bin");
+//    mtcnn.min_face_size = 0;
+//    IMG img("5D4A1809.JPG");
+//    vector<Bbox> result = mtcnn.detect(img);
+//    mtcnn.mark(img, result);
+//    img.save("result.jpg", 80);
+//    mtcnn.layout(result);
     
-    //    IMG img("Carlos_Barra_0001.jpg");
+//    PNet pnet;
+//    MtcnnLoader loader("img_data_pnet.bin", "label_data_pnet.bin", "pnet");
+//    Trainer trainer(&pnet.pnet, TrainerOption{{"method", Trainer::Method::SGD}, {"batch_size", 128}, {"learning_rate", 0.01}});
+//    MtcnnTrainer mtcnn_trainer(&trainer, &loader);
+//    mtcnn_trainer.train(3);
     
-//    Mat mat(3, 3, MAT_32FC3), mat2(3, 3, MAT_32FC3);
-//
-//    unsigned char *ptr = mat.ptr();
-//    int step = mat.getStep();
-//    int pix_size = mat.elemSize();
-//    unsigned char *act_ptr;
-//    Scalar test(3, 4, 5);
-//    double buf[4];
-//    convertScalar(test, buf, MAT_32FC3);
-//
-//    printf("pix_size: %d\n", pix_size);
-//
-//    for (int i = 0; i < mat.height; ++i) {
-//        for (int j = 0; j < mat.width; ++j) {
-//            act_ptr = ptr + i * step + j * pix_size;
-//            for (int k = 0; k < pix_size; ++k) {
-//                act_ptr[k] = ((unsigned char *)buf)[k];
-//            }
-//        }
-//    }
-//
-////    Mat::MatIterator<Vec3f> it = mat.begin<Vec3f>();
-////    for ( ; it != mat.end<Vec3f>(); ++it) {
-////        printf("(%.2f %.2f %.2f) ", (*it)[0], (*it)[1], (*it)[2]);
-////    }
-//
-//    for (int i = 0; i < mat.height; ++i) {
-//        for (int j = 0; j < mat.width; ++j) {
-//            printf("(%.2f %.2f %.2f) ", mat.at<Vec3f>(i, j)[0], mat.at<Vec3f>(i, j)[1], mat.at<Vec3f>(i, j)[2]);
-//        }
-//        printf("\n");
-//    }
-//
-//
-//    IMG img("pic1.jpg");
-////    img = img.convertGray();
-//    Mat kernel(3, 3, MAT_32FC1, Scalar(1.0 / 9));
-//    auto start = high_resolution_clock::now();
-//    auto stop = high_resolution_clock::now();
-//    auto duration = duration_cast<milliseconds>(stop - start);
-//    img = img.filter(kernel, MAT_8UC3);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//    img.convertTo(MAT_8UC3);
-//    img.save("test.jpg");
-    
-//    Mat a(3, 3, MAT_8UC1, Scalar(3));
-//    Mat b(3, 3, MAT_8UC1, Scalar(5));
-//    Mat c = a.subtract(b, MAT_8UC1);
-//
-//    for (auto it = c.begin<unsigned char>(); it != c.end<unsigned char>(); ++it) {
-//        printf("%d ", *it);
+//    MtcnnLoader loader("img_data_onet.bin", "label_data_onet.bin", "onet");
+//    Tensor test = loader.getImg(400000);
+//    vfloat test_label = loader.getLabel(400000);
+//    for (int i = 0; i < 15; ++i) {
+//        printf("%.2f ", test_label[i]);
 //    }
     
-//    IMG img("pic1.jpg");
-//    img.save("test.jpg");
-//
-//    start = high_resolution_clock::now();
-//    IMG crop = img.crop(Rect(2476, 1431, 2547, 1519));
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//    crop.save("crop.jpg");
-//
-//    start = high_resolution_clock::now();
-//    IMG resize = crop.resize(Size(0, 0), 0.5, 0.5);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//    resize.save("resize.jpg");
-//
-//    Kernel k(5, 5, 1, 1);
-//    start = high_resolution_clock::now();
-//    img = img.filter(k);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//    img.save("filter.jpg");
+    ONet onet;
+    MtcnnLoader loader("img_data_onet.bin", "label_data_onet.bin", "onet");
+    Trainer trainer(&onet.onet, TrainerOption{{"method", Trainer::Method::SGD}, {"batch_size", 128}, {"learning_rate", 0.0025}});
+    MtcnnTrainer mtcnn_trainer(&trainer, &loader);
+    mtcnn_trainer.train(30);
+    mtcnn_trainer.evaluate(onet.onet);
+    onet.onet.save("onet_new.bin");
     
-//    Mat a(3, 3, MAT_32SC3);
-//
-//    int count = 0;
-//    for (auto it = a.begin<Vec3i>(); it != a.end<Vec3i>(); ++it) {
-//        (*it)[0] = count++; (*it)[1] = count++; (*it)[2] = count++;
-//        count += 50;
-//        printf("(%d %d %d)", (*it)[0], (*it)[1], (*it)[2]);
-//    }
-//    printf("\n");
-//
-//    Mat b = a.convertTo(MAT_32UC3, 0, 0);
-//
-//    for (auto it = b.begin<Vec3u>(); it != b.end<Vec3u>(); ++it) {
-//        printf("(%u %u %u)", (*it)[0], (*it)[1], (*it)[2]);
-//    }
     
-//    IMG img("pic1.jpg");
-//    img.histogram(Size(1000, 500), 1, "rgb_histo.jpg");
+//    IMG img("target.jpg");
 //    img = img.convertGray();
-//    img.histogram(Size(1000, 500), 1, "gray_histo.jpg");
-//    Mat kernel(5, 5, MAT_32FC1, Scalar(1.0 / 25));
-//    img = img.convertGray();
-//    img = img.gaussian_blur(50);
-//    img.save("filter.jpg");
+//    IMG canny = img.canny(30, 60);
 //    IMG sobel = img.sobel();
-//    IMG thres = sobel.threshold(127, 255);
-//    Kernel d(3, 3, 1, 1);
-//    IMG dilate = thres.dilate(d);
-//    IMG erode = thres.erode(d);
-//    IMG open = thres.opening(d);
-//    IMG close = thres.closing(d);
+//    IMG lap = img.laplacian(25);
+//    canny.save("canny.jpg");
 //    sobel.save("sobel.jpg");
-//    thres.save("thres.jpg");
-//    dilate.save("dilate.jpg");
-//    erode.save("erode.jpg");
-//    open.save("open.jpg");
-//    close.save("close.jpg");
-    
-    Mat a(3, 3, MAT_8UC1, Scalar(255));
-    Mat b(3, 3, MAT_8UC1, Scalar(1));
-    Mat c = a.add(b, MAT_32SC1);
-    for (auto it = c.begin<int>(); it != c.end<int>(); ++it) {
-        printf("%d ", *it);
-    }
-    
+//    lap.save("lap.jpg");
+
     return 0;
 }

@@ -13,6 +13,7 @@
 #include <string>
 #include <algorithm>
 #include <initializer_list>
+#include <queue>
 
 #include "Jpeg.hpp"
 #include "Mat.hpp"
@@ -37,7 +38,7 @@ struct Rect {
 };
 
 struct Point {
-    Point(int x_, int y_) : x(x_), y(y_) {}
+    Point(int x_ = -1, int y_ = -1) : x(x_), y(y_) {}
     int x, y;
 };
 
@@ -48,6 +49,9 @@ typedef PIXEL Color;
 #define RED Color(255, 0, 0)
 #define GREEN Color(0, 255, 0)
 #define BLUE Color(0, 0, 255)
+
+#define TAN22_5 0.414
+#define TAN67_5 2.414
 
 class Kernel;
 
@@ -75,12 +79,17 @@ public:
     IMG median_blur(int radius);
     IMG filter(Mat kernel, MatType dstType = MAT_UNDEFINED);
     IMG sobel();
+    IMG laplacian(float gain = 1);
+    IMG canny(float threshold1, float threshold2);
     IMG threshold(unsigned char threshold, unsigned char max);
     IMG dilate(Kernel kernel);
     IMG erode(Kernel kernel);
     IMG opening(Kernel kernel);
     IMG closing(Kernel kernel);
+    IMG add(IMG &addend, MatType dstType = MAT_UNDEFINED);
     IMG subtract(IMG &minuend, MatType dstType = MAT_UNDEFINED);
+    IMG addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType dstType = MAT_UNDEFINED);
+    IMG convertScaleAbs(float scale = 1, float alpha = 0);
     Mat& getMat() {return mat;}
     void convertTo(MatType type);
     void release();
@@ -124,6 +133,24 @@ public:
     int height;
     int dimension;
     float *data;
+};
+
+class Canny {
+public:
+    enum DIRECTION {
+        SLASH,
+        HORIZONTAL,
+        BACK_SLASH,
+        VERTICAL
+    };
+    Canny(float threshold1_, float threshold2_) : threshold1(threshold1_), threshold2(threshold2_) {}
+    IMG start(IMG &src);
+    Mat direction(Mat &tan);
+    void non_max_suppression(Mat &sobel, Mat &dir);
+    void hysteresis(Mat &upper, Mat &lower, Mat &dir);
+private:
+    float threshold1;
+    float threshold2;
 };
 
 

@@ -91,6 +91,32 @@ public:
     int min_face_size;
 };
 
+class MtcnnLoader {
+public:
+    ~MtcnnLoader() {fclose(img_ptr); fclose(label_ptr);}
+    MtcnnLoader(const char *img, const char *label, string net_name);
+    Tensor getImg(int index);
+    vfloat getLabel(int index);
+    int getSize();
+private:
+    int net_size;
+    int label_step;
+    int image_step;
+    FILE *img_ptr;
+    FILE *label_ptr;
+};
+
+class MtcnnTrainer {
+public:
+    ~MtcnnTrainer() {delete trainer; delete loader;}
+    MtcnnTrainer(Trainer *trainer_, MtcnnLoader *loader_) : trainer(trainer_), loader(loader_) {}
+    void train(int epoch);
+    void evaluate(Neural_Network &nn);
+private:
+    Trainer *trainer;
+    MtcnnLoader *loader;
+};
+
 vector<Bbox> generate_bbox(Feature_map map, float scale, float threshold);
 vector<Bbox> nms(vector<Bbox> &Bbox_list, float threshold, int mode = 0);
 vector<Bbox> convert_to_square(vector<Bbox> &Bbox_list);

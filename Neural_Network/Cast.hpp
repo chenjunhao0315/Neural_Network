@@ -8,6 +8,9 @@
 #ifndef Cast_h
 #define Cast_h
 
+#include <climits>
+#include <math.h>
+
 // Cast
 template<typename _Tp>
 static inline _Tp saturate_cast(unsigned char v) {

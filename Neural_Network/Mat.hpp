@@ -60,6 +60,7 @@ public:
     Mat& operator=(const Mat &M);
     Mat& operator=(std::initializer_list<float> list);
     
+    void release();
     int depth();
     int elemSize() {return step[1];}
     int getStep() {return step[0];}
@@ -70,7 +71,9 @@ public:
     
     Mat subtract(Mat &minuend, MatType dstType = MAT_UNDEFINED);
     Mat add(Mat &addend, MatType dstType = MAT_UNDEFINED);
+    Mat divide(Mat &dividend, MatType dstType = MAT_UNDEFINED);
     Mat addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType);
+    Mat absScale(float scale = 1, float alpha = 0);
     
     template <typename T>
     T* ptr(int index);
@@ -126,6 +129,11 @@ void convertType(void *src, void *dst, int total_elements);
 
 BinaryFunc getConvertTypeFunc(MatType srcType, MatType dstType);
 
+template <typename srcType>
+void absMat(void *src, void *dst, int total_elements);
+
+BinaryFunc getabsMatFunc(MatType type);
+
 template <typename srcType, typename dstType>
 void subtractMat(void *src1, void *src2, void *dst, int total_elements);
 
@@ -135,6 +143,12 @@ template <typename srcType, typename dstType>
 void addMat(void *src1, void *src2, void *dst, int total_elements);
 
 TernaryFunc getaddMatFunc(MatType srcType, MatType dstType);
+
+template <typename srcType, typename dstType>
+void divideMat(void *src1, void *src2, void *dst, int total_elements);
+
+TernaryFunc getdivideMatFunc(MatType srcType, MatType dstType);
+
 
 template <typename T>
 class Vec3 {
@@ -165,6 +179,8 @@ public:
     ConvEngine(int dst_channel_, int dst_width_, int dst_height_, int src_channel_,  int src_width_, int kernel_size_) : dst_channel(dst_channel_), dst_width(dst_width_), dst_height(dst_height_), src_channel(src_channel_), src_width(src_width_), kernel_size(kernel_size_) {}
     void process(void *src, void *dst, void *kernel);
 private:
+    void convSize1(void *src, void *dst, void *kernel);
+    void convDefinition(void *src, void *dst, void *kernel);
     int dst_channel;
     int dst_width;
     int dst_height;
@@ -208,10 +224,19 @@ void convertType(void *src, void *dst, int total_elements) {
     }
 }
 
+template <typename srcType>
+void absMat(void *src, void *dst, int total_elements) {
+    srcType *src_ptr = (srcType*)src;
+    srcType *dst_ptr = (srcType*)dst;
+    for (int i = total_elements; i--; ) {
+        *(dst_ptr++) = saturate_cast<srcType>(abs(*(src_ptr++)));
+    }
+}
+
 template <typename srcType, typename dstType>
 void subtractMat(void *src1, void *src2, void *dst, int total_elements) {
     srcType *src1_ptr = (srcType*)src1;
-    srcType *src2_ptr = (srcType*)src2;
+    dstType *src2_ptr = (dstType*)src2;
     dstType *dst_ptr = (dstType*)dst;
     for (int i = total_elements; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) - *(src2_ptr++));
@@ -221,10 +246,20 @@ void subtractMat(void *src1, void *src2, void *dst, int total_elements) {
 template <typename srcType, typename dstType>
 void addMat(void *src1, void *src2, void *dst, int total_elements) {
     srcType *src1_ptr = (srcType*)src1;
-    srcType *src2_ptr = (srcType*)src2;
+    dstType *src2_ptr = (dstType*)src2;
     dstType *dst_ptr = (dstType*)dst;
     for (int i = total_elements; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) + *(src2_ptr++));
+    }
+}
+
+template <typename srcType, typename dstType>
+void divideMat(void *src1, void *src2, void *dst, int total_elements) {
+    srcType *src1_ptr = (srcType*)src1;
+    dstType *src2_ptr = (dstType*)src2;
+    dstType *dst_ptr = (dstType*)dst;
+    for (int i = total_elements; i--; ) {
+        *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) / *(src2_ptr++));
     }
 }
 
@@ -232,22 +267,31 @@ void addMat(void *src1, void *src2, void *dst, int total_elements) {
 
 // ConvEngine
 template <typename srcType, typename dstType>
-void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel_) {
+void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel) {
+    if (kernel_size == 1) {
+        convSize1(src, dst, kernel);
+    } else {
+        convDefinition(src, dst, kernel);
+    }
+}
+
+template <typename srcType, typename dstType>
+void ConvEngine<srcType, dstType>::convDefinition(void *src, void *dst, void *kernel_) {
     int padding = (kernel_size - 1) / 2;
-    
     int x, y;
     int coordinate_w, coordinate_h;
     srcType *src_ptr = (srcType*)src;
     dstType *dst_ptr = (dstType*)dst;
     float conv[3] = {0};
-    int kernel_index, src_index, dst_index;
+    int src_index;
     float *kernel = (float*)kernel_;
+    float *kernel_ptr;
     
     y = -padding;
     for (int h = 0; h < dst_height; ++h, ++y) {
         x = -padding;
         for (int w = 0; w < dst_width; ++w, ++x) {
-            kernel_index = 0;
+            kernel_ptr = kernel;
             for (int kernel_h = 0; kernel_h < kernel_size; ++kernel_h) {
                 coordinate_h = y + kernel_h;
                 for (int kernel_w = 0; kernel_w < kernel_size; ++kernel_w) {
@@ -255,13 +299,12 @@ void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel_) 
                     if (coordinate_w >= 0 && coordinate_w < dst_width && coordinate_h >= 0 && coordinate_h < dst_height) {
                         src_index = (coordinate_h * src_width + coordinate_w) * src_channel;
                         for (int c = 0; c < src_channel; ++c) {
-                            conv[c] += *(src_ptr + src_index + c) * kernel[kernel_index];
+                            conv[c] += *(src_ptr + src_index + c) * *(kernel_ptr);
                         }
                     }
-                    kernel_index++;
+                    kernel_ptr++;
                 }
             }
-            dst_index = h * dst_width + w;
             for (int c = 0; c < dst_channel; ++c) {
                 *(dst_ptr++) = saturate_cast<dstType>(conv[c]);
                 conv[c] = 0;
@@ -269,6 +312,17 @@ void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel_) 
         }
     }
 }
+
+template <typename srcType, typename dstType>
+void ConvEngine<srcType, dstType>::convSize1(void *src, void *dst, void *kernel) {
+    srcType *src_ptr = (srcType*)src;
+    dstType *dst_ptr = (dstType*)dst;
+    float kernel_value = *(float *)kernel;
+    for (int i = dst_width * dst_height * dst_channel; i--; ) {
+        *(dst_ptr++) = saturate_cast<dstType>(*(src_ptr++) * kernel_value);
+    }
+}
+
 // End ConvEngine
 
 // Mat Iterator

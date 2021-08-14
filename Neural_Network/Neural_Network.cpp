@@ -604,3 +604,7 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
     }
     return vfloat{loss};
 }
+
+void Trainer::decade(float rate) {
+    learning_rate *= rate;
+}

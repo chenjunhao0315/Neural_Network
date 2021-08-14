@@ -949,9 +949,8 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     biases = new Tensor(1, 1, info.output_dimension, bias);
     workspace = new float [info_more.kernel_width * info_more.kernel_height * info_more.input_dimension * info.output_width * info.output_height];
     
-    int width = info_more.input_width;
-    int height = info_more.input_height;
-    int input_dim = info_more.input_dimension;
+    int input_width = info_more.input_width;
+    int input_height = info_more.input_height;
     int stride = info_more.stride;
     int neg_padding = -info_more.padding;
     int out_dim, out_height, out_width;
@@ -984,9 +983,11 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
                 coordinate_y = y + kernel_h;
                 for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
                     coordinate_x = x + kernel_w;
-                    if (coordinate_y >= 0 && coordinate_y < height && coordinate_x >= 0 && coordinate_x < width)
+                    if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
                         for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim)
-                            input_index[++count] = ((width * coordinate_y) + coordinate_x) * input_dim + kernel_dim;
+                            input_index[++count] = ((input_width * coordinate_y) + coordinate_x) * input_dimension + kernel_dim;
+                    else
+                        count += input_dimension;
                 }
             }
     }
@@ -1123,8 +1124,8 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
             int offset_h = neg_padding;
             for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
                 for (int kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
+                    int act_w = offset_w + kernel_w;
                     for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                        int act_w = offset_w + kernel_w;
                         int act_h = offset_h + kernel_h;
                         if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
                             input_index[input_counter] = ((act_h * input_width) + act_w) * input_dimension + output_d;

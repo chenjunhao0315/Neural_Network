@@ -12,7 +12,7 @@
 #include <random>
 
 static std::random_device rd;
-static std::default_random_engine generator(rd());
+static std::mt19937 generator(rd());
 static std::uniform_real_distribution<float> unif(-1.0, 1.0);
 
 float Random();

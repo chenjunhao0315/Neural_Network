@@ -59,6 +59,7 @@ public:
     Trainer(Neural_Network *net, TrainerOption opt);
     vfloat train(Tensor &data, vfloat &target);
     vfloat train(vtensor &data_set, vector<vfloat> &target_set, int epoch);
+    void decade(float rate);
     enum Method {
         SGD,
         ADADELTA,

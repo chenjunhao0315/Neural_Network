@@ -110,7 +110,7 @@ class MtcnnTrainer {
 public:
     ~MtcnnTrainer() {delete trainer; delete loader;}
     MtcnnTrainer(Trainer *trainer_, MtcnnLoader *loader_) : trainer(trainer_), loader(loader_) {}
-    void train(int epoch);
+    void train(int epoch, int decade_interval, float decade_rate);
     void evaluate(Neural_Network &nn);
 private:
     Trainer *trainer;

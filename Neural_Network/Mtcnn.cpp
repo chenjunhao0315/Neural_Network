@@ -642,8 +642,8 @@ vfloat MtcnnLoader::getLabel(int index) {
     return label_data;
 }
 
-void MtcnnTrainer::train(int epoch) {
-    auto rng = std::default_random_engine((unsigned)time(NULL));
+void MtcnnTrainer::train(int epoch, int decade_interval, float decade_rate) {
+    auto rng = std::mt19937((unsigned)time(NULL));
     vector<int> index;
     float loss = 0;
     int data_set_size = loader->getSize();
@@ -663,6 +663,9 @@ void MtcnnTrainer::train(int epoch) {
             if (j % interval == 0) {
                 printf("[%.2f%%] loss: %f\n", 100.0 * j / data_set_size, loss);
             }
+        }
+        if ((i + 1) % decade_interval == 0) {
+            trainer->decade(decade_rate);
         }
         printf("Epoch %d Total loss: %f\n", i + 1, loss);
     }

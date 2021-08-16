@@ -561,7 +561,7 @@ BaseLayer::BaseLayer(BaseLayer *L) {
         }
         if (L->workspace) {
             workspace = new float [info_more.kernel_width * info_more.kernel_height * info_more.input_dimension * info.output_width * info.output_height];
-//            cout << "this: " << this << " address copy workspace: " << workspace << endl;
+            //            cout << "this: " << this << " address copy workspace: " << workspace << endl;
         } else {
             workspace = nullptr;
         }
@@ -616,7 +616,7 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
         }
         if (L.workspace) {
             workspace = new float [info_more.kernel_width * info_more.kernel_height * info_more.input_dimension * info.output_width * info.output_height];
-//            cout << "this: " << this << " copy workspace: " << workspace << endl;
+            //            cout << "this: " << this << " copy workspace: " << workspace << endl;
         } else {
             workspace = nullptr;
         }
@@ -656,7 +656,7 @@ BaseLayer::BaseLayer(BaseLayer &&L) {
     L.weight_index = nullptr;
     input_index = L.input_index;
     L.input_index = nullptr;
-//    cout << "move workspace: " << workspace << endl;
+    //    cout << "move workspace: " << workspace << endl;
 }
 
 BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
@@ -733,16 +733,16 @@ string BaseLayer::type_to_string() {
 void BaseLayer::shape() {
     printf("%-17s%-10s %-10s  ", type_to_string().c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
-//            if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
-//                for (int i = 0; i < info.output_dimension; ++i) {
-//                    printf("Weight:\n%d: ", i);
-//                    kernel[i].showWeight();
-//                }
-//                printf("Bias:\n");
-//                biases->showWeight();
-//            } else if (type == LayerType::PRelu) {
-//                kernel[0].showWeight();
-//            }
+    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
+        for (int i = 0; i < info.output_dimension; ++i) {
+            printf("Weight:\n%d: ", i);
+            kernel[i].showWeight();
+        }
+        printf("Bias:\n");
+        biases->showWeight();
+    } else if (type == LayerType::PRelu) {
+        kernel[0].showWeight();
+    }
 }
 
 int BaseLayer::getParameter(int type) {
@@ -979,25 +979,25 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     for (out_height = 0; out_height < output_height; y += stride, ++out_height) {
         x = neg_padding;
         for (out_width = 0; out_width < output_width; x += stride, ++out_width)
-            for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                coordinate_y = y + kernel_h;
-                for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                    coordinate_x = x + kernel_w;
-                    if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
-                        for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim)
-                            input_index[++count] = ((input_width * coordinate_y) + coordinate_x) * input_dimension + kernel_dim;
-                    else
-                        count += input_dimension;
-                }
+        for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
+            coordinate_y = y + kernel_h;
+            for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
+                coordinate_x = x + kernel_w;
+                if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
+                    for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim)
+                input_index[++count] = ((input_width * coordinate_y) + coordinate_x) * input_dimension + kernel_dim;
+                else
+                    count += input_dimension;
             }
+        }
     }
     
     weight_index = new int [out_size * output_dimension];
     count = -1;
     for (out_dim = 0; out_dim < output_dimension; ++out_dim)
-        for (out_height = 0; out_height < output_height; ++out_height)
-            for (out_width = 0; out_width < output_width; ++out_width)
-                weight_index[++count] = ((out_height * output_width) + out_width) * output_dimension + out_dim;
+    for (out_height = 0; out_height < output_height; ++out_height)
+    for (out_width = 0; out_width < output_width; ++out_width)
+    weight_index[++count] = ((out_height * output_width) + out_width) * output_dimension + out_dim;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
 }
@@ -1010,13 +1010,13 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     
     int kernel_n = info_more.kernel_width * info_more.kernel_height * info_more.input_dimension;
     int out_size = info.output_width * info.output_height;
-
+    
     int count;
     int index;
     for (count = info_more.workspace_size; count--; ) {
         workspace[count] = ((index = input_index[count]) == -1) ? 0 : input_weight[index];
     }
-
+    
     float conv, bias;
     float *kernel_weight, *kernel_weight_ptr;
     float *output_weight = output_tensor->weight;
@@ -1031,7 +1031,7 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
             conv = 0.0f;
             kernel_weight_ptr = kernel_weight;
             for (count = kernel_n; count--; )
-                conv += *(kernel_weight_ptr++) * *(src++);
+            conv += *(kernel_weight_ptr++) * *(src++);
             output_weight[*(output_index_ptr++)] = conv + bias;
         }
     }
@@ -1117,9 +1117,9 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     
     info_more.input_index_size = output_dimension * output_width * output_height * kernel_width * kernel_height;
     info_more.weight_index_size =output_dimension * output_width * output_height;
-
+    
     for (int output_d = 0; output_d < output_dimension; ++output_d) {
-    int offset_w = neg_padding;
+        int offset_w = neg_padding;
         for (int output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
             int offset_h = neg_padding;
             for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
@@ -1130,7 +1130,7 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
                         if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
                             input_index[input_counter] = ((act_h * input_width) + act_w) * input_dimension + output_d;
                         }
-                        input_counter++;
+                        ++input_counter;
                     }
                 }
                 weight_index[weight_counter++] = ((output_h * output_width) + output_w) * output_dimension + output_d;
@@ -1145,18 +1145,18 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     int output_width = info.output_width;
     int output_height = info.output_height;
     int output_dimension = info.output_dimension;
-    
     int output_w, output_h;
     int offset_w, offset_h;
-    float minimum;
+    float maximum;
     int win_x = -1, win_y = -1;
     int kernel_w, kernel_h;
     float value = 0.0;
     int neg_padding = -info_more.padding;
+    int stride = info_more.stride;
     int kernel_width = info_more.kernel_width;
     int kernel_height = info_more.kernel_height;
     
-    int counter = -1;
+    int counter = 0;
     float *input_weight = input_tensor->weight;
     float *output_weight = act_tensor->weight;
     int *input_index_ptr = input_index;
@@ -1164,49 +1164,51 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     int index;
     for (int output_d = 0; output_d < output_dimension; ++output_d) {
         offset_w = neg_padding;
-        for (output_w = 0; output_w < output_width; ++output_w, offset_w += info_more.stride) {
+        for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
             offset_h = neg_padding;
-            for (output_h = 0; output_h < output_height; ++output_h, offset_h += info_more.stride) {
-                minimum = -100000000;
+            for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
+                maximum = -100000000;
                 for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
                     for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
                         if ((index = *(input_index_ptr++)) != -1) {
                             value = input_weight[index];
-                            if (value > minimum) {
-                                minimum = value;
+                            if (value > maximum) {
+                                maximum = value;
                                 win_x = offset_w + kernel_w;
                                 win_y = offset_h + kernel_h;
                             }
                         }
                     }
                 }
-                choosex[++counter] = win_x;
-                choosey[counter] = win_y;
-                output_weight[*(weight_index_ptr++)] = value;
+                choosex[counter] = win_x;
+                choosey[counter++] = win_y;
+                output_weight[*(weight_index_ptr++)] = maximum;
             }
         }
     }
+
     delete output_tensor;
     output_tensor = act_tensor;
     return output_tensor;
 }
 
 void PoolingLayer::Backward() {
-    Tensor *input = input_tensor;
-    
-    int counter = 0;
-    float chain_grad;
-    float *output_grad = output_tensor->delta_weight;
-    int *weight_index_ptr = weight_index;
-    
-    int out_size = info.output_width * info.output_height;
-    
-    for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
-        for (counter = 0; counter < out_size; ++counter) {
-            chain_grad = output_grad[*(weight_index_ptr++)];
-            input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad);
+        Tensor *input = input_tensor;
+
+        int counter = 0;
+        float chain_grad;
+        float *output_grad = output_tensor->delta_weight;
+        int *weight_index_ptr = weight_index;
+
+        int out_size = info.output_width * info.output_height;
+
+        for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
+            for (int out_counter = 0; out_counter < out_size; ++out_counter) {
+                chain_grad = output_grad[*(weight_index_ptr++)];
+                input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad);
+                ++counter;
+            }
         }
-    }
 }
 
 FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
@@ -1303,7 +1305,7 @@ Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
             val[i] = 0;
     }
     //if (output_tensor)
-        delete output_tensor;
+    delete output_tensor;
     output_tensor = cal;
     return output_tensor;
 }

@@ -90,7 +90,7 @@ int main(int argc, const char * argv[]) {
          //nn.train("SVG", 0.001, data_train, data_label, 1);
 
          printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
-////         nn.shape();
+         nn.shape();
 //
 //         vfloat out = nn.predict(&data_bee[0]);
 //         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
@@ -378,6 +378,22 @@ int main(int argc, const char * argv[]) {
 //    mtcnn_trainer.train(10);
 //    mtcnn_trainer.evaluate(rnet.rnet);
 //    rnet.rnet.save("rnet_origin.bin");
+    
+//    Neural_Network nn;
+////    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "5"}, {"input_height", "5"}, {"input_dimension", "3"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "1"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}});
+////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"padding", "1"}});
+////    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "1"}, {"activation", "Softmax"}});
+////    nn.makeLayer();
+//    nn.load("test_conv.bin");
+//    nn.shape();
+//
+//    Tensor input(5, 5, 3);
+//    for (int i = 0; i < 75; ++i) {
+//        input.weight[i] = i / 75.0;
+//    }
+//    nn.Forward(&input);
+//    nn.save("test_conv.bin");
 
     return 0;
 }

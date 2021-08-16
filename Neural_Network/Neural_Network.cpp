@@ -280,9 +280,11 @@ Neural_Network::nn_status Neural_Network::status() {
 vfloat Neural_Network::Forward(Tensor *input_tensor_) {
     Tensor *act = layer[0].Forward(input_tensor_);
     terminal[opt_layer[0]["name"]] = act;
+//    act->showWeight();
     for (int i = 1; i < layer_number; ++i) {
         act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
         terminal[opt_layer[i]["name"]] = act;
+//        act->showWeight();
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();

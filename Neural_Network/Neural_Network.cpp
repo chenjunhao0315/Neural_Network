@@ -124,6 +124,21 @@ bool Neural_Network::load(const char *model_name) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
+        } else if (type[0] == 's' && type[1] == 'c') {
+            opt["type"] = "ShortCut";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            int len;
+            fread(&len, sizeof(int), 1, f);
+            char *sc = new char [len + 1];
+            fread(sc, sizeof(char), len, f);
+            sc[len] = '\0';
+            opt["shortcut"] = string(sc);
+            printf("%s\n", sc);
         }
         opt_layer.push_back(opt);
         layer.push_back(Model_Layer(opt));
@@ -184,6 +199,8 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("el", 2, 1, f);
         } else if (type == LayerType::PRelu) {
             fwrite("pr", 2, 1, f);
+        } else if (type == LayerType::ShortCut) {
+            fwrite("sc", 2, 1, f);
         }
         layer[i].save(f);
     }
@@ -274,7 +291,7 @@ void Neural_Network::shape() {
 }
 
 Neural_Network::nn_status Neural_Network::status() {
-    return (layer_number > 0 ) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+    return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
 vfloat Neural_Network::Forward(Tensor *input_tensor_) {
@@ -282,8 +299,10 @@ vfloat Neural_Network::Forward(Tensor *input_tensor_) {
     terminal[opt_layer[0]["name"]] = act;
 //    act->showWeight();
     for (int i = 1; i < layer_number; ++i) {
-        act = layer[i].Forward(terminal[opt_layer[i]["input_name"]]);
-        terminal[opt_layer[i]["name"]] = act;
+        LayerOption &opt = opt_layer[i];
+        act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]));
+        terminal[opt["name"]] = act;
+//        cout << opt["name"] << ": ";
 //        act->showWeight();
     }
     
@@ -503,6 +522,7 @@ vfloat Trainer::train(vtensor &data_set, vector<vfloat> &target_set, int epoch) 
 
 vfloat Trainer::train(Tensor &data, vfloat &target) {
     network->Forward(&data);
+    network->ClearGrad();
     float loss = network->Backward(target);
     float l1_decay_loss = 0;
     float l2_decay_loss = 0;
@@ -563,6 +583,7 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
             
             float *weight_act = weight;
             float *grad_act = grad;
+            
             float *gsum_act = gsumi;
             float *xsum_act = xsumi;
             
@@ -602,7 +623,6 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
                 xsum_act++;
             }
         }
-        
     }
     return vfloat{loss};
 }

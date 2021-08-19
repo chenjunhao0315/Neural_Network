@@ -35,7 +35,11 @@ IMG::IMG(const char *filename) {
     if (image_type == ImageType::JPEG) {
         class JPEG img(filename);
         if (img.status() != Jpeg_Status::OK) {
-            printf("[JPEG] Decode file fail!\n");
+            if (img.status() == Jpeg_Status::UNSUPPORT) {
+                printf("[JPEG] Unsupport format!\n");
+            } else {
+                printf("[JPEG] Decode file fail!\n");
+            }
             return;
         }
         width = img.getWidth();
@@ -52,18 +56,20 @@ IMG::IMG(const char *filename) {
         fscanf(f, "P6\n%d %d\n255\n", &width, &height);
         channel = 3;
         type = MAT_8UC3;
-        unsigned char pixel_array[3 * width * height];
+        unsigned char *pixel_array = new unsigned char [3 * width * height];
         fread(pixel_array, sizeof(unsigned char), 3 * width * height, f);
         mat = Mat(width, height, type, pixel_array);
+        delete [] pixel_array;
         fclose(f);
     } else if (image_type == ImageType::PGM) {
         FILE *f = fopen(filename, "r");
         fscanf(f, "P5\n%d %d\n255\n", &width, &height);
         channel = 3;
         type = MAT_8UC1;
-        unsigned char pixel_array[width * height];
+        unsigned char *pixel_array = new unsigned char [width * height];
         fread(pixel_array, sizeof(unsigned char), width * height, f);
         mat = Mat(width, height, type, pixel_array);
+        delete [] pixel_array;
         fclose(f);
     } else if (image_type == ImageType::UNSUPPORT) {
         printf("[IMG] Unsupport!\n");
@@ -187,7 +193,7 @@ bool IMG::save(const char *filename, float quality) {
     return false;
 }
 
-IMG IMG::resize(Size size, float factor_w, float factor_h) {
+IMG IMG::resize(Size size, float factor_w, float factor_h, int method) {
     int dst_width = size.width, dst_height = size.height;
     if (size.width == 0 && size.height == 0) {
         dst_width = round(width * factor_w);
@@ -203,7 +209,21 @@ IMG IMG::resize(Size size, float factor_w, float factor_h) {
     
     IMG result(dst_width, dst_height, channel, type);
     
-    Mat &dst = result.getMat();
+    switch(method) {
+        case BILINEAR:
+            bilinearResize(mat, result.getMat(), factor_w, factor_h); break;
+        case NEAREST:
+            nearestResize(mat, result.getMat(), factor_w, factor_h); break;
+        default:
+            bilinearResize(mat, result.getMat(), factor_w, factor_h);
+    }
+    
+    return result;
+}
+
+void IMG::bilinearResize(Mat &src, Mat &dst, float factor_w, float factor_h) {
+    int dst_height = dst.height;
+    int dst_width = dst.width;
     int dst_step = dst.getStep();
     int dst_elemsize = dst.elemSize();
     unsigned char *dst_ptr = dst.ptr();
@@ -237,7 +257,28 @@ IMG IMG::resize(Size size, float factor_w, float factor_h) {
             }
         }
     }
-    return result;
+}
+
+void IMG::nearestResize(Mat &src, Mat &dst, float factor_w, float factor_h) {
+    int dst_height = dst.height;
+    int dst_width = dst.width;
+    int dst_step = dst.getStep();
+    int dst_elemsize = dst.elemSize();
+    unsigned char *dst_ptr = dst.ptr();
+    
+    int src_step = mat.getStep();
+    int src_elemsize = mat.elemSize();
+    unsigned char *src_ptr = mat.ptr();
+    
+    for (int i = 0; i < dst_height; ++i) {
+        for (int j = 0; j < dst_width; ++j) {
+            int src_h = i / factor_h;
+            int src_w = j / factor_w;
+            for (int k = 0; k < dst_elemsize; ++k) {
+                *(dst_ptr + i * dst_step + j * dst_elemsize + k) = *(src_ptr + src_h * src_step + src_w * src_elemsize + k);
+            }
+        }
+    }
 }
 
 IMG IMG::crop(Rect rect) {
@@ -369,6 +410,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
     for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
             filter_ptr = filter_x;
+            blur[0] = 0; blur[1] = 0; blur[2] = 0;
             for (int k = -radius; k <= radius; ++k) {
                 int l = w + k;
                 if (l >= 0 && l < width) {
@@ -381,7 +423,6 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
             }
             for (int d = 0; d < mid_depth; ++d) {
                 *(mid_ptr++) = saturate_cast<unsigned char>(blur[d]);
-                blur[d] = 0.0f;
             }
         }
         src_ptr += src_step;
@@ -393,9 +434,9 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
     for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
             filter_ptr = filter_y;
+            blur[0] = 0; blur[1] = 0; blur[2] = 0;
             for (int k = -radius; k <= radius; ++k) {
                 int l = h + k;
-                //                filter_value = *(filter_ptr++);
                 if (l >= 0 && l < height) {
                     index = (l * width + w) * mid_elemsize;
                     for (int d = mid_depth; d--; ) {
@@ -406,7 +447,6 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
             }
             for (int d = 0; d < res_depth; ++d) {
                 *(res_ptr++) = saturate_cast<unsigned char>(blur[d]);
-                blur[d] = 0.0f;
             }
         }
     }
@@ -414,14 +454,55 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
 }
 
 IMG IMG::median_blur(int radius) {
-    IMG result(width, height, channel);
+    if (type != MAT_8UC1 && type != MAT_8UC3) {
+        printf("[IMG][Median_blur] Unsupport type!\n");
+        return IMG();
+    }
+    IMG dst(width, height, channel, type);
     
+    int padding = (radius - 1) / 2;
+    int x, y;
+    int coordinate_w, coordinate_h;
+    int dst_width = width, dst_height = height, dst_channel = mat.depth();
+    int src_width = width, src_channel = mat.depth();
+    unsigned char *src_ptr = mat.ptr();
+    unsigned char *dst_ptr = dst.getMat().ptr();
+    vector<vector<unsigned char>> RGB_pixel(3, vector<unsigned char>(radius * radius));
+    int src_index;
+    int counter[3] = {0};
     
-    
-    
-    
-    
-    return result;
+    y = -padding;
+    for (int h = 0; h < dst_height; ++h, ++y) {
+        x = -padding;
+        for (int w = 0; w < dst_width; ++w, ++x) {
+            counter[0] = 0; counter[1] = 0; counter[2] = 0;
+            for (int kernel_h = 0; kernel_h < radius; ++kernel_h) {
+                coordinate_h = y + kernel_h;
+                for (int kernel_w = 0; kernel_w < radius; ++kernel_w) {
+                    coordinate_w = x + kernel_w;
+                    if (coordinate_w >= 0 && coordinate_w < dst_width && coordinate_h >= 0 && coordinate_h < dst_height) {
+                        src_index = (coordinate_h * src_width + coordinate_w) * src_channel;
+                        for (int c = 0; c < src_channel; ++c) {
+                            RGB_pixel[c][counter[c]++] = (*(src_ptr + src_index + c));
+                        }
+                    }
+                }
+            }
+            for (int c = 0; c < dst_channel; ++c) {
+                int size = counter[c];
+                if (size == 0)
+                    *(dst_ptr++) = 0;
+                else {
+                    sort(RGB_pixel[c].begin(), RGB_pixel[c].begin() + size);
+                    if (size % 2)
+                        *(dst_ptr++) = (RGB_pixel[c][size >> 1] + RGB_pixel[c][(size >> 1) - 1]) / 2;
+                    else
+                        *(dst_ptr++) = RGB_pixel[c][size >> 1];
+                }
+            }
+        }
+    }
+    return dst;
 }
 
 IMG IMG::sobel() {
@@ -434,7 +515,7 @@ IMG IMG::sobel() {
     
     IMG result(width, height, 1, MAT_8UC1);
     
-    int index_src, index_filter;
+    int index_filter;
     unsigned char *src_ptr = mat.ptr();
     
     Mat &dst = result.getMat();
@@ -443,16 +524,17 @@ IMG IMG::sobel() {
     for (int i = 0; i < height ; ++i) {
         for (int j = 0; j < width ; ++j) {
             int conv_x = 0, conv_y = 0;
+            index_filter = 0;
             for (int j_h = 0; j_h < 3; ++j_h) {
                 int index_h = i + j_h;
                 for (int j_w = 0; j_w < 3; ++j_w) {
                     int index_w = j + j_w;
                     if (index_h >= 0 && index_h < height && index_w >= 0 && index_w < width) {
-                        index_src = (index_h * width + index_w);
-                        index_filter = j_h * 3 + j_w;
-                        conv_x += sobel_x[index_filter] * *(src_ptr + index_src);
-                        conv_y += sobel_y[index_filter] * *(src_ptr + index_src);
+                        unsigned char src_value = *(src_ptr + index_h * width + index_w);
+                        conv_x += sobel_x[index_filter] * src_value;
+                        conv_y += sobel_y[index_filter] * src_value;
                     }
+                    ++index_filter;
                 }
             }
             *(dst_ptr++) = saturate_cast<unsigned char>(sqrt(conv_x * conv_x + conv_y * conv_y));
@@ -491,13 +573,10 @@ IMG IMG::threshold(unsigned char threshold, unsigned char max) {
     
     Mat &dst = result.getMat();
     unsigned char *dst_ptr = dst.ptr();
-    
     unsigned char *src_ptr = mat.ptr();
     
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
-            *(dst_ptr++) = (*(src_ptr++) > threshold) ? max : 0;
-        }
+    for (int i = width * height; i--; ) {
+        *(dst_ptr++) = (*(src_ptr++) > threshold) ? max : 0;
     }
     return result;
 }
@@ -684,6 +763,45 @@ IMG IMG::convertScaleAbs(float scale, float alpha) {
     return dst_img;
 }
 
+IMG IMG::local_color_correction(float radius) {
+    if (type != MAT_8UC3) {
+        printf("[IMG][Local Color Correction] Unsupport!\n");
+        return IMG();
+    }
+    
+    IMG mid_stage(mat.width, mat.height, MAT_8UC1);
+    int size = mat.width * mat.height;
+    
+    unsigned char *src_ptr = mat.ptr();
+    unsigned char *mid_stage_ptr = mid_stage.getMat().ptr();
+    
+    for (int i = size; i--; ) {
+        *(mid_stage_ptr++) = 255 - ((src_ptr[0] + src_ptr[1] + src_ptr[2]) / 3);
+        src_ptr += 3;
+    }
+    printf("average\n");
+    mid_stage = mid_stage.gaussian_blur(radius);
+    printf("gaussian\n");
+    
+    IMG dst(mat.width, mat.height, MAT_8UC3);
+    
+    unsigned char *dst_ptr = dst.getMat().ptr();
+    src_ptr = mat.ptr();
+    mid_stage_ptr = mid_stage.getMat().ptr();
+    
+    for (int i = size; i--; ) {
+        for (int j = 3; j--; ) {
+            float Exp = pow(2, (128 - *(mid_stage_ptr)) / 128.0);
+            int value = int(255 * pow(*(src_ptr++) / 255.0, Exp));
+            *(dst_ptr++) = value;
+        }
+        ++mid_stage_ptr;
+    }
+    printf("final\n");
+    
+    return dst;
+}
+
 void IMG::histogram(Size size, int resolution, const char *histogram_name) {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
         printf("[IMG][Histogram] Unsupport data type!\n");
@@ -831,6 +949,25 @@ void IMG::fillRect(Rect rect, Color color) {
         for (int j = y1; j <= y2; ++j) {
             this->drawPixel(Point(i, j), color);
         }
+    }
+}
+
+void IMG::putText(const char *str, Point p, Color color, int size) {
+    Font font(size);
+    size_t str_len = strlen(str);
+    for (int i = 0; i < str_len; ++i) {
+        Mat bitmap = font.get(str[i]);
+        for (int h = p.y, y = 0; h < p.y + bitmap.height; ++h, ++y) {
+            for (int w = p.x, x = 0; w < p.x + bitmap.width; ++w, ++x) {
+                if (bitmap.at<unsigned char>(x, y) == 255) {
+                    Vec3b &dst = mat.at<Vec3b>(w, h);
+                    dst[0] = color.R;
+                    dst[1] = color.G;
+                    dst[2] = color.B;
+                }
+            }
+        }
+        p.x += bitmap.width;
     }
 }
 
@@ -1070,5 +1207,19 @@ void Kernel::show() {
             printf("\n");
         }
     }
+}
+
+Font::Font(int pixel_) {
+    ascii = IMG("ascii.pgm");
+    pixel = pixel_;
+}
+
+Mat Font::get(char c) {
+    c -= 32;
+    int w = c % 18;
+    int h = c / 18;
+    IMG crop = ascii.crop(Rect(w * 14, h * 18, (w + 1) * 14, (h + 1) * 18));
+    crop = crop.resize(Size(0, 0), pixel / 18.0, pixel / 18.0, NEAREST);
+    return crop.getMat();
 }
 

@@ -104,7 +104,7 @@ Tensor::Tensor(Tensor *T) {
         weight = new float [size]();
         delta_weight = new float [size]();
         //fill(weight, weight + size, 0);
-        //fill(delta_weight, delta_weight + size, 0);
+//        fill(delta_weight, delta_weight + size, 0);
         
         //float *weight_src = T->weight;
         //float *weight_dst = weight;
@@ -192,10 +192,7 @@ void Tensor::showDeltaWeight() {
 }
 
 void Tensor::clearDeltaWeight() {
-    //float *temp = delta_weight;
-    //delta_weight = new float [size];
     fill(delta_weight, delta_weight + size, 0);
-    //delete [] temp;
 }
 
 int Tensor::getWidth() {

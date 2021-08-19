@@ -122,12 +122,13 @@ Jpeg_Status JPEG_DECODER::decode() {
 //                printf("DQT MARKER\n");
                 readDQT();
                 break;
-            case SOF0_MARKER:
-//                printf("SOF0 MARKER\n");
-                readSOF0();
-                break;
             case SOF2_MARKER:
 //                printf("SOF2 MARKER\n");
+                data.is_prograssive = true;
+                data.status = UNSUPPORT;
+            case SOF0_MARKER:
+//                printf("SOF0 MARKER\n");
+                readSOF();
                 break;
             case DHT_MARKER:
 //                printf("DHT MARKER\n");
@@ -142,7 +143,6 @@ Jpeg_Status JPEG_DECODER::decode() {
             case DRI_MARKER:
 //                printf("DRI MARKER\n");
                 readDRI();
-                data.status = UNSUPPORT;
                 break;
             default:
                 if ((data.pos[-1] & 0xF0) == 0xE0)
@@ -360,22 +360,38 @@ void JPEG_DECODER::skipBits(int bits) {
 }
 
 int JPEG_DECODER::showBits(int bits) {
-    unsigned char neu;
-    if (!bits)
-        return 0;
-    while(data.bufbits < bits) {
-        neu = *(data.pos++);
+    unsigned char newbyte;
+    if (!bits) return 0;
+    while (data.bufbits < bits) {
+        newbyte = *data.pos++;
         data.size--;
-        if (neu == 0xFF) {
-            unsigned char check = *data.pos++;
-            if (check != 0x00 && check != 0xD9) {
+        data.bufbits += 8;
+        data.buf = (data.buf << 8) | newbyte;
+        if (newbyte == 0xFF) {
+            if (data.size) {
+                unsigned char marker = *data.pos++;
+                data.size--;
+                switch (marker) {
+                    case 0:    break;
+                    case 0xD9: data.size = 0; break;
+                    default:
+                        if ((marker & 0xF8) != 0xD0) {
+                            data.status = SYNTAX_ERROR;
+                        } else {
+                            data.buf = (data.buf << 8) | marker;
+                            data.bufbits += 8;
+                        }
+                }
+            } else {
                 data.status = SYNTAX_ERROR;
             }
         }
-        data.buf = (data.buf << 8) | neu;
-        data.bufbits += 8;
     }
     return (data.buf >> (data.bufbits - bits)) & ((1 << bits) - 1);
+}
+
+void JPEG_DECODER::alignByte() {
+    data.bufbits &= 0xF8;
 }
 
 int JPEG_DECODER::GetVLC(BitCode* vlc, unsigned char* code) {
@@ -408,13 +424,14 @@ void JPEG_DECODER::decodeMCU(Component *c, unsigned char *out) {
         data.mcu[(int)ZigZagInv[coef]] = value * data.qtab[c->quant][coef];
     } while (coef < 63);
     for (coef = 0; coef < 64; coef += 8)
-    IDCTRow(&data.mcu[coef]);
-    for (coef = 0;  coef < 8;  ++coef)
-    IDCTCol(&data.mcu[coef], &out[coef], c->stride);
+        IDCTRow(&data.mcu[coef]);
+    for (coef = 0; coef < 8;  ++coef)
+        IDCTCol(&data.mcu[coef], &out[coef], c->stride);
 }
 
 void JPEG_DECODER::readDATA() {
     int mcuh, mcuw, h, w, i;
+    int rstcount = data.resetinterval, nextrst = 0;
     Component *c;
     for (mcuh = 0; mcuh < data.mcuheight; ++mcuh) {
         for (mcuw = 0; mcuw < data.mcuwidth; ++mcuw) {
@@ -424,8 +441,20 @@ void JPEG_DECODER::readDATA() {
                         decodeMCU(c, &c->pixels[((mcuh * c->sampley + h) * c->stride + mcuw * c->samplex + w) << 3]);
                     }
                 }
-                
-                // DRI
+            }
+            if (data.resetinterval && !(--rstcount)) {
+                alignByte();
+                i = GetBits(16);
+//                if (((i & 0xFFF8) != 0xFFD0) || ((i & 7) != nextrst)) {
+//                    data.status = SYNTAX_ERROR;
+//                }
+                if (i < 0xFF00) {
+                    data.status = SYNTAX_ERROR;
+                }
+                nextrst = (nextrst + 1) & 7;
+                rstcount = data.resetinterval;
+                for (i = 0;  i < 3;  ++i)
+                    data.comp[i].dc = 0;
             }
         }
     }
@@ -436,12 +465,17 @@ void JPEG_DECODER::readSOS() {
     int i;
     Component* c;
     GetLength();
+    int comp = data.pos[0];
     skip(1);
-    for (i = 0, c = data.comp; i < data.comp_number; ++i, ++c) {
+    for (i = 0, c = data.comp; i < comp; ++i, ++c) {
         c->dctable = data.pos[1] >> 4;
         c->actable = (data.pos[1] & 1) | 2;
         skip(2);
     }
+    data.Ss = data.pos[0];
+    data.Se = data.pos[1];
+    data.Ah = data.pos[2] >> 4;
+    data.Al = data.pos[2] & 0xF;
     //    for (i = 0, c = data.comp; i < data.comp_number; ++i, ++c) {
     //        printf("id: %d dc: %d ac: %d\n", i, c->dctable, c->actable);
     //    }
@@ -581,7 +615,7 @@ void JPEG_DECODER::readAPP1() {
     skip(data.length);
 }
 
-void JPEG_DECODER::readSOF0() {
+void JPEG_DECODER::readSOF() {
     int i;
     Component *c;
     unsigned char precision;

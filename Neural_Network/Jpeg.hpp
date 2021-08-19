@@ -118,6 +118,8 @@ private:
         int buf, bufbits;
         int resetinterval;
         unsigned char *rgb;
+        unsigned char Ss, Se, Ah, Al;
+        bool is_prograssive;
     };
     
     inline void skip(int number);
@@ -128,7 +130,7 @@ private:
     void readAPP1();
     void readJFIF(JFIF *d, unsigned char *read_pos);
     void readDQT();
-    void readSOF0();
+    void readSOF();
     void readDHT();
     void readDRI();
     void readSOS();
@@ -139,6 +141,7 @@ private:
     int showBits(int bits);
     void skipBits(int bits);
     int GetBits(int bits);
+    void alignByte();
     
     void IDCTRow(int *mcu);
     void IDCTCol(const int *mcu, unsigned char *out, int stride);

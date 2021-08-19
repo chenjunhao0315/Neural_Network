@@ -292,6 +292,7 @@ void ConvEngine<srcType, dstType>::convDefinition(void *src, void *dst, void *ke
         x = -padding;
         for (int w = 0; w < dst_width; ++w, ++x) {
             kernel_ptr = kernel;
+            conv[0] = 0; conv[1] = 0; conv[2] = 0;
             for (int kernel_h = 0; kernel_h < kernel_size; ++kernel_h) {
                 coordinate_h = y + kernel_h;
                 for (int kernel_w = 0; kernel_w < kernel_size; ++kernel_w) {
@@ -307,7 +308,6 @@ void ConvEngine<srcType, dstType>::convDefinition(void *src, void *dst, void *ke
             }
             for (int c = 0; c < dst_channel; ++c) {
                 *(dst_ptr++) = saturate_cast<dstType>(conv[c]);
-                conv[c] = 0;
             }
         }
     }

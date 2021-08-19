@@ -17,6 +17,7 @@ Model_Layer::~Model_Layer() {
         case LayerType::Pooling: delete pooling_layer; break;
         case LayerType::EuclideanLoss: delete euclideanloss_layer; break;
         case LayerType::PRelu: delete prelu_layer; break;
+        case LayerType::ShortCut: delete shortcut_layer; break;
         default: break;
     }
     input_layer = nullptr;
@@ -27,6 +28,7 @@ Model_Layer::~Model_Layer() {
     convolution_layer = nullptr;
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
+    shortcut_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -38,6 +40,7 @@ Model_Layer::Model_Layer() {
     convolution_layer = nullptr;
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
+    shortcut_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -49,6 +52,7 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     convolution_layer = nullptr;
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
+    shortcut_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -75,6 +79,9 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
                 break;
             case LayerType::PRelu:
                 prelu_layer = new PReluLayer(*L.prelu_layer);
+                break;
+            case LayerType::ShortCut:
+                shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
                 break;
             default:
                 break;
@@ -92,6 +99,7 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     convolution_layer = L.convolution_layer;
     pooling_layer = L.pooling_layer;
     euclideanloss_layer = L.euclideanloss_layer;
+    shortcut_layer = L.shortcut_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
@@ -100,6 +108,7 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     L.convolution_layer = nullptr;
     L.pooling_layer = nullptr;
     L.euclideanloss_layer = nullptr;
+    L.shortcut_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -111,6 +120,7 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     convolution_layer = nullptr;
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
+    shortcut_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -138,6 +148,9 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             case LayerType::PRelu:
                 prelu_layer = new PReluLayer(*L.prelu_layer);
                 break;
+            case LayerType::ShortCut:
+                shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
+                break;
             default:
                 break;
         }
@@ -154,6 +167,7 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     convolution_layer = nullptr;
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
+    shortcut_layer = nullptr;
     type = string_to_type(opt_["type"]);
     
     switch (type) {
@@ -181,6 +195,9 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         case LayerType::PRelu:
             prelu_layer = new PReluLayer(opt_);
             break;
+        case LayerType::ShortCut:
+            shortcut_layer = new ShortCutLayer(opt_);
+            break;
         default:
             break;
     }
@@ -203,11 +220,13 @@ LayerType Model_Layer::string_to_type(string type) {
         return LayerType::Pooling;
     } else if (type == "EuclideanLoss") {
         return LayerType::EuclideanLoss;
+    } else if (type == "ShortCut") {
+        return LayerType::ShortCut;
     }
     return LayerType::Error;
 }
 
-Tensor* Model_Layer::Forward(Tensor* input_tensor_) {
+Tensor* Model_Layer::Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_) {
     switch (type) {
         case LayerType::Convolution:
             return convolution_layer->Forward(input_tensor_);
@@ -233,6 +252,8 @@ Tensor* Model_Layer::Forward(Tensor* input_tensor_) {
         case LayerType::Input:
             return input_layer->Forward(input_tensor_);
             break;
+        case LayerType::ShortCut:
+            return shortcut_layer->Forward(input_tensor_, shortcut_tensor_);
         default:
             break;
     }
@@ -273,6 +294,9 @@ void Model_Layer::Backward() {
         case LayerType::Relu:
             return relu_layer->Backward();
             break;
+        case LayerType::ShortCut:
+            return shortcut_layer->Backward();
+            break;
         default:
             break;
     }
@@ -305,6 +329,8 @@ void Model_Layer::shape() {
         euclideanloss_layer->shape();
     } else if (type == LayerType::PRelu) {
         prelu_layer->shape();
+    } else if (type == LayerType::ShortCut) {
+        shortcut_layer->shape();
     }
 }
 
@@ -334,6 +360,9 @@ int Model_Layer::getParameter(int type_) {
         case LayerType::Input:
             return input_layer->getParameter(type_);
             break;
+        case LayerType::ShortCut:
+            return shortcut_layer->getParameter(type_);
+            break;
         default:
             break;
     }
@@ -357,6 +386,8 @@ bool Model_Layer::save(FILE *f) {
         return euclideanloss_layer->save(f);
     } else if (type == LayerType::PRelu) {
         return prelu_layer->save(f);
+    } else if (type == LayerType::ShortCut) {
+        return shortcut_layer->save(f);
     }
     return 0;
 }
@@ -378,6 +409,8 @@ bool Model_Layer::load(FILE *f) {
         return euclideanloss_layer->load(f);
     } else if (type == LayerType::PRelu) {
         return prelu_layer->load(f);
+    } else if (type == LayerType::ShortCut) {
+        return shortcut_layer->load(f);
     }
     return 0;
 }
@@ -409,6 +442,8 @@ void Model_Layer::ClearGrad() {
         euclideanloss_layer->ClearGrad();
     } else if (type == LayerType::PRelu) {
         prelu_layer->ClearGrad();
+    } else if (type == LayerType::ShortCut) {
+        shortcut_layer->ClearGrad();
     }
 }
 
@@ -725,6 +760,7 @@ string BaseLayer::type_to_string() {
         case Convolution: return "Convolution"; break;
         case Pooling: return "Pooling"; break;
         case EuclideanLoss: return "EuclideanLoss"; break;
+        case ShortCut: return "ShortCut"; break;
         case Error: return "Error"; break;
     }
     return "Unknown";
@@ -733,16 +769,16 @@ string BaseLayer::type_to_string() {
 void BaseLayer::shape() {
     printf("%-17s%-10s %-10s  ", type_to_string().c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
-    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
-        for (int i = 0; i < info.output_dimension; ++i) {
-            printf("Weight:\n%d: ", i);
-            kernel[i].showWeight();
-        }
-        printf("Bias:\n");
-        biases->showWeight();
-    } else if (type == LayerType::PRelu) {
-        kernel[0].showWeight();
-    }
+//    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
+//        for (int i = 0; i < info.output_dimension; ++i) {
+//            printf("Weight:\n%d: ", i);
+//            kernel[i].showWeight();
+//        }
+//        printf("Bias:\n");
+//        biases->showWeight();
+//    } else if (type == LayerType::PRelu) {
+//        kernel[0].showWeight();
+//    }
 }
 
 int BaseLayer::getParameter(int type) {
@@ -807,16 +843,17 @@ void BaseLayer::Update() {
 }
 
 void BaseLayer::ClearGrad() {
-    input_tensor->clearDeltaWeight();
+//    input_tensor->clearDeltaWeight();
+//    output_tensor->clearDeltaWeight();
+//    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
+//        for (int i = 0; i < info.output_dimension; ++i) {
+//            kernel[i].clearDeltaWeight();
+//        }
+//        biases->clearDeltaWeight();
+//    } else if (type == LayerType::PRelu) {
+//        kernel[0].clearDeltaWeight();
+//    }
     output_tensor->clearDeltaWeight();
-    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i].clearDeltaWeight();
-        }
-        biases->clearDeltaWeight();
-    } else if (type == LayerType::PRelu) {
-        kernel[0].clearDeltaWeight();
-    }
 }
 
 void BaseLayer::ClearDeltaWeight() {
@@ -887,6 +924,15 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.output_height, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
         kernel->save(f);
+    } else if (type == LayerType::ShortCut) {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+        int len = (int)strlen(opt["shortcut"].c_str());
+        fwrite(&len, sizeof(int), 1, f);
+        char *output = new char [len];
+        strcpy(output, opt["shortcut"].c_str());
+        fwrite(output, sizeof(char), len, f);
     }
     
     return true;
@@ -1004,6 +1050,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
 
 Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
+    output_tensor->clearDeltaWeight();
     
     float *input_weight = input_tensor->weight;
     float *bias_ptr = biases->weight;
@@ -1137,11 +1184,11 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
             }
         }
     }
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
 }
 
 Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    Tensor *act_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
     int output_width = info.output_width;
     int output_height = info.output_height;
     int output_dimension = info.output_dimension;
@@ -1158,7 +1205,7 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     
     int counter = 0;
     float *input_weight = input_tensor->weight;
-    float *output_weight = act_tensor->weight;
+    float *output_weight = output_tensor->weight;
     int *input_index_ptr = input_index;
     int *weight_index_ptr = weight_index;
     int index;
@@ -1187,28 +1234,26 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
         }
     }
 
-    delete output_tensor;
-    output_tensor = act_tensor;
     return output_tensor;
 }
 
 void PoolingLayer::Backward() {
-        Tensor *input = input_tensor;
+    Tensor *input = input_tensor;
 
-        int counter = 0;
-        float chain_grad;
-        float *output_grad = output_tensor->delta_weight;
-        int *weight_index_ptr = weight_index;
+    int counter = 0;
+    float chain_grad;
+    float *output_grad = output_tensor->delta_weight;
+    int *weight_index_ptr = weight_index;
 
-        int out_size = info.output_width * info.output_height;
+    int out_size = info.output_width * info.output_height;
 
-        for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
-            for (int out_counter = 0; out_counter < out_size; ++out_counter) {
-                chain_grad = output_grad[*(weight_index_ptr++)];
-                input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad);
-                ++counter;
-            }
+    for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
+        for (int out_counter = 0; out_counter < out_size; ++out_counter) {
+            chain_grad = output_grad[*(weight_index_ptr++)];
+            input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad);
+            ++counter;
         }
+    }
 }
 
 FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
@@ -1230,12 +1275,12 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     }
     float bias = atof(opt["bias"].c_str());
     biases = new Tensor(1, 1, info.output_dimension, bias);
+    output_tensor = new Tensor(1, 1, info.output_dimension, 0);
 }
 
 Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    Tensor *cal = new Tensor(1, 1, info.output_dimension, 0);
-    float *pos = cal->weight;
+    float *pos = output_tensor->weight;
     float *input = input_tensor_->weight;
     float *bias = biases->weight;
     
@@ -1255,14 +1300,11 @@ Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
         
         pos[i] = sum + bias[i];
     }
-    delete output_tensor;
-    output_tensor = cal;
     return output_tensor;
 }
 
 void FullyConnectedLayer::Backward() {
     Tensor *cal = input_tensor;
-    //cal->clearDeltaWeight();
     float *cal_w = cal->weight;
     float *cal_dw = cal->delta_weight;
     float *act_biases_grad = biases->delta_weight;
@@ -1294,19 +1336,23 @@ ReluLayer::ReluLayer(LayerOption opt_) {
     info.output_height = atoi(opt["input_height"].c_str());
     info.output_dimension = atoi(opt["input_dimension"].c_str());
     info.input_number = info.output_width * info.output_height * info.output_dimension;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height,info.output_dimension, 0.0);
 }
 
 Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    Tensor *cal = new Tensor(input_tensor_);
-    float *val = cal->weight;
+//    Tensor *cal = new Tensor(input_tensor_);
+    float *val = input_tensor->weight;
+    float *out = output_tensor->weight;
     for (int i = 0; i < info.input_number; ++i) {
-        if (val[i] < 0)
-            val[i] = 0;
+//        if (val[i] < 0)
+//            val[i] = 0;
+        out[i] = (val[i] < 0) ? 0 : val[i];
     }
     //if (output_tensor)
-    delete output_tensor;
-    output_tensor = cal;
+//    delete output_tensor;
+//    output_tensor = cal;
     return output_tensor;
 }
 
@@ -1319,9 +1365,9 @@ void ReluLayer::Backward() {
     
     for (int i = 0; i < info.input_number; ++i) {
         if (act_weight[i] <= 0)
-            pos_grad[i] = 0;
+            pos_grad[i] += 0;
         else
-            pos_grad[i] = act_grad[i];
+            pos_grad[i] += act_grad[i];
     }
 }
 
@@ -1338,27 +1384,27 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     float alpha = (opt.find("alpha") == opt.end()) ? 0.25 : atof(opt["alpha"].c_str());
     kernel = new Tensor [1];
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension, alpha);
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
 }
 
 Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
     
-    Tensor *cal = new Tensor(input_tensor_);
-    float *val = cal->weight;
+    float *val = input_tensor->weight;
+    float *out = output_tensor->weight;
     float *alpha = kernel->weight;
-    for (int i = info.input_number; i--; val++, alpha++) {
-        if (*val < 0)
-            *val *= *alpha;
+    float value;
+    for (int i = info.input_number; i--; alpha++) {
+        value = *(val++);
+        *(out++) = (value < 0) ? value * *alpha : value;
     }
     
-    delete output_tensor;
-    output_tensor = cal;
     return output_tensor;
 }
 
 void PReluLayer::Backward() {
     Tensor *cal = input_tensor;
-    //cal->clearDeltaWeight();
     float *act_weight = output_tensor->weight;
     float *act_grad = output_tensor->delta_weight;
     float *pos_grad = cal->delta_weight;
@@ -1369,11 +1415,11 @@ void PReluLayer::Backward() {
     for (int i = 0; i < info.input_number; ++i) {
         chain_grad = act_grad[i];
         if (act_weight[i] < 0) {
-            pos_grad[i] = chain_grad * alpha[i];
+            pos_grad[i] += chain_grad * alpha[i];
             alpha_grad[i] = act_weight[i] * chain_grad;
         }
         else {
-            pos_grad[i] = chain_grad;
+            pos_grad[i] += chain_grad;
             alpha_grad[i] = 0;
         }
     }
@@ -1390,12 +1436,12 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     info.output_width = 1;
     info.output_height = 1;
     expo_sum = nullptr;
+    
+    output_tensor = new Tensor(1, 1, info.output_dimension, 0);
 }
 
 Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    if (!output_tensor)
-        output_tensor = new Tensor(1, 1, info.output_dimension, 0);
     
     float *act = input_tensor_->weight;
     float max = act[0];
@@ -1466,3 +1512,94 @@ float EuclideanLossLayer::Backward(vfloat& target) {
     return loss;
 }
 
+ShortCutLayer::ShortCutLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::ShortCut;
+    name = (opt.find("name") == opt.end()) ? "sc" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.output_width = atoi(opt["input_width"].c_str());
+    info.output_height = atoi(opt["input_height"].c_str());
+    info.output_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.output_width * info.output_height * info.output_dimension;
+}
+
+Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) {
+    input_tensor = input_tensor_;
+    shortcut_tensor = shortcut_tensor_;
+    
+    Tensor *cal = new Tensor(input_tensor_);
+    int w1 = shortcut_tensor->width;
+    int w2 = info.output_width;
+    int h1 = shortcut_tensor->height;
+    int h2 = info.output_height;
+    int c1 = shortcut_tensor->dimension;
+    int c2 = info.output_dimension;
+    
+    int stride = w1 / w2;
+    int sample = w2 / w1;
+    assert(stride == h1 / h2);
+    assert(sample == h2 / h1);
+    if(stride < 1) stride = 1;
+    if(sample < 1) sample = 1;
+    int minw = (w1 < w2) ? w1 : w2;
+    int minh = (h1 < h2) ? h1 : h2;
+    int minc = (c1 < c2) ? c1 : c2;
+    
+    float *out = cal->weight;
+    float *add = shortcut_tensor->weight;
+
+    int i, j, k;
+    for(k = 0; k < minc; ++k){
+        for(j = 0; j < minh; ++j){
+            for(i = 0; i < minw; ++i){
+                int out_index = (i * sample + w2 * (j * sample)) * c2 + k;
+                int add_index = (i * stride + w1 * (j * stride)) * c1 + k;
+                out[out_index] += add[add_index];
+            }
+        }
+    }
+    
+    delete output_tensor;
+    output_tensor = cal;
+    return output_tensor;
+}
+
+void ShortCutLayer::Backward() {
+    float *pre_delta_weight = input_tensor->delta_weight;
+    float *grad = output_tensor->delta_weight;
+    for (int i = info.input_number; i--; ) {
+        *(pre_delta_weight++) += *(grad++);
+    }
+    
+    int w1 = info.output_width;
+    int w2 = shortcut_tensor->width;
+    int h1 = info.output_height;
+    int h2 = shortcut_tensor->height;
+    int c1 = info.output_dimension;
+    int c2 = shortcut_tensor->dimension;
+    
+    int stride = w1 / w2;
+    int sample = w2 / w1;
+    assert(stride == h1 / h2);
+    assert(sample == h2 / h1);
+    if(stride < 1) stride = 1;
+    if(sample < 1) sample = 1;
+    int minw = (w1 < w2) ? w1 : w2;
+    int minh = (h1 < h2) ? h1 : h2;
+    int minc = (c1 < c2) ? c1 : c2;
+    
+    float *out = shortcut_tensor->delta_weight;
+    float *add = output_tensor->delta_weight;
+
+    int i, j, k;
+    for(k = 0; k < minc; ++k){
+        for(j = 0; j < minh; ++j){
+            for(i = 0; i < minw; ++i){
+                int out_index = (i * sample + w2 * (j * sample)) * c2 + k;
+                int add_index = (i * stride + w1 * (j * stride)) * c1 + k;
+                out[out_index] += add[add_index];
+            }
+        }
+    }
+}

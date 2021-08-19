@@ -37,12 +37,14 @@ struct Rect {
     int x1, y1, x2, y2;
 };
 
-struct Point {
-    Point(int x_ = -1, int y_ = -1) : x(x_), y(y_) {}
-    int x, y;
+template <typename T>
+struct Point_ {
+    Point_(T x_ = -1, T y_ = -1) : x(x_), y(y_) {}
+    T x, y;
 };
 
 typedef PIXEL Color;
+typedef Point_<int> Point;
 
 #define WHITE Color(255, 255, 255)
 #define BLACK Color(0, 0, 0)
@@ -52,6 +54,11 @@ typedef PIXEL Color;
 
 #define TAN22_5 0.414
 #define TAN67_5 2.414
+
+enum ResizeMethod {
+    BILINEAR = 0,
+    NEAREST = 1
+};
 
 class Kernel;
 
@@ -72,7 +79,7 @@ public:
     IMG(IMG &&I);
     IMG& operator=(const IMG &I);
     unsigned char * toPixelArray();
-    IMG resize(Size size, float factor_x = 1, float factor_y = 1);
+    IMG resize(Size size, float factor_x = 1, float factor_y = 1, int method = 0);
     IMG crop(Rect rect);
     IMG convertGray();
     IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
@@ -90,6 +97,7 @@ public:
     IMG subtract(IMG &minuend, MatType dstType = MAT_UNDEFINED);
     IMG addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType dstType = MAT_UNDEFINED);
     IMG convertScaleAbs(float scale = 1, float alpha = 0);
+    IMG local_color_correction(float radius = 10);
     Mat& getMat() {return mat;}
     void convertTo(MatType type);
     void release();
@@ -100,6 +108,7 @@ public:
     void drawPixel(Point p, Color color);
     void drawCircle(Point center_point, Color color, int radius = 0, int width = 1);
     void fillRect(Rect rect, Color color);
+    void putText(const char *str, Point p, Color color, int size = 18);
     bool save(const char *filename = "out.jpg", float quality = 80);
     
     int width, height, channel;
@@ -112,6 +121,8 @@ private:
     IMG::ImageType phraseType(const char *name);
     void drawCircle_Single(Point center_point, Color color, int radius = 0);
     void subCircle(int xc, int yc, int x, int y, Color color);
+    void bilinearResize(Mat &src, Mat &dst, float factor_w, float factor_h);
+    void nearestResize(Mat &src, Mat &dst, float factor_w, float factor_h);
 };
 
 int clip(int value, int min, int max);
@@ -151,6 +162,15 @@ public:
 private:
     float threshold1;
     float threshold2;
+};
+
+class Font {
+public:
+    Font(int pixel_ = 18);
+    Mat get(char c);
+private:
+    IMG ascii;
+    int pixel;
 };
 
 

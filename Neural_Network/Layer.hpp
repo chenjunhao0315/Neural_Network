@@ -32,6 +32,7 @@ enum LayerType {
     Convolution,
     Pooling,
     EuclideanLoss,
+    ShortCut,
     Error
 };
 
@@ -43,6 +44,7 @@ class SoftmaxLayer;
 class ConvolutionLayer;
 class PoolingLayer;
 class EuclideanLossLayer;
+class ShortCutLayer;
 
 // Top layer
 class Model_Layer {
@@ -53,7 +55,7 @@ public:
     Model_Layer(Model_Layer &&L);
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
-    Tensor* Forward(Tensor* input_tensor_);
+    Tensor* Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr);
     float Backward(vfloat& target);
     void Backward();
     void UpdateWeight(string method, float learning_rate);
@@ -78,6 +80,7 @@ private:
     ConvolutionLayer *convolution_layer;
     PoolingLayer *pooling_layer;
     EuclideanLossLayer *euclideanloss_layer;
+    ShortCutLayer *shortcut_layer;
 };
 
 // Base layer
@@ -207,6 +210,15 @@ public:
     Tensor* Forward(Tensor *input_tensor_);
     float Backward(vfloat& target);
 private:
+};
+
+class ShortCutLayer : public BaseLayer {
+public:
+    ShortCutLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_);
+    void Backward();
+private:
+    Tensor *shortcut_tensor;
 };
 
 #endif /* Layer_hpp */

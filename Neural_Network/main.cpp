@@ -17,31 +17,22 @@ using namespace std;
 using namespace std::chrono;
 
 int main(int argc, const char * argv[]) {
-//    IMG img((argc >= 2) ? argv[1] : "target.jpg");
-//
-//    Mtcnn mtcnn("pnet_9446_250k.bin", "rnet_v1.bin", "onet_9998_all.bin");
-//    mtcnn.min_face_size = (argc >= 3) ? atoi(argv[2]) : 0;
-//    vector<Bbox> bbox_list = mtcnn.detect(img);
-//
-//    mtcnn.mark(img, bbox_list);
-//    img.save("result.jpg", 80);
-    
-//    JPEG img("5D4A0379.JPG");
-//    img.save();
-//    img.showPicInfo();
     // This is a good day to learn.
     
-        Neural_Network nn;
-         nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
-         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-         nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
-         nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-         nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//         nn.addOutput("8");
-         nn.makeLayer();
-//         nn.load("model.bin");
-         nn.shape();
+    Neural_Network nn;
+//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
+//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
+//
+//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "3"}});
+//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
+////         nn.addOutput("8");
+//    nn.makeLayer();
+         nn.load("test.bin");
+    nn.shape();
+//    nn.save("test.bin");
 
 
          Data bee("bee.npy", 28, 28);
@@ -78,19 +69,20 @@ int main(int argc, const char * argv[]) {
 
          printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 
-    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 4}, {"learning_rate", 0.01}});
-
-    auto start = high_resolution_clock::now();
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
-         trainer.train(data_train, data_label, 10);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("Time: %lldms\n", duration.count());
-         //nn.train("SVG", 0.001, data_train, data_label, 1);
-
-         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
-         nn.shape();
+//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 4}, {"learning_rate", 0.01}});
+//
+//    auto start = high_resolution_clock::now();
+//    auto stop = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(stop - start);
+//         trainer.train(data_train, data_label, 10);
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("Time: %lldms\n", duration.count());
+//         //nn.train("SVG", 0.001, data_train, data_label, 1);
+//
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
+//    nn.save("test.bin");
+//         nn.shape();
 //
 //         vfloat out = nn.predict(&data_bee[0]);
 //         printf("Predict: %.0f (%.2f%%)\n", out[0], out[1] * 100);
@@ -280,34 +272,6 @@ int main(int argc, const char * argv[]) {
 //    }
 //    onet_detect.save("onet_predict.jpg", 80);
     
-//    Mtcnn mtcnn("pnet_9489_all.bin", "rnet_9885.bin", "onet_9998_all.bin");
-//    mtcnn.min_face_size = 0;
-//    IMG img("nthuee.jpg");
-//    vector<Bbox> result = mtcnn.detect(img);
-//    mtcnn.mark(img, result);
-//    img.save("result.jpg", 80);
-//    mtcnn.layout(result);
-    
-//    IMG img("pic1.jpg");
-//    auto start = high_resolution_clock::now();
-//    auto stop = high_resolution_clock::now();
-//    auto duration = duration_cast<milliseconds>(stop - start);
-//    img = img.gaussian_blur(3);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//    img.save("gaussian.jpg");
-//    Kernel k(3, 3, 1, 1);
-//    k = {0, 1, 0, 1, -4, 1, 0, 1, 0};
-//    Kernel g(1, 1, 1, 3);
-//    IMG gray = img.convertGray();
-//    IMG lap = gray.filter(1, k, false);
-//    lap = lap.filter(1, g, false);
-//    lap.save("lap.jpg");
-//    IMG sobel = gray.sobel();
-//    sobel.save("sobel.jpg");
-//    lap.histogram(Size(1000, 500), 1, "lap_histo.jpg");
-//    sobel.histogram(Size(1000, 500), 1, "sobel_histo.jpg");
     
     //    vtensor data_set_rnet;
     //    vector<vfloat> label_set_rnet;
@@ -332,13 +296,26 @@ int main(int argc, const char * argv[]) {
 //
 //    mtcnn_evaluate(&pnet.pnet, data_set_pnet, label_set_pnet);
     
-//    Mtcnn mtcnn("pnet_9489_all.bin", "rnet_9885.bin", "onet_9998_all.bin");
+//    Mtcnn mtcnn("1629149015_149_207854.078125.bin", "1629186163_22_21068.136719.bin", "1629208434_8_10620.555664.bin");
 //    mtcnn.min_face_size = 0;
-//    IMG img("5D4A1809.JPG");
+//    IMG img("target.jpg");
 //    vector<Bbox> result = mtcnn.detect(img);
 //    mtcnn.mark(img, result);
 //    img.save("result.jpg", 80);
 //    mtcnn.layout(result);
+    
+//    IMG img("target.jpg");
+//    img = img.convertGray();
+//    auto start = high_resolution_clock::now();
+//    auto stop = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(stop - start);
+//    IMG gau = img.gaussian_blur(3);
+//    IMG dst = img.subtract(gau, MAT_32FC1);
+//    dst = dst.convertScaleAbs();
+//    stop = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(stop - start);
+//    printf("Time: %lldms\n", duration.count());
+//    dst.save();
     
 //    PNet pnet;
 //    MtcnnLoader loader("img_data_pnet.bin", "label_data_pnet.bin", "pnet");
@@ -360,40 +337,6 @@ int main(int argc, const char * argv[]) {
 //    mtcnn_trainer.train(30);
 //    mtcnn_trainer.evaluate(onet.onet);
 //    onet.onet.save("onet_new.bin");
-    
-    
-//    IMG img("target.jpg");
-//    img = img.convertGray();
-//    IMG canny = img.canny(30, 60);
-//    IMG sobel = img.sobel();
-//    IMG lap = img.laplacian(25);
-//    canny.save("canny.jpg");
-//    sobel.save("sobel.jpg");
-//    lap.save("lap.jpg");
-    
-//    RNet rnet;
-//    MtcnnLoader loader("img_data_rnet_all.bin", "label_data_rnet_all.bin", "rnet");
-//    Trainer trainer(&rnet.rnet, TrainerOption{{"method", Trainer::Method::SGD}, {"batch_size", 128}, {"learning_rate", 0.01}});
-//    MtcnnTrainer mtcnn_trainer(&trainer, &loader);
-//    mtcnn_trainer.train(10);
-//    mtcnn_trainer.evaluate(rnet.rnet);
-//    rnet.rnet.save("rnet_origin.bin");
-    
-//    Neural_Network nn;
-////    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "5"}, {"input_height", "5"}, {"input_dimension", "3"}});
-////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "1"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}});
-////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"padding", "1"}});
-////    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "1"}, {"activation", "Softmax"}});
-////    nn.makeLayer();
-//    nn.load("test_conv.bin");
-//    nn.shape();
-//
-//    Tensor input(5, 5, 3);
-//    for (int i = 0; i < 75; ++i) {
-//        input.weight[i] = i / 75.0;
-//    }
-//    nn.Forward(&input);
-//    nn.save("test_conv.bin");
 
     return 0;
 }

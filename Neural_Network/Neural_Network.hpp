@@ -29,8 +29,9 @@ public:
     Neural_Network(string model_ = "sequential");
     void addLayer(LayerOption opt_);
     void addOutput(string name);
-    void makeLayer();
+    void makeLayer(int batch_size_ = 1);
     void shape();
+    int getBatchSize() {return batch_size;}
     nn_status status();
     vfloat Forward(Tensor *input_tensor_);
     float Backward(vfloat &target);
@@ -41,7 +42,7 @@ public:
     void UpdateNet();
     void ClearGrad();
     bool save(const char *model_name);
-    bool load(const char *model_name);
+    bool load(const char *model_name, int batch_size_ = 1);
     vector<Tensor*> getDetail();
     vector<vfloat> getDetailParameter();
 private:
@@ -60,6 +61,8 @@ public:
     Trainer(Neural_Network *net, TrainerOption opt);
     vfloat train(Tensor &data, vfloat &target);
     vfloat train(vtensor &data_set, vector<vfloat> &target_set, int epoch);
+    vfloat train_batch(Tensor &data, vfloat &target);
+    vfloat train_batch(vtensor &data_set, vector<vfloat> &target_set, int epoch);
     void decade(float rate);
     enum Method {
         SGD,

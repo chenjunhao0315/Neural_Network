@@ -45,7 +45,7 @@ struct Bbox {
 
 class PNet {
 public:
-    PNet();
+    PNet(int batch_size = 1);
     PNet(const char *model_name);
     vector<Bbox> detect(IMG &img, int min_face_size = 0);
     Feature_map predict(IMG &img);

@@ -7,7 +7,8 @@
 
 #include "Neural_Network.hpp"
 
-bool Neural_Network::load(const char *model_name) {
+bool Neural_Network::load(const char *model_name, int batch_size_) {
+    batch_size = batch_size_;
     FILE *f = fopen(model_name, "rb");
     if (!f)
         return false;
@@ -23,6 +24,7 @@ bool Neural_Network::load(const char *model_name) {
     for (int i = 0; i < layer_number; ++i) {
         int temp;
         LayerOption opt;
+        opt["batch_size"] = to_string(batch_size);
         char type[2] = {0};
         fread(type, 2, 1, f);
         fread(&temp, sizeof(int), 1, f);
@@ -261,12 +263,14 @@ void Neural_Network::addLayer(LayerOption opt_) {
     }
 }
 
-void Neural_Network::makeLayer() {
+void Neural_Network::makeLayer(int batch_size_) {
     unordered_map<string, int> id_table;
+    batch_size = batch_size_;
     printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
         printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
         LayerOption &opt = opt_layer[i];
+        opt["batch_size"] = to_string(batch_size);
         if (opt.find("name") == opt.end())
             opt["name"] = to_string(i);
         id_table[opt["name"]] = i;
@@ -429,7 +433,7 @@ vfloat Neural_Network::predict(Tensor *input) {
 //    }
     vfloat output = Forward(input);
     float max_value = output[0];
-    int max_index = 0, index, length = (int)output.size();
+    int max_index = 0, index, length = (int)output.size() / batch_size;
     for (index = 1; index < length; ++index) {
         if (output[index] > max_value) {
             max_value = output[index];
@@ -501,7 +505,7 @@ Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
     learning_rate = (opt.find("learning_rate") == opt.end()) ? 0.001 : opt["learning_rate"];
     l1_decay = (opt.find("l1_decay") == opt.end()) ? 0.0 : opt["l1_decay"];
     l2_decay = (opt.find("l2_decay") == opt.end()) ? 0.0 : opt["l2_decay"];
-    batch_size = (opt.find("batch_size") == opt.end()) ? 1 : (int)opt["batch_size"];
+    batch_size = (opt.find("batch_size") == opt.end()) ? network->getBatchSize() : opt["batch_size"];
     method = (opt.find("method") == opt.end()) ? SGD : (Trainer::Method)opt["method"];
     momentum = (opt.find("momentum") == opt.end()) ? 0.9 : opt["momentum"];
     ro = (opt.find("ro") == opt.end()) ? 0.95 : opt["ro"];
@@ -526,7 +530,7 @@ vfloat Trainer::train(vtensor &data_set, vector<vfloat> &target_set, int epoch) 
         loss = 0;
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j < data_set_size; ++j) {
-            if (!(j % (data_set_size / 20))) printf("*");
+//            if (!(j % (data_set_size / 20))) printf("*");
             loss += train(data_set[index[j]], target_set[index[j]])[0];
             //            printf("%d ", index[j]);
         }
@@ -647,4 +651,145 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
 
 void Trainer::decade(float rate) {
     learning_rate *= rate;
+}
+
+vfloat Trainer::train_batch(vtensor &data_set, vector<vfloat> &target_set, int epoch) {
+    auto rng = std::default_random_engine((unsigned)time(NULL));
+    vector<int> index;
+    float loss = 0;
+    size_t data_set_size = data_set.size();
+    for (int i = 0; i < data_set_size; ++i) {
+        index.push_back(i);
+    }
+    for (int i = 0; i < epoch; ++i) {
+        printf("Epoch %d Training[", i + 1);
+        loss = 0;
+        shuffle(index.begin(), index.end(), rng);
+        for (int j = 0; j + batch_size <= data_set_size; ) {
+            Tensor data(1, 1, data_set[0].size * batch_size, 0);
+            float *data_ptr = data.weight;
+            vfloat label; label.reserve(target_set[0].size() * batch_size);
+            for (int k = 0; k < batch_size; ++k, ++j) {
+                Tensor &src = data_set[index[j]];
+                float *src_ptr = src.weight;
+                for (int l = 0; l < data_set[0].size; ++l) {
+                    *(data_ptr++) = *(src_ptr++);
+                }
+                for (int l = 0; l < target_set[0].size(); ++l) {
+                    label.push_back(target_set[index[j]][l]);
+                }
+            }
+            loss += train_batch(data, label)[0];
+        }
+        printf("] ");
+        printf("loss: %f\n", loss);
+    }
+    return vfloat{loss};
+}
+
+vfloat Trainer::train_batch(Tensor &data, vfloat &target) {
+    network->Forward(&data);
+    network->ClearGrad();
+    float loss = network->Backward(target);
+    float l1_decay_loss = 0;
+    float l2_decay_loss = 0;
+    iter++;
+//    if ((iter % batch_size) == 0) {
+        vector<Tensor*> detail_set = network->getDetail();
+        vector<vfloat> detail_parameter = network->getDetailParameter();
+        
+        vector<float*> weight_list;
+        vector<float*> grad_list;
+        vector<int> len_list;
+        vector<vfloat> decay_list;
+        size_t detail_set_size = detail_set.size();
+        for (int i = 0; i < detail_set_size; i += 2) {
+            Tensor* kernel = detail_set[i];
+            for (int j = 0; j < detail_parameter[i >> 1][0]; ++j) {
+                int len = detail_parameter[i >> 1][1] * detail_parameter[i >> 1][2] * detail_parameter[i >> 1][3];
+                weight_list.push_back(kernel[j].weight);
+                grad_list.push_back(kernel[j].delta_weight);
+                len_list.push_back(len);
+                decay_list.push_back(vfloat{detail_parameter[i >> 1][4], detail_parameter[i >> 1][5]});
+            }
+            Tensor* biases = detail_set[i + 1];
+            weight_list.push_back(biases->weight);
+            grad_list.push_back(biases->delta_weight);
+            len_list.push_back(detail_parameter[i >> 1][4]);
+            decay_list.push_back(vfloat{detail_parameter[i >> 1][5], detail_parameter[i >> 1][6]});
+        }
+        
+        size_t len_list_size = len_list.size();
+        if (gsum.empty() && (method != SGD || momentum > 0)) {
+            for (int i = 0; i < len_list_size; ++i) {
+                float *new_gsum = new float [len_list[i]]();
+                //fill(new_gsum, new_gsum + len_list[i], 0);
+                gsum.push_back(new_gsum);
+                if (method == ADADELTA || method == ADAM) {
+                    float *new_xsum = new float [len_list[i]]();
+                    //fill(new_xsum, new_xsum + len_list[i], 0);
+                    xsum.push_back(new_xsum);
+                } else {
+                    xsum.push_back(nullptr);
+                }
+            }
+        }
+        
+        for (int i = 0; i < len_list_size; ++i) {
+            float *weight = weight_list[i];
+            float *grad = grad_list[i];
+            
+            float l1_decay_mul = decay_list[i][0];
+            float l2_decay_mul = decay_list[i][1];
+            float l1_decay_local = l1_decay * l1_decay_mul;
+            float l2_decay_local = l2_decay * l2_decay_mul;
+            
+            int len = len_list[i];
+            float *gsumi = gsum[i];
+            float *xsumi = xsum[i];
+            
+            float *weight_act = weight;
+            float *grad_act = grad;
+            
+            float *gsum_act = gsumi;
+            float *xsum_act = xsumi;
+            
+            for (int j = 0; j < len; ++j) {
+                l1_decay_loss += l1_decay_local * abs(*weight_act);
+                l2_decay_loss += l2_decay_local * *weight_act * *weight_act / 2;
+                float l1_grad = l1_decay_local * (*weight_act > 0 ? 1 : -1);
+                float l2_grad = l2_decay_local * *weight_act;
+                float grad_ij = (l1_grad + l2_grad + *grad_act) / batch_size;
+                
+                if (method == ADADELTA) {
+                    *gsum_act = ro * *gsum_act + (1 - ro) * grad_ij * grad_ij;
+                    float delta_weight = -sqrt((*xsum_act + eps) / (*gsum_act + eps)) * grad_ij;
+                    *xsum_act = ro * *xsum_act + (1 - ro) * delta_weight * delta_weight;
+                    *weight_act += delta_weight;
+                } else if (method == ADAM) {
+                    *gsum_act = beta_1 * *gsum_act + (1 - beta_1) * grad_ij;
+                    *xsum_act = beta_2 * *xsum_act + (1 - beta_2) * grad_ij * grad_ij;
+                    float nor_gsumi = *gsum_act / (1 - pow(beta_1, (iter / batch_size) + 1));
+                    float nor_xsumi = *xsum_act / (1 - pow(beta_2, (iter / batch_size) + 1));
+                    float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
+                    *weight_act += delta_weight;
+                } else { // SGD
+                    if (momentum > 0) {
+                        float delta_weight = momentum * *gsum_act - learning_rate * grad_ij;
+                        *gsum_act = delta_weight;
+                        *weight_act += delta_weight;
+                    } else {
+                        *weight_act += learning_rate * grad_ij;
+                    }
+                }
+                *grad_act = 0;
+                
+                weight_act++;
+                grad_act++;
+                gsum_act++;
+                xsum_act++;
+            }
+        }
+//    }
+    return vfloat{loss};
 }

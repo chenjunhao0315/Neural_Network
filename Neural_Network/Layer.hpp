@@ -34,7 +34,6 @@ enum LayerType {
     Pooling,
     EuclideanLoss,
     ShortCut,
-    Dropout,
     Sigmoid,
     Error
 };
@@ -49,7 +48,6 @@ class ConvolutionLayer;
 class PoolingLayer;
 class EuclideanLossLayer;
 class ShortCutLayer;
-class DropoutLayer;
 class SigmoidLayer;
 
 // Top layer
@@ -140,6 +138,7 @@ public:
         int workspace_size;
         int input_index_size;
         int weight_index_size;
+        int batch_size;
     } info_more;
     float *workspace;
     int *input_index;

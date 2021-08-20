@@ -14,7 +14,7 @@ PNet::PNet(const char *model_name) {
     pnet.load(model_name);
 }
 
-PNet::PNet() {
+PNet::PNet(int batch_size) {
     scale_factor = 0.709;
     threshold[0] = 0.97;
     pnet = Neural_Network("parallel");
@@ -36,7 +36,7 @@ PNet::PNet() {
     pnet.addOutput("cls_prob");
     pnet.addOutput("bbox_pred");
     pnet.addOutput("land_pred");
-    pnet.makeLayer();
+    pnet.makeLayer(batch_size);
     pnet.shape();
 }
 

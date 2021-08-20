@@ -223,8 +223,8 @@ float Tensor::getGrad(int width_, int height_, int dimension_) {
     return delta_weight[((height_ * width) + width_) * dimension + dimension_];
 }
 
-void Tensor::addGrad(int width_, int height_, int dimension_, float value) {
-    delta_weight[((width * height_) + width_) * dimension + dimension_] += value;
+void Tensor::addGrad(int width_, int height_, int dimension_, float value, int shift_, int batch) {
+    delta_weight[((width * height_) + width_) * dimension / batch + dimension_ + shift_] += value;
 }
 
 void Tensor::save(FILE *f) {

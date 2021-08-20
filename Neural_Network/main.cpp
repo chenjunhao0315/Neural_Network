@@ -19,7 +19,7 @@ using namespace std::chrono;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-//    Neural_Network nn;
+//    Neural_Network nn("sequential");
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
 //    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
@@ -27,12 +27,12 @@ int main(int argc, const char * argv[]) {
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
 //    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "3"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//    nn.makeLayer();
+//    nn.makeLayer(4);
 ////         nn.load("test.bin");
 //    nn.shape();
-//    nn.save("test.bin");
-//
-//
+//////    nn.save("test.bin");
+//////
+//////
 //         Data bee("bee.npy", 28, 28);
 //         vtensor data_bee = bee.get(500);
 //         vector<vfloat> label_bee(500, vfloat(1, 0));
@@ -65,20 +65,16 @@ int main(int argc, const char * argv[]) {
 //             label_valid.push_back(label_fish[i]);
 //         }
 //
-//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //
-//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 4}, {"learning_rate", 0.01}});
+////    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //
-//    auto start = high_resolution_clock::now();
-//    auto stop = high_resolution_clock::now();
-//    auto duration = duration_cast<milliseconds>(stop - start);
-//         trainer.train(data_train, data_label, 10);
-//    stop = high_resolution_clock::now();
-//    duration = duration_cast<milliseconds>(stop - start);
-//    printf("Time: %lldms\n", duration.count());
-//         //nn.train("SVG", 0.001, data_train, data_label, 1);
+//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.001}});
 //
-//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
+//    Clock c;
+//    trainer.train_batch(data_train, data_label, 5);
+//    c.stop_and_show();
+//
+//    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //    nn.save("test.bin");
 //         nn.shape();
 //
@@ -294,16 +290,15 @@ int main(int argc, const char * argv[]) {
 //
 //    mtcnn_evaluate(&pnet.pnet, data_set_pnet, label_set_pnet);
     
-    Mtcnn mtcnn("1629149015_149_207854.078125.bin", "1629186163_22_21068.136719.bin", "1629208434_8_10620.555664.bin");
-    mtcnn.min_face_size = 0;
-    IMG img("target.jpg");
-    Clock c;
-    vector<Bbox> result = mtcnn.detect(img);
-    c.stop_and_show();
-    mtcnn.mark(img, result);
-    img.save("result.jpg", 80);
-    mtcnn.layout(result);
-
+//    Mtcnn mtcnn("1629149015_149_207854.078125.bin", "1629186163_22_21068.136719.bin", "1629208434_8_10620.555664.bin");
+//    mtcnn.min_face_size = 0;
+//    IMG img("target.jpg");
+//    Clock c;
+//    vector<Bbox> result = mtcnn.detect(img);
+//    c.stop_and_show();
+//    mtcnn.mark(img, result);
+//    img.save("result.jpg", 80);
+//    mtcnn.layout(result);
     
 //    IMG img("target.jpg");
 //    img = img.convertGray();
@@ -331,13 +326,46 @@ int main(int argc, const char * argv[]) {
 //        printf("%.2f ", test_label[i]);
 //    }
     
-//    ONet onet;
-//    MtcnnLoader loader("img_data_onet.bin", "label_data_onet.bin", "onet");
-//    Trainer trainer(&onet.onet, TrainerOption{{"method", Trainer::Method::SGD}, {"batch_size", 128}, {"learning_rate", 0.0025}});
+//    PNet pnet;
+//    MtcnnLoader loader("img_data_pnet.bin", "label_data_pnet.bin", "pnet");
+//    Trainer trainer(&pnet.pnet, TrainerOption{{"method", Trainer::Method::SGD}, {"batch_size", 128}, {"learning_rate", 0.01}});
 //    MtcnnTrainer mtcnn_trainer(&trainer, &loader);
-//    mtcnn_trainer.train(30);
-//    mtcnn_trainer.evaluate(onet.onet);
-//    onet.onet.save("onet_new.bin");
+//    mtcnn_trainer.train(150, 10, 0.5);
+//    mtcnn_trainer.evaluate(pnet.pnet);
+//    pnet.pnet.save("pnet_newdata.bin");
+    
+    
+    Neural_Network nn("sequential");
+    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}});
+    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "50"}});
+    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "50"}});
+    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}});
+    nn.addLayer(LayerOption {{"type", "EuclideanLoss"}});
+    nn.makeLayer(2);
+    nn.shape();
+
+    Tensor a(1, 1, 2, 0);
+    Tensor b(1, 1, 2, 1);
+    vfloat la = {1.0, 0, 0};
+    vfloat lb = {0, 1,0, 0};
+    vtensor set; set.push_back(a); set.push_back(b);
+    vector<vfloat> label; label.push_back(la); label.push_back(lb);
+
+    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"learning_rate", 0.001}, {"batch_size", 2}});
+
+    Clock c;
+    trainer.train_batch(set, label, 50);
+    c.stop_and_show();
+
+    vfloat result = nn.Forward(&a);
+    for (auto i : result)
+        cout << i << " ";
+    cout << endl;
+
+    result = nn.Forward(&b);
+    for (auto i : result)
+        cout << i << " ";
+    cout << endl;
 
     return 0;
 }

@@ -19,56 +19,54 @@ using namespace std::chrono;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-    Neural_Network nn;
+//    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"activation", "PRelu"}});
-//
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
 //    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "3"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-////         nn.addOutput("8");
 //    nn.makeLayer();
-         nn.load("test.bin");
-    nn.shape();
+////         nn.load("test.bin");
+//    nn.shape();
 //    nn.save("test.bin");
-
-
-         Data bee("bee.npy", 28, 28);
-         vtensor data_bee = bee.get(500);
-         vector<vfloat> label_bee(500, vfloat(1, 0));
-         Data cat("cat.npy", 28, 28);
-         vtensor data_cat = cat.get(500);
-         vector<vfloat> label_cat(500, vfloat(1, 1));
-         Data fish("fish.npy", 28, 28);
-         vtensor data_fish = fish.get(500);
-         vector<vfloat> label_fish(500, vfloat(1, 2));
-
-         vtensor data_train;
-         vector<vfloat> data_label;
-         for (int i = 0; i < 300; ++i) {
-             data_train.push_back(data_bee[i]);
-             data_train.push_back(data_cat[i]);
-             data_train.push_back(data_fish[i]);
-             data_label.push_back(label_bee[i]);
-             data_label.push_back(label_cat[i]);
-             data_label.push_back(label_fish[i]);
-         }
-
-         vtensor data_valid;
-         vector<vfloat> label_valid;
-         for (int i = 300; i < 500; ++i) {
-             data_valid.push_back(data_bee[i]);
-             data_valid.push_back(data_cat[i]);
-             data_valid.push_back(data_fish[i]);
-             label_valid.push_back(label_bee[i]);
-             label_valid.push_back(label_cat[i]);
-             label_valid.push_back(label_fish[i]);
-         }
-
-         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
-
+//
+//
+//         Data bee("bee.npy", 28, 28);
+//         vtensor data_bee = bee.get(500);
+//         vector<vfloat> label_bee(500, vfloat(1, 0));
+//         Data cat("cat.npy", 28, 28);
+//         vtensor data_cat = cat.get(500);
+//         vector<vfloat> label_cat(500, vfloat(1, 1));
+//         Data fish("fish.npy", 28, 28);
+//         vtensor data_fish = fish.get(500);
+//         vector<vfloat> label_fish(500, vfloat(1, 2));
+//
+//         vtensor data_train;
+//         vector<vfloat> data_label;
+//         for (int i = 0; i < 300; ++i) {
+//             data_train.push_back(data_bee[i]);
+//             data_train.push_back(data_cat[i]);
+//             data_train.push_back(data_fish[i]);
+//             data_label.push_back(label_bee[i]);
+//             data_label.push_back(label_cat[i]);
+//             data_label.push_back(label_fish[i]);
+//         }
+//
+//         vtensor data_valid;
+//         vector<vfloat> label_valid;
+//         for (int i = 300; i < 500; ++i) {
+//             data_valid.push_back(data_bee[i]);
+//             data_valid.push_back(data_cat[i]);
+//             data_valid.push_back(data_fish[i]);
+//             label_valid.push_back(label_bee[i]);
+//             label_valid.push_back(label_cat[i]);
+//             label_valid.push_back(label_fish[i]);
+//         }
+//
+//         printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
+//
 //    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"batch_size", 4}, {"learning_rate", 0.01}});
 //
 //    auto start = high_resolution_clock::now();
@@ -296,13 +294,16 @@ int main(int argc, const char * argv[]) {
 //
 //    mtcnn_evaluate(&pnet.pnet, data_set_pnet, label_set_pnet);
     
-//    Mtcnn mtcnn("1629149015_149_207854.078125.bin", "1629186163_22_21068.136719.bin", "1629208434_8_10620.555664.bin");
-//    mtcnn.min_face_size = 0;
-//    IMG img("target.jpg");
-//    vector<Bbox> result = mtcnn.detect(img);
-//    mtcnn.mark(img, result);
-//    img.save("result.jpg", 80);
-//    mtcnn.layout(result);
+    Mtcnn mtcnn("1629149015_149_207854.078125.bin", "1629186163_22_21068.136719.bin", "1629208434_8_10620.555664.bin");
+    mtcnn.min_face_size = 0;
+    IMG img("target.jpg");
+    Clock c;
+    vector<Bbox> result = mtcnn.detect(img);
+    c.stop_and_show();
+    mtcnn.mark(img, result);
+    img.save("result.jpg", 80);
+    mtcnn.layout(result);
+
     
 //    IMG img("target.jpg");
 //    img = img.convertGray();

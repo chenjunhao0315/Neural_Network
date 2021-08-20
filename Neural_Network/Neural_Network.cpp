@@ -44,7 +44,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
-            //            printf("Input\n");
         } else if (type[0] == 'f' && type[1] == 'c') {
             opt["type"] = "Fullyconnected";
             fread(&temp, sizeof(int), 1, f);
@@ -53,7 +52,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["number_neurons"] = to_string(temp);
             opt["input_width"] = "1";
             opt["input_height"] = "1";
-            //            printf("Fullyconnected\n");
         } else if (type[0] == 'r' && type[1] == 'e') {
             opt["type"] = "Relu";
             fread(&temp, sizeof(int), 1, f);
@@ -62,7 +60,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
-            //            printf("Relu\n");
         } else if (type[0] == 's' && type[1] == 'm') {
             opt["type"] = "Softmax";
             fread(&temp, sizeof(int), 1, f);
@@ -70,7 +67,6 @@ bool Neural_Network::load(const char *model_name) {
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
             opt["input_width"] = "1";
-            //            printf("Softmax\n");
         } else if (type[0] == 'c' && type[1] == 'n') {
             opt["type"] = "Convolution";
             fread(&temp, sizeof(int), 1, f);
@@ -89,7 +85,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["stride"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["padding"] = to_string(temp);
-            //            printf("Convolution\n");
         } else if (type[0] == 'p' && type[1] == 'o') {
             opt["type"] = "Pooling";
             fread(&temp, sizeof(int), 1, f);
@@ -106,7 +101,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["stride"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["padding"] = to_string(temp);
-            //            printf("Pooling\n");
         } else if (type[0] == 'e' && type[1] == 'l') {
             opt["type"] = "EuclideanLoss";
             fread(&temp, sizeof(int), 1, f);
@@ -115,7 +109,6 @@ bool Neural_Network::load(const char *model_name) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
-            //            printf("EuclideanLoss\n");
         } else if (type[0] == 'p' && type[1] == 'r') {
             opt["type"] = "PRelu";
             fread(&temp, sizeof(int), 1, f);
@@ -138,7 +131,22 @@ bool Neural_Network::load(const char *model_name) {
             fread(sc, sizeof(char), len, f);
             sc[len] = '\0';
             opt["shortcut"] = string(sc);
-            printf("%s\n", sc);
+        } else if (type[0] == 'l' && type[1] == 'r') {
+            opt["type"] = "LRelu";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+        } else if (type[0] == 's' && type[1] == 'i') {
+            opt["type"] = "Sigmoid";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
         }
         opt_layer.push_back(opt);
         layer.push_back(Model_Layer(opt));
@@ -166,7 +174,7 @@ bool Neural_Network::load(const char *model_name) {
         }
         path.push_back(route);
     }
-    return true;
+    return layer_number == layer.size();
 }
 
 bool Neural_Network::save(const char *model_name) {
@@ -201,6 +209,10 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("pr", 2, 1, f);
         } else if (type == LayerType::ShortCut) {
             fwrite("sc", 2, 1, f);
+        } else if (type == LayerType::LRelu) {
+            fwrite("lr", 2, 1, f);
+        } else if (type == LayerType::Sigmoid) {
+            fwrite("si", 2, 1, f);
         }
         layer[i].save(f);
     }
@@ -239,6 +251,12 @@ void Neural_Network::addLayer(LayerOption opt_) {
         opt_layer.push_back(auto_opt);
     } else if (opt_["activation"] == "PRelu") {
         auto_opt["type"] = "PRelu";
+        opt_layer.push_back(auto_opt);
+    } else if (opt_["activation"] == "LRelu") {
+        auto_opt["type"] = "LRelu";
+        opt_layer.push_back(auto_opt);
+    } else if (opt_["activation"] == "Sigmoid") {
+        auto_opt["type"] = "Sigmoid";
         opt_layer.push_back(auto_opt);
     }
 }

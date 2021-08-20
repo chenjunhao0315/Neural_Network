@@ -464,13 +464,10 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
         return vector<Bbox>();
     }
     
-    auto start = high_resolution_clock::now();
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(stop - start);
+    Clock c;
     vector<Bbox> bbox = pnet->detect(img, min_face_size);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), duration.count());
+    
+    printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), c.getElapsed());
 
 //    IMG pnet_detect(img);
 //    for (int i = 0; i < bbox.size(); ++i) {
@@ -478,11 +475,9 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
 //    }
 //    pnet_detect.save("pnet_predict.jpg", 80);
 
-    start = high_resolution_clock::now();
+    c.start();
     vector<Bbox> rnet_bbox = rnet->detect(img, bbox);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), duration.count());
+    printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), c.getElapsed());
 
 //    IMG rnet_detect(img);
 //    for (int i = 0; i < rnet_bbox.size(); ++i) {
@@ -490,11 +485,9 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
 //    }
 //    rnet_detect.save("rnet_predict.jpg", 80);
 
-    start = high_resolution_clock::now();
+    c.start();
     vector<Bbox> onet_bbox = onet->detect(img, rnet_bbox);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(stop - start);
-    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), duration.count());
+    printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), c.getElapsed());
 
 //    IMG onet_detect(img);
 //    for (int i = 0; i < onet_bbox.size(); ++i) {

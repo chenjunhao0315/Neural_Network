@@ -28,11 +28,14 @@ enum LayerType {
     Fullyconnected,
     Relu,
     PRelu,
+    LRelu,
     Softmax,
     Convolution,
     Pooling,
     EuclideanLoss,
     ShortCut,
+    Dropout,
+    Sigmoid,
     Error
 };
 
@@ -40,11 +43,14 @@ class InputLayer;
 class FullyConnectedLayer;
 class ReluLayer;
 class PReluLayer;
+class LReluLayer;
 class SoftmaxLayer;
 class ConvolutionLayer;
 class PoolingLayer;
 class EuclideanLossLayer;
 class ShortCutLayer;
+class DropoutLayer;
+class SigmoidLayer;
 
 // Top layer
 class Model_Layer {
@@ -81,6 +87,8 @@ private:
     PoolingLayer *pooling_layer;
     EuclideanLossLayer *euclideanloss_layer;
     ShortCutLayer *shortcut_layer;
+    LReluLayer *lrelu_layer;
+    SigmoidLayer *sigmoid_layer;
 };
 
 // Base layer
@@ -212,6 +220,7 @@ public:
 private:
 };
 
+// ShortCut layer
 class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
@@ -219,6 +228,22 @@ public:
     void Backward();
 private:
     Tensor *shortcut_tensor;
+};
+
+// LRelu layer
+class LReluLayer : public BaseLayer {
+public:
+    LReluLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    void Backward();
+};
+
+// Sigmoid layer
+class SigmoidLayer : public BaseLayer {
+public:
+    SigmoidLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    void Backward();
 };
 
 #endif /* Layer_hpp */

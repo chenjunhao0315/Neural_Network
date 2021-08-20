@@ -18,6 +18,8 @@ Model_Layer::~Model_Layer() {
         case LayerType::EuclideanLoss: delete euclideanloss_layer; break;
         case LayerType::PRelu: delete prelu_layer; break;
         case LayerType::ShortCut: delete shortcut_layer; break;
+        case LayerType::LRelu: delete lrelu_layer; break;
+        case LayerType::Sigmoid: delete sigmoid_layer; break;
         default: break;
     }
     input_layer = nullptr;
@@ -29,6 +31,8 @@ Model_Layer::~Model_Layer() {
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
     shortcut_layer = nullptr;
+    lrelu_layer = nullptr;
+    sigmoid_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -41,6 +45,8 @@ Model_Layer::Model_Layer() {
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
     shortcut_layer = nullptr;
+    lrelu_layer = nullptr;
+    sigmoid_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -53,6 +59,8 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
     shortcut_layer = nullptr;
+    lrelu_layer = nullptr;
+    sigmoid_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -82,6 +90,12 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
                 break;
             case LayerType::ShortCut:
                 shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
+                break;
+            case LayerType::LRelu:
+                lrelu_layer = new LReluLayer(*L.lrelu_layer);
+                break;
+            case LayerType::Sigmoid:
+                sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
                 break;
             default:
                 break;
@@ -100,6 +114,8 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     pooling_layer = L.pooling_layer;
     euclideanloss_layer = L.euclideanloss_layer;
     shortcut_layer = L.shortcut_layer;
+    lrelu_layer = L.lrelu_layer;
+    sigmoid_layer = L.sigmoid_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
@@ -109,6 +125,8 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     L.pooling_layer = nullptr;
     L.euclideanloss_layer = nullptr;
     L.shortcut_layer = nullptr;
+    L.lrelu_layer = nullptr;
+    L.sigmoid_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -121,6 +139,8 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
     shortcut_layer = nullptr;
+    lrelu_layer = nullptr;
+    sigmoid_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -151,6 +171,12 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             case LayerType::ShortCut:
                 shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
                 break;
+            case LayerType::LRelu:
+                lrelu_layer = new LReluLayer(*L.lrelu_layer);
+                break;
+            case LayerType::Sigmoid:
+                sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
+                break;
             default:
                 break;
         }
@@ -168,6 +194,8 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     pooling_layer = nullptr;
     euclideanloss_layer = nullptr;
     shortcut_layer = nullptr;
+    lrelu_layer = nullptr;
+    sigmoid_layer = nullptr;
     type = string_to_type(opt_["type"]);
     
     switch (type) {
@@ -198,6 +226,12 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         case LayerType::ShortCut:
             shortcut_layer = new ShortCutLayer(opt_);
             break;
+        case LayerType::LRelu:
+            lrelu_layer = new LReluLayer(opt_);
+            break;
+        case LayerType::Sigmoid:
+            sigmoid_layer = new SigmoidLayer(opt_);
+            break;
         default:
             break;
     }
@@ -222,6 +256,10 @@ LayerType Model_Layer::string_to_type(string type) {
         return LayerType::EuclideanLoss;
     } else if (type == "ShortCut") {
         return LayerType::ShortCut;
+    } else if (type == "LRelu") {
+        return LayerType::LRelu;
+    } else if (type == "Sigmoid") {
+        return LayerType::Sigmoid;
     }
     return LayerType::Error;
 }
@@ -243,17 +281,24 @@ Tensor* Model_Layer::Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_) {
         case LayerType::Relu:
             return relu_layer->Forward(input_tensor_);
             break;
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->Forward(input_tensor_);
+        case LayerType::ShortCut:
+            return shortcut_layer->Forward(input_tensor_, shortcut_tensor_);
             break;
         case LayerType::Softmax:
             return softmax_layer->Forward(input_tensor_);
             break;
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->Forward(input_tensor_);
+            break;
         case LayerType::Input:
             return input_layer->Forward(input_tensor_);
             break;
-        case LayerType::ShortCut:
-            return shortcut_layer->Forward(input_tensor_, shortcut_tensor_);
+        case LayerType::LRelu:
+            return lrelu_layer->Forward(input_tensor_);
+            break;
+        case LayerType::Sigmoid:
+            return sigmoid_layer->Forward(input_tensor_);
+            break;
         default:
             break;
     }
@@ -297,6 +342,12 @@ void Model_Layer::Backward() {
         case LayerType::ShortCut:
             return shortcut_layer->Backward();
             break;
+        case LayerType::LRelu:
+            return lrelu_layer->Backward();
+            break;
+        case LayerType::Sigmoid:
+            return sigmoid_layer->Backward();
+            break;
         default:
             break;
     }
@@ -331,6 +382,10 @@ void Model_Layer::shape() {
         prelu_layer->shape();
     } else if (type == LayerType::ShortCut) {
         shortcut_layer->shape();
+    } else if (type == LayerType::LRelu) {
+        lrelu_layer->shape();
+    } else if (type == LayerType::Sigmoid) {
+        sigmoid_layer->shape();
     }
 }
 
@@ -363,6 +418,12 @@ int Model_Layer::getParameter(int type_) {
         case LayerType::ShortCut:
             return shortcut_layer->getParameter(type_);
             break;
+        case LayerType::LRelu:
+            return lrelu_layer->getParameter(type_);
+            break;
+        case LayerType::Sigmoid:
+            return sigmoid_layer->getParameter(type_);
+            break;
         default:
             break;
     }
@@ -388,6 +449,10 @@ bool Model_Layer::save(FILE *f) {
         return prelu_layer->save(f);
     } else if (type == LayerType::ShortCut) {
         return shortcut_layer->save(f);
+    } else if (type == LayerType::LRelu) {
+        return lrelu_layer->save(f);
+    } else if (type == LayerType::Sigmoid) {
+        return sigmoid_layer->save(f);
     }
     return 0;
 }
@@ -411,6 +476,10 @@ bool Model_Layer::load(FILE *f) {
         return prelu_layer->load(f);
     } else if (type == LayerType::ShortCut) {
         return shortcut_layer->load(f);
+    } else if (type == LayerType::LRelu) {
+        return lrelu_layer->load(f);
+    } else if (type == LayerType::Sigmoid) {
+        return sigmoid_layer->load(f);
     }
     return 0;
 }
@@ -444,6 +513,10 @@ void Model_Layer::ClearGrad() {
         prelu_layer->ClearGrad();
     } else if (type == LayerType::ShortCut) {
         shortcut_layer->ClearGrad();
+    } else if (type == LayerType::LRelu) {
+        lrelu_layer->ClearGrad();
+    } else if (type == LayerType::Sigmoid) {
+        sigmoid_layer->ClearGrad();
     }
 }
 
@@ -761,6 +834,8 @@ string BaseLayer::type_to_string() {
         case Pooling: return "Pooling"; break;
         case EuclideanLoss: return "EuclideanLoss"; break;
         case ShortCut: return "ShortCut"; break;
+        case LRelu: return "LRelu"; break;
+        case Sigmoid: return "Sigmoid"; break;
         case Error: return "Error"; break;
     }
     return "Unknown";
@@ -933,6 +1008,14 @@ bool BaseLayer::save(FILE *f) {
         char *output = new char [len];
         strcpy(output, opt["shortcut"].c_str());
         fwrite(output, sizeof(char), len, f);
+    } else if (type == LayerType::LRelu) {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+    } else if (type == LayerType::Sigmoid) {
+        fwrite(&info.output_width, sizeof(int), 1, f);
+        fwrite(&info.output_height, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
     }
     
     return true;
@@ -1050,7 +1133,6 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
 
 Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    output_tensor->clearDeltaWeight();
     
     float *input_weight = input_tensor->weight;
     float *bias_ptr = biases->weight;
@@ -1342,28 +1424,23 @@ ReluLayer::ReluLayer(LayerOption opt_) {
 
 Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-//    Tensor *cal = new Tensor(input_tensor_);
     float *val = input_tensor->weight;
     float *out = output_tensor->weight;
-    for (int i = 0; i < info.input_number; ++i) {
-//        if (val[i] < 0)
-//            val[i] = 0;
-        out[i] = (val[i] < 0) ? 0 : val[i];
+    float value;
+    for (int i = info.input_number; i--; ) {
+        value = *(val++);
+        *(out++) = (value < 0) ? 0 : value;
     }
-    //if (output_tensor)
-//    delete output_tensor;
-//    output_tensor = cal;
     return output_tensor;
 }
 
 void ReluLayer::Backward() {
     Tensor *cal = input_tensor;
-    //cal->clearDeltaWeight();
     float *act_weight = output_tensor->weight;
     float *act_grad = output_tensor->delta_weight;
     float *pos_grad = cal->delta_weight;
     
-    for (int i = 0; i < info.input_number; ++i) {
+    for (int i = info.input_number; i--; ) {
         if (act_weight[i] <= 0)
             pos_grad[i] += 0;
         else
@@ -1395,8 +1472,8 @@ Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
     float *out = output_tensor->weight;
     float *alpha = kernel->weight;
     float value;
-    for (int i = info.input_number; i--; alpha++) {
-        value = *(val++);
+    for (int i = info.input_number; i--; ++alpha, ++val) {
+        value = *val;
         *(out++) = (value < 0) ? value * *alpha : value;
     }
     
@@ -1522,13 +1599,14 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     info.output_height = atoi(opt["input_height"].c_str());
     info.output_dimension = atoi(opt["input_dimension"].c_str());
     info.input_number = info.output_width * info.output_height * info.output_dimension;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension, 0.0);
 }
 
 Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) {
     input_tensor = input_tensor_;
     shortcut_tensor = shortcut_tensor_;
     
-    Tensor *cal = new Tensor(input_tensor_);
     int w1 = shortcut_tensor->width;
     int w2 = info.output_width;
     int h1 = shortcut_tensor->height;
@@ -1546,7 +1624,8 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
     int minh = (h1 < h2) ? h1 : h2;
     int minc = (c1 < c2) ? c1 : c2;
     
-    float *out = cal->weight;
+    float *in = input_tensor->weight;
+    float *out = output_tensor->weight;
     float *add = shortcut_tensor->weight;
 
     int i, j, k;
@@ -1555,13 +1634,11 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
             for(i = 0; i < minw; ++i){
                 int out_index = (i * sample + w2 * (j * sample)) * c2 + k;
                 int add_index = (i * stride + w1 * (j * stride)) * c1 + k;
-                out[out_index] += add[add_index];
+                out[out_index] = in[out_index] + add[add_index];
             }
         }
     }
     
-    delete output_tensor;
-    output_tensor = cal;
     return output_tensor;
 }
 
@@ -1601,5 +1678,85 @@ void ShortCutLayer::Backward() {
                 out[out_index] += add[add_index];
             }
         }
+    }
+}
+
+LReluLayer::LReluLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::LRelu;
+    name = (opt.find("name") == opt.end()) ? "lrelu" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.output_width = atoi(opt["input_width"].c_str());
+    info.output_height = atoi(opt["input_height"].c_str());
+    info.output_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.output_width * info.output_height * info.output_dimension;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height,info.output_dimension, 0.0);
+}
+
+Tensor* LReluLayer::Forward(Tensor *input_tensor_) {
+    input_tensor = input_tensor_;
+    float *val = input_tensor->weight;
+    float *out = output_tensor->weight;
+    float value;
+    for (int i = info.input_number; i--; ++val) {
+        value = *val;
+        *(out++) = (value < 0) ? value * 0.01 : value;
+    }
+    return output_tensor;
+}
+
+void LReluLayer::Backward() {
+    Tensor *cal = input_tensor;
+    float *act_weight = output_tensor->weight;
+    float *act_grad = output_tensor->delta_weight;
+    float *pos_grad = cal->delta_weight;
+    float chain_grad;
+    
+    for (int i = 0; i < info.input_number; ++i) {
+        chain_grad = act_grad[i];
+        if (act_weight[i] < 0) {
+            pos_grad[i] += chain_grad * 0.01;
+        }
+        else {
+            pos_grad[i] += chain_grad;
+        }
+    }
+}
+
+SigmoidLayer::SigmoidLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Sigmoid;
+    name = (opt.find("name") == opt.end()) ? "sig" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.output_width = atoi(opt["input_width"].c_str());
+    info.output_height = atoi(opt["input_height"].c_str());
+    info.output_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.output_width * info.output_height * info.output_dimension;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height,info.output_dimension, 0.0);
+}
+
+Tensor* SigmoidLayer::Forward(Tensor *input_tensor_) {
+    input_tensor = input_tensor_;
+    float *val = input_tensor->weight;
+    float *out = output_tensor->weight;
+    for (int i = info.input_number; i--; ) {
+        *(out++) = 1.0 / (1.0 + exp(-(*(val++))));
+    }
+    return output_tensor;
+}
+
+void SigmoidLayer::Backward() {
+    float *act_weight = output_tensor->weight;
+    float *act_grad = output_tensor->delta_weight;
+    float *pos_grad = input_tensor->delta_weight;
+    float value;
+    
+    for (int i = 0; i < info.input_number; ++i) {
+        value = *(act_weight++);
+        *(pos_grad++) = value * (1.0 - value) * *(act_grad++);
     }
 }

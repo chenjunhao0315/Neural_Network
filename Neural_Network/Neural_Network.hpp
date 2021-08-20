@@ -52,6 +52,7 @@ private:
     vector<string> output_layer;
     unordered_map<string, Tensor*> terminal;
     vector<vector<int>> path;
+    int batch_size;
 };
 
 class Trainer {

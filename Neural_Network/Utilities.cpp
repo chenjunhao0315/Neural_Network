@@ -33,3 +33,17 @@ float guassRandom() {
 float Random() {
     return unif(generator);
 }
+
+Clock::Clock() {
+    time_start = high_resolution_clock::now();
+    time_stop = high_resolution_clock::now();
+}
+
+void Clock::start() {
+    time_start = high_resolution_clock::now();
+}
+
+void Clock::stop() {
+    time_stop = high_resolution_clock::now();
+}
+

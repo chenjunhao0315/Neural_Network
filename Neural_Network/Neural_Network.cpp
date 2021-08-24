@@ -21,6 +21,9 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
     
     fread(&layer_number, sizeof(int), 1, f);
     printf("Load %d layers\n", layer_number);
+    
+    layer = new Model_Layer [layer_number];
+    
     for (int i = 0; i < layer_number; ++i) {
         int temp;
         LayerOption opt;
@@ -149,11 +152,20 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
+        } else if (type[0] == 'b' && type[1] == 'n') {
+            opt["type"] = "BatchNormalization";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
         }
         opt_layer.push_back(opt);
-        layer.push_back(Model_Layer(opt));
+        layer[i] = Model_Layer(opt);
         layer[i].load(f);
     }
+    alloc_workspace();
     int output_number;
     fread(&output_number, sizeof(int), 1, f);
     for (int i = 0; i < output_number; ++i) {
@@ -176,7 +188,7 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         }
         path.push_back(route);
     }
-    return layer_number == layer.size();
+    return true;
 }
 
 bool Neural_Network::save(const char *model_name) {
@@ -215,6 +227,8 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("lr", 2, 1, f);
         } else if (type == LayerType::Sigmoid) {
             fwrite("si", 2, 1, f);
+        } else if (type == LayerType::BatchNormalization) {
+            fwrite("bn", 2, 1, f);
         }
         layer[i].save(f);
     }
@@ -242,6 +256,11 @@ void Neural_Network::addLayer(LayerOption opt_) {
         opt_["bias"] = "0.1";
     }
     string bias = opt_["bias"].c_str();
+    
+    if (opt_.find("concat") != opt_.end()) {
+        opt_["shortcut"] = opt_["concat"];
+    }
+    
     opt_layer.push_back(opt_);
     
     if (opt_["activation"] == "Relu") {
@@ -266,6 +285,8 @@ void Neural_Network::addLayer(LayerOption opt_) {
 void Neural_Network::makeLayer(int batch_size_) {
     unordered_map<string, int> id_table;
     batch_size = batch_size_;
+//    layer.reserve(opt_layer.size());
+    layer = new Model_Layer [opt_layer.size()];
     printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
         printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
@@ -282,9 +303,15 @@ void Neural_Network::makeLayer(int batch_size_) {
             opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]].getParameter(2));
         }
         string bias = opt["bias"].c_str();
-        layer.push_back(Model_Layer(opt));
+        if (opt["type"] == "Concat") {
+            opt["concat_width"] = to_string(layer[id_table[opt["concat"]]].getParameter(0));
+            opt["concat_height"] = to_string(layer[id_table[opt["concat"]]].getParameter(1));
+            opt["concat_dimension"] = to_string(layer[id_table[opt["concat"]]].getParameter(2));
+        }
+        layer[i] = Model_Layer(opt);
         layer_number++;
     }
+    alloc_workspace();
     printf("*****************************\n");
     if (output_layer.empty())
         output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
@@ -306,7 +333,7 @@ void Neural_Network::shape() {
     printf("------------------------------------------------------\n");
     printf("Layer(type)      Name       Input       Output Shape\n");
     printf("======================================================\n");
-    for (int i = 0; i < layer.size(); ++i) {
+    for (int i = 0; i < layer_number; ++i) {
         layer[i].shape();
     }
     printf("======================================================\n");
@@ -316,16 +343,18 @@ Neural_Network::nn_status Neural_Network::status() {
     return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
-vfloat Neural_Network::Forward(Tensor *input_tensor_) {
+vfloat Neural_Network::Forward(Tensor *input_tensor_, bool train) {
+//    Forward_Args forward_args(train, workspace);
+    args.train = train;
     Tensor *act = layer[0].Forward(input_tensor_);
     terminal[opt_layer[0]["name"]] = act;
-//    act->showWeight();
+    //    act->showWeight();
     for (int i = 1; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
-        act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]));
+        act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), &args);
         terminal[opt["name"]] = act;
-//        cout << opt["name"] << ": ";
-//        act->showWeight();
+//                cout << opt["name"] << ": ";
+//                act->showWeight();
     }
     
     vfloat output = terminal[output_layer[0]]->toVector();
@@ -344,7 +373,7 @@ float Neural_Network::Backward(vfloat& target) {
         for (int i = layer_number - 2; i; --i) {
             layer[i].Backward();
         }
-    } else if (model == "parallel") {
+    } else if (model == "mtcnn") {
         if (target[0] == 1) {
             vfloat cls_pos{1};
             vfloat bbox_pos{target[1], target[2], target[3], target[4]};
@@ -392,45 +421,10 @@ float Neural_Network::Backward(vfloat& target) {
     return loss;
 }
 
-vfloat Neural_Network::train(string method, float learning_rate, Tensor *input, vfloat &target) {
-    float cost_lost = 0;
-    
-    Forward(input);
-    cost_lost = Backward(target);
-    
-    int length = (int)layer.size();
-    for (int i = 0; i < length; ++i) {
-        layer[i].UpdateWeight(method, learning_rate);
-    }
-    
-    return vfloat{cost_lost};
-}
-
-void Neural_Network::train(string method, float learning_rate, vtensor &data_set, vector<vfloat> &target_set, int epoch) {
-    auto rng = std::default_random_engine {};
-    vector<int> index;
-    size_t data_set_size = data_set.size();
-    for (int i = 0; i < data_set_size; ++i) {
-        index.push_back(i);
-    }
-    for (int i = 0; i < epoch; ++i) {
-        printf("Epoch %d Training[", i + 1);
-        shuffle(index.begin(), index.end(), rng);
-        for (int j = 0; j < data_set.size(); ++j) {
-            //if (!(j % (data_set.size() / 20))) printf("*");
-            //            Tensor input = data_set[a = index[j]];
-            train(method, learning_rate, &(data_set[index[j]]), target_set[index[j]]);
-        }
-        printf("]\n");
-        //float accuracy = evaluate(data_set, target_set);
-        //printf("Accuracy: %.2f%%\n", accuracy * 100);
-    }
-}
-
 vfloat Neural_Network::predict(Tensor *input) {
-//    if (layer[layer.size() - 1].type_to_string() != "Softmax") {
-//        printf("Last layer need to be softmax.\n");
-//    }
+    //    if (layer[layer.size() - 1].type_to_string() != "Softmax") {
+    //        printf("Last layer need to be softmax.\n");
+    //    }
     vfloat output = Forward(input);
     float max_value = output[0];
     int max_index = 0, index, length = (int)output.size() / batch_size;
@@ -458,43 +452,34 @@ float Neural_Network::evaluate(vtensor &data_set, vector<vfloat> &target) {
 Neural_Network::Neural_Network(string model_) {
     model = model_;
     layer_number = 0;
+    layer = nullptr;
+    workspace = nullptr;
 }
 
-vector<Tensor*> Neural_Network::getDetail() {
-    vector<Tensor*> detail_set;
+vector<Train_Args> Neural_Network::getTrainArgs() {
+    vector<Train_Args> args_list;
     
-    for (int i = 0; i < layer.size(); ++i) {
-        Tensor *kernel = nullptr, *biases = nullptr;
-        kernel = layer[i].getKernel();
-        biases = layer[i].getBiases();
-        if (kernel)
-            detail_set.push_back(kernel);
-        if (biases)
-            detail_set.push_back(biases);
+    for (int i = 0; i < layer_number; ++i) {
+        Train_Args args = layer[i].getTrainArgs();
+        if (args.valid)
+            args_list.push_back(args);
     }
-    return detail_set;
+    return args_list;
 }
 
-vector<vfloat> Neural_Network::getDetailParameter() {
-    vector<vfloat> detail_parameter;
-    
-    for (int i = 0; i < layer.size(); ++i) {
-        vfloat detail = layer[i].getDetailParameter();
-        if (detail.size() == 7)
-            detail_parameter.push_back(detail);
+void Neural_Network::alloc_workspace() {
+    int max = 0, size;
+    for (int i = 0; i < layer_number; ++i) {
+        size = layer[i].getWorkspaceSize();
+        if (size > max)
+            max = size;
     }
-    return detail_parameter;
-}
-
-void Neural_Network::UpdateNet() {
-    for (int i = 0; i < layer.size(); ++i) {
-        layer[i].Update();
-        layer[i].ClearGrad();
-    }
+    workspace = new float [max];
+    args = Forward_Args(false, workspace);
 }
 
 void Neural_Network::ClearGrad() {
-    for (int i = 0; i < layer.size(); ++i) {
+    for (int i = 0; i < layer_number; ++i) {
         layer[i].ClearGrad();
     }
 }
@@ -513,6 +498,7 @@ Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
     beta_1 = (opt.find("beta_1") == opt.end()) ? 0.9 : opt["beta_1"];
     beta_2 = (opt.find("beta_2") == opt.end()) ? 0.999 : opt["beta_2"];
     iter = 0;
+    args_num = 0;
     gsum.resize(0);
     xsum.resize(0);
 }
@@ -530,48 +516,46 @@ vfloat Trainer::train(vtensor &data_set, vector<vfloat> &target_set, int epoch) 
         loss = 0;
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j < data_set_size; ++j) {
-//            if (!(j % (data_set_size / 20))) printf("*");
+            if (!(j % (data_set_size / 20))) printf("*");
             loss += train(data_set[index[j]], target_set[index[j]])[0];
-            //            printf("%d ", index[j]);
         }
         printf("] ");
         printf("loss: %f\n", loss);
-        //float accuracy = evaluate(data_set, target_set);
-        //printf("Accuracy: %.2f%%\n", accuracy * 100);
     }
     return vfloat{loss};
 }
 
 vfloat Trainer::train(Tensor &data, vfloat &target) {
-    network->Forward(&data);
+    network->Forward(&data, true);
     network->ClearGrad();
     float loss = network->Backward(target);
     float l1_decay_loss = 0;
     float l2_decay_loss = 0;
     iter++;
     if ((iter % batch_size) == 0) {
-        vector<Tensor*> detail_set = network->getDetail();
-        vector<vfloat> detail_parameter = network->getDetailParameter();
+        vector<Train_Args> args_list = network->getTrainArgs();
         
-        vector<float*> weight_list;
-        vector<float*> grad_list;
-        vector<int> len_list;
-        vector<vfloat> decay_list;
-        size_t detail_set_size = detail_set.size();
-        for (int i = 0; i < detail_set_size; i += 2) {
-            Tensor* kernel = detail_set[i];
-            for (int j = 0; j < detail_parameter[i >> 1][0]; ++j) {
-                int len = detail_parameter[i >> 1][1] * detail_parameter[i >> 1][2] * detail_parameter[i >> 1][3];
-                weight_list.push_back(kernel[j].weight);
-                grad_list.push_back(kernel[j].delta_weight);
-                len_list.push_back(len);
-                decay_list.push_back(vfloat{detail_parameter[i >> 1][4], detail_parameter[i >> 1][5]});
+        vector<float*> weight_list; weight_list.reserve(args_num);
+        vector<float*> grad_list; grad_list.reserve(args_num);
+        vector<int> len_list; len_list.reserve(args_num);
+        vector<vfloat> decay_list; decay_list.reserve(args_num);
+        
+        for (int i = (int)args_list.size(); i--; ) {
+            Train_Args &args = args_list[i];
+            
+            Tensor* kernel_list = args.kernel;
+            for (int j = args.kernel_list_size; j--; ) {
+                Tensor &kernel = kernel_list[j];
+                weight_list.push_back(kernel.weight);
+                grad_list.push_back(kernel.delta_weight);
+                len_list.push_back(args.kernel_size);
+                decay_list.push_back(args.ln_decay_list);
             }
-            Tensor* biases = detail_set[i + 1];
+            Tensor* biases = args.biases;
             weight_list.push_back(biases->weight);
             grad_list.push_back(biases->delta_weight);
-            len_list.push_back(detail_parameter[i >> 1][4]);
-            decay_list.push_back(vfloat{detail_parameter[i >> 1][5], detail_parameter[i >> 1][6]});
+            len_list.push_back(args.biases_size);
+            decay_list.push_back(args.ln_decay_list);
         }
         
         size_t len_list_size = len_list.size();
@@ -645,6 +629,8 @@ vfloat Trainer::train(Tensor &data, vfloat &target) {
                 xsum_act++;
             }
         }
+        if (!args_num)
+            args_num = (int)len_list_size;
     }
     return vfloat{loss};
 }
@@ -688,108 +674,108 @@ vfloat Trainer::train_batch(vtensor &data_set, vector<vfloat> &target_set, int e
 }
 
 vfloat Trainer::train_batch(Tensor &data, vfloat &target) {
-    network->Forward(&data);
+    network->Forward(&data, true);
     network->ClearGrad();
     float loss = network->Backward(target);
     float l1_decay_loss = 0;
     float l2_decay_loss = 0;
     iter++;
-//    if ((iter % batch_size) == 0) {
-        vector<Tensor*> detail_set = network->getDetail();
-        vector<vfloat> detail_parameter = network->getDetailParameter();
+    
+    vector<Train_Args> args_list = network->getTrainArgs();
+    
+    vector<float*> weight_list;
+    vector<float*> grad_list;
+    vector<int> len_list;
+    vector<vfloat> decay_list;
+    
+    for (int i = (int)args_list.size(); i--; ) {
+        Train_Args &args = args_list[i];
         
-        vector<float*> weight_list;
-        vector<float*> grad_list;
-        vector<int> len_list;
-        vector<vfloat> decay_list;
-        size_t detail_set_size = detail_set.size();
-        for (int i = 0; i < detail_set_size; i += 2) {
-            Tensor* kernel = detail_set[i];
-            for (int j = 0; j < detail_parameter[i >> 1][0]; ++j) {
-                int len = detail_parameter[i >> 1][1] * detail_parameter[i >> 1][2] * detail_parameter[i >> 1][3];
-                weight_list.push_back(kernel[j].weight);
-                grad_list.push_back(kernel[j].delta_weight);
-                len_list.push_back(len);
-                decay_list.push_back(vfloat{detail_parameter[i >> 1][4], detail_parameter[i >> 1][5]});
-            }
-            Tensor* biases = detail_set[i + 1];
-            weight_list.push_back(biases->weight);
-            grad_list.push_back(biases->delta_weight);
-            len_list.push_back(detail_parameter[i >> 1][4]);
-            decay_list.push_back(vfloat{detail_parameter[i >> 1][5], detail_parameter[i >> 1][6]});
+        Tensor* kernel_list = args.kernel;
+        for (int j = args.kernel_list_size; j--; ) {
+            Tensor &kernel = kernel_list[j];
+            weight_list.push_back(kernel.weight);
+            grad_list.push_back(kernel.delta_weight);
+            len_list.push_back(args.kernel_size);
+            decay_list.push_back(args.ln_decay_list);
         }
-        
-        size_t len_list_size = len_list.size();
-        if (gsum.empty() && (method != SGD || momentum > 0)) {
-            for (int i = 0; i < len_list_size; ++i) {
-                float *new_gsum = new float [len_list[i]]();
-                //fill(new_gsum, new_gsum + len_list[i], 0);
-                gsum.push_back(new_gsum);
-                if (method == ADADELTA || method == ADAM) {
-                    float *new_xsum = new float [len_list[i]]();
-                    //fill(new_xsum, new_xsum + len_list[i], 0);
-                    xsum.push_back(new_xsum);
-                } else {
-                    xsum.push_back(nullptr);
-                }
-            }
-        }
-        
+        Tensor* biases = args.biases;
+        weight_list.push_back(biases->weight);
+        grad_list.push_back(biases->delta_weight);
+        len_list.push_back(args.biases_size);
+        decay_list.push_back(args.ln_decay_list);
+    }
+    
+    size_t len_list_size = len_list.size();
+    if (gsum.empty() && (method != SGD || momentum > 0)) {
         for (int i = 0; i < len_list_size; ++i) {
-            float *weight = weight_list[i];
-            float *grad = grad_list[i];
-            
-            float l1_decay_mul = decay_list[i][0];
-            float l2_decay_mul = decay_list[i][1];
-            float l1_decay_local = l1_decay * l1_decay_mul;
-            float l2_decay_local = l2_decay * l2_decay_mul;
-            
-            int len = len_list[i];
-            float *gsumi = gsum[i];
-            float *xsumi = xsum[i];
-            
-            float *weight_act = weight;
-            float *grad_act = grad;
-            
-            float *gsum_act = gsumi;
-            float *xsum_act = xsumi;
-            
-            for (int j = 0; j < len; ++j) {
-                l1_decay_loss += l1_decay_local * abs(*weight_act);
-                l2_decay_loss += l2_decay_local * *weight_act * *weight_act / 2;
-                float l1_grad = l1_decay_local * (*weight_act > 0 ? 1 : -1);
-                float l2_grad = l2_decay_local * *weight_act;
-                float grad_ij = (l1_grad + l2_grad + *grad_act) / batch_size;
-                
-                if (method == ADADELTA) {
-                    *gsum_act = ro * *gsum_act + (1 - ro) * grad_ij * grad_ij;
-                    float delta_weight = -sqrt((*xsum_act + eps) / (*gsum_act + eps)) * grad_ij;
-                    *xsum_act = ro * *xsum_act + (1 - ro) * delta_weight * delta_weight;
-                    *weight_act += delta_weight;
-                } else if (method == ADAM) {
-                    *gsum_act = beta_1 * *gsum_act + (1 - beta_1) * grad_ij;
-                    *xsum_act = beta_2 * *xsum_act + (1 - beta_2) * grad_ij * grad_ij;
-                    float nor_gsumi = *gsum_act / (1 - pow(beta_1, (iter / batch_size) + 1));
-                    float nor_xsumi = *xsum_act / (1 - pow(beta_2, (iter / batch_size) + 1));
-                    float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
-                    *weight_act += delta_weight;
-                } else { // SGD
-                    if (momentum > 0) {
-                        float delta_weight = momentum * *gsum_act - learning_rate * grad_ij;
-                        *gsum_act = delta_weight;
-                        *weight_act += delta_weight;
-                    } else {
-                        *weight_act += learning_rate * grad_ij;
-                    }
-                }
-                *grad_act = 0;
-                
-                weight_act++;
-                grad_act++;
-                gsum_act++;
-                xsum_act++;
+            float *new_gsum = new float [len_list[i]]();
+            //fill(new_gsum, new_gsum + len_list[i], 0);
+            gsum.push_back(new_gsum);
+            if (method == ADADELTA || method == ADAM) {
+                float *new_xsum = new float [len_list[i]]();
+                //fill(new_xsum, new_xsum + len_list[i], 0);
+                xsum.push_back(new_xsum);
+            } else {
+                xsum.push_back(nullptr);
             }
         }
-//    }
+    }
+    
+    for (int i = 0; i < len_list_size; ++i) {
+        float *weight = weight_list[i];
+        float *grad = grad_list[i];
+        
+        float l1_decay_mul = decay_list[i][0];
+        float l2_decay_mul = decay_list[i][1];
+        float l1_decay_local = l1_decay * l1_decay_mul;
+        float l2_decay_local = l2_decay * l2_decay_mul;
+        
+        int len = len_list[i];
+        float *gsumi = gsum[i];
+        float *xsumi = xsum[i];
+        
+        float *weight_act = weight;
+        float *grad_act = grad;
+        
+        float *gsum_act = gsumi;
+        float *xsum_act = xsumi;
+        
+        for (int j = 0; j < len; ++j) {
+            l1_decay_loss += l1_decay_local * abs(*weight_act);
+            l2_decay_loss += l2_decay_local * *weight_act * *weight_act / 2;
+            float l1_grad = l1_decay_local * (*weight_act > 0 ? 1 : -1);
+            float l2_grad = l2_decay_local * *weight_act;
+            float grad_ij = (l1_grad + l2_grad + *grad_act) / batch_size;
+            
+            if (method == ADADELTA) {
+                *gsum_act = ro * *gsum_act + (1 - ro) * grad_ij * grad_ij;
+                float delta_weight = -sqrt((*xsum_act + eps) / (*gsum_act + eps)) * grad_ij;
+                *xsum_act = ro * *xsum_act + (1 - ro) * delta_weight * delta_weight;
+                *weight_act += delta_weight;
+            } else if (method == ADAM) {
+                *gsum_act = beta_1 * *gsum_act + (1 - beta_1) * grad_ij;
+                *xsum_act = beta_2 * *xsum_act + (1 - beta_2) * grad_ij * grad_ij;
+                float nor_gsumi = *gsum_act / (1 - pow(beta_1, iter + 1));
+                float nor_xsumi = *xsum_act / (1 - pow(beta_2, iter + 1));
+                float delta_weight = -((nor_gsumi) / (sqrt(nor_xsumi) + eps)) * learning_rate;
+                *weight_act += delta_weight;
+            } else { // SGD
+                if (momentum > 0) {
+                    float delta_weight = momentum * *gsum_act - learning_rate * grad_ij;
+                    *gsum_act = delta_weight;
+                    *weight_act += delta_weight;
+                } else {
+                    *weight_act += learning_rate * grad_ij;
+                }
+            }
+            *grad_act = 0;
+            
+            weight_act++;
+            grad_act++;
+            gsum_act++;
+            xsum_act++;
+        }
+    }
     return vfloat{loss};
 }

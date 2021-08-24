@@ -17,7 +17,6 @@
 using namespace std::chrono;
 
 typedef vector<vector<vfloat>> Feature_map;
-typedef vector<float> Box;
 
 struct Bbox {
     int x1;
@@ -79,10 +78,9 @@ public:
 class Mtcnn {
 public:
     ~Mtcnn();
-    Mtcnn();
-    Mtcnn(const char *model_pnet = "pnet_model.bin", const char *model_rnet = "rnet_model.bin", const char *model_onet = "onet_model.bin");
+    Mtcnn(const char *model_pnet = "pnet_default.bin", const char *model_rnet = "rnet_default.bin", const char *model_onet = "onet_default.bin");
     vector<Bbox> detect(IMG &img);
-    void mark(IMG &img, vector<Bbox> &bbox);
+    void mark(IMG &img, vector<Bbox> &bbox, bool confidence = false);
     void layout(vector<Bbox> &bbox_list, const char *filename = "detected.txt");
     vector<vector<Bbox>> detect(const char *filelist);
     PNet *pnet;

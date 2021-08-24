@@ -22,6 +22,13 @@ float Random();
 float Random(float min, float max);
 float guassRandom();
 float randn(float mu, float std);
+void cal_mean(float *src, int batch_size, int dimension, int size, int *input_index, float *mean);
+void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, int *input_index, float *variance);
+void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size, int *input_index);
+void fill_cpu(int size, float *src, float parameter);
+void copy_cpu(int size, float *src, float *dst);
+void scal_cpu(int size, float scale, float *src);
+void axpy_cpu(int size, float scale, float *src, float *dst);
 
 class Clock {
 public:

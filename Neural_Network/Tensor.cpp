@@ -265,3 +265,16 @@ void Tensor::toIMG(const char *filename) {
     fwrite(pixel, sizeof(unsigned char), 3 * width * height, f);
     fclose(f);
 }
+
+ostream& operator<<(ostream& os, Tensor& t) {
+    for (int d = 0; d < t.dimension; ++d) {
+        os << "Dim: " << d << std::endl;
+        for (int h = 0; h < t.height; ++h) {
+            for (int w = 0; w < t.width; ++w) {
+                os << std::fixed << std::setprecision(2) << (t.get(w, h, d)) << " ";
+            }
+            os << std::endl;
+        }
+    }
+    return os;
+}

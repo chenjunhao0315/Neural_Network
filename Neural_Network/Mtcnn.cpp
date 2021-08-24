@@ -10,14 +10,14 @@
 PNet::PNet(const char *model_name) {
     scale_factor = 0.709;
     threshold[0] = 0.97;
-    pnet = Neural_Network("parallel");
+    pnet = Neural_Network("mtcnn");
     pnet.load(model_name);
 }
 
 PNet::PNet(int batch_size) {
     scale_factor = 0.709;
     threshold[0] = 0.97;
-    pnet = Neural_Network("parallel");
+    pnet = Neural_Network("mtcnn");
     pnet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "12"}, {"input_height", "12"}, {"input_dimension", "3"}, {"name", "input"}});
     pnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "10"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
     pnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_1"}});
@@ -27,7 +27,6 @@ PNet::PNet(int batch_size) {
     pnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_3"}});
     pnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_3"}});
     pnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "2"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_4"}});
-    //    pnet.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}});
     pnet.addLayer(LayerOption{{"type", "Softmax"}, {"name", "cls_prob"}});
     pnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "4"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_5"}, {"input_name", "prelu_3"}});
     pnet.addLayer(LayerOption {{"type", "EuclideanLoss"}, {"name", "bbox_pred"}, {"input_name", "conv_5"}});
@@ -255,7 +254,7 @@ bool RNet::ready() {
 
 RNet::RNet() {
     threshold[0] = 0.9;
-    rnet = Neural_Network("parallel");
+    rnet = Neural_Network("mtcnn");
     rnet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "24"}, {"input_height", "24"}, {"input_dimension", "3"}, {"name", "input"}});
     rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "28"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
     rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_1"}});
@@ -280,13 +279,13 @@ RNet::RNet() {
 }
 
 RNet::RNet(const char *model_name) {
-    rnet = Neural_Network("parallel");
+    rnet = Neural_Network("mtcnn");
     rnet.load(model_name);
 }
 
 ONet::ONet() {
     threshold[0] = 0.9;
-    onet = Neural_Network("parallel");
+    onet = Neural_Network("mtcnn");
     onet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "48"}, {"input_height", "48"}, {"input_dimension", "3"}, {"name", "input"}});
     onet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
     onet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_1"}});
@@ -314,7 +313,7 @@ ONet::ONet() {
 }
 
 ONet::ONet(const char *model_name) {
-    onet = Neural_Network("parallel");
+    onet = Neural_Network("mtcnn");
     onet.load(model_name);
 }
 
@@ -503,7 +502,7 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
     return onet_bbox;
 }
 
-void Mtcnn::mark(IMG &img, vector<Bbox> &bbox_list) {
+void Mtcnn::mark(IMG &img, vector<Bbox> &bbox_list, bool confidence) {
     for (int i = 0; i < bbox_list.size(); ++i) {
         int radius = min(bbox_list[i].x2 - bbox_list[i].x1 + 1, bbox_list[i].y2 - bbox_list[i].y1 + 1) / 30 + 1;
         img.drawRectangle(Rect{(bbox_list[i].x1), (bbox_list[i].y1), (bbox_list[i].x2), (bbox_list[i].y2)}, RED);
@@ -512,8 +511,10 @@ void Mtcnn::mark(IMG &img, vector<Bbox> &bbox_list) {
         img.drawCircle(Point(bbox_list[i].nose_x, bbox_list[i].nose_y), RED, radius, radius);
         img.drawCircle(Point(bbox_list[i].leftmouth_x, bbox_list[i].leftmouth_y), RED, radius, radius);
         img.drawCircle(Point(bbox_list[i].rightmouth_x, bbox_list[i].rightmouth_y), RED, radius, radius);
-        string score = to_string(bbox_list[i].score);
-        img.putText(score.c_str(), Point(bbox_list[i].x1, bbox_list[i].y1 - (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10), GREEN, (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10);
+        if (confidence) {
+            string score = to_string(bbox_list[i].score);
+            img.putText(score.c_str(), Point(bbox_list[i].x1, bbox_list[i].y1 - (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10), GREEN, (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10);
+        }
     }
 }
 

@@ -23,6 +23,26 @@ using namespace std;
 typedef vector<Tensor> vtensor;
 typedef unordered_map<string, string> LayerOption;
 
+struct Train_Args {
+    Train_Args() {valid = false;}
+    Train_Args(Tensor *kernel_, Tensor *biases_, int kernel_size_, int kernel_list_size_, int biases_size_, vfloat ln_decay_list_) : valid(true), kernel(kernel_), biases(biases_), kernel_size(kernel_size_), kernel_list_size(kernel_list_size_), biases_size(biases_size_), ln_decay_list(ln_decay_list_) {}
+    bool valid;
+    Tensor *kernel;
+    Tensor *biases;
+    int kernel_size;
+    int kernel_list_size;
+    int biases_size;
+    vfloat ln_decay_list;
+};
+
+struct Forward_Args {
+    Forward_Args(bool train_ = false, float *workspace_ = nullptr) : train(train_), workspace(workspace_) {}
+    bool train;
+    float *workspace;
+};
+
+static Forward_Args default_forward_args;
+
 enum LayerType {
     Input,
     Fullyconnected,
@@ -35,6 +55,9 @@ enum LayerType {
     EuclideanLoss,
     ShortCut,
     Sigmoid,
+    BatchNormalization,
+    UpSample,
+    Concat,
     Error
 };
 
@@ -49,6 +72,10 @@ class PoolingLayer;
 class EuclideanLossLayer;
 class ShortCutLayer;
 class SigmoidLayer;
+class BatchNormalizationlayer;
+class UpSampleLayer;
+class ConcatLayer;
+class YOLOv3Layer;
 
 // Top layer
 class Model_Layer {
@@ -59,11 +86,9 @@ public:
     Model_Layer(Model_Layer &&L);
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
-    Tensor* Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr);
+    Tensor* Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
     float Backward(vfloat& target);
     void Backward();
-    void UpdateWeight(string method, float learning_rate);
-    void Update();
     void ClearGrad();
     void shape();
     int getParameter(int type_);
@@ -71,9 +96,8 @@ public:
     LayerType string_to_type(string type);
     bool save(FILE *f);
     bool load(FILE *f);
-    Tensor* getKernel();
-    Tensor* getBiases();
-    vfloat getDetailParameter();
+    Train_Args getTrainArgs();
+    int getWorkspaceSize();
 private:
     LayerType type;
     InputLayer *input_layer;
@@ -87,6 +111,9 @@ private:
     ShortCutLayer *shortcut_layer;
     LReluLayer *lrelu_layer;
     SigmoidLayer *sigmoid_layer;
+    BatchNormalizationlayer *batchnorm_layer;
+    UpSampleLayer *upsample_layer;
+    ConcatLayer *concat_layer;
 };
 
 // Base layer
@@ -101,48 +128,46 @@ public:
     void shape();
     string type_to_string();
     int getParameter(int type);
-    void UpdateWeight(string method, float learning_rate);
-    void Update();
     void ClearGrad();
     void ClearDeltaWeight();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
     bool load(FILE *f);
-    Tensor* getKernel();
-    Tensor* getBiases();
-    vfloat getDetailParameter();
+    Train_Args getTrainArgs();
 //protected:
     LayerType type;
     string name;
     string input_name;
     struct info_ {
         int input_number;
+        int output_number;
         int output_width;
         int output_height;
         int output_dimension;
+        int input_width;
+        int input_height;
+        int input_dimension;
+        int concat_dimension;
+        int kernel_width;
+        int kernel_height;
+        int stride;
+        int padding;
+        int workspace_size;
+        int input_index_size;
+        int output_index_size;
+        int batch_size;
+        int kernel_num;
+        int anchor_num;
+        int classes;
+        bool reverse;
     } info;
     LayerOption opt;
     Tensor* input_tensor;
     Tensor* output_tensor;
     Tensor* kernel;
     Tensor* biases;
-    struct info_more {
-        int input_width;
-        int input_height;
-        int input_dimension;
-        int kernel_width;
-        int kernel_height;
-        int stride;
-        int padding;
-        float alpha;
-        int workspace_size;
-        int input_index_size;
-        int weight_index_size;
-        int batch_size;
-    } info_more;
-    float *workspace;
     int *input_index;
-    int *weight_index;
+    int *output_index;
 };
 
 // Input layer
@@ -158,7 +183,7 @@ public:
 class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
     void Backward();
 private:
 };
@@ -201,12 +226,10 @@ public:
 // Softmax layer with cross entropy loss
 class SoftmaxLayer : public BaseLayer {
 public:
-    ~SoftmaxLayer() {delete [] expo_sum; expo_sum = nullptr;}
     SoftmaxLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     float Backward(vfloat& target);
 private:
-    float* expo_sum;
 };
 
 // Euclidean loss layer
@@ -243,6 +266,40 @@ public:
     SigmoidLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
+};
+
+class BatchNormalizationlayer : public BaseLayer {
+public:
+    BatchNormalizationlayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
+    void Backward();
+};
+
+class UpSampleLayer : public BaseLayer {
+public:
+    UpSampleLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_);
+    void Backward();
+private:
+    void upsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
+    void downsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
+};
+
+class ConcatLayer : public BaseLayer {
+public:
+    ConcatLayer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_, Tensor *concat_tensor_);
+    void Backward();
+private:
+    Tensor *concat_tensor;
+};
+
+class YOLOv3Layer : public BaseLayer {
+public:
+    YOLOv3Layer(LayerOption opt_);
+    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
+    void Backward();
+private:
 };
 
 #endif /* Layer_hpp */

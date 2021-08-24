@@ -26,6 +26,7 @@ public:
         OK,
         ERROR
     };
+    ~Neural_Network() {delete [] layer; delete [] workspace;}
     Neural_Network(string model_ = "sequential");
     void addLayer(LayerOption opt_);
     void addOutput(string name);
@@ -33,27 +34,28 @@ public:
     void shape();
     int getBatchSize() {return batch_size;}
     nn_status status();
-    vfloat Forward(Tensor *input_tensor_);
+    vfloat Forward(Tensor *input_tensor_, bool train = false);
     float Backward(vfloat &target);
-    vfloat train(string method, float learning_rate, Tensor *input, vfloat &target_set);
-    void train(string method, float learning_rate, vtensor &data_set, vector<vfloat> &target_set, int epoch);
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vector<vfloat> &target);
-    void UpdateNet();
     void ClearGrad();
     bool save(const char *model_name);
     bool load(const char *model_name, int batch_size_ = 1);
-    vector<Tensor*> getDetail();
-    vector<vfloat> getDetailParameter();
+    vector<Train_Args> getTrainArgs();
+    void alloc_workspace();
 private:
     string model;
     int layer_number;
     vector<LayerOption> opt_layer;
-    vector<Model_Layer> layer;
+//    vector<Model_Layer> layer;
+    Model_Layer *layer;
     vector<string> output_layer;
     unordered_map<string, Tensor*> terminal;
     vector<vector<int>> path;
     int batch_size;
+    float *workspace;
+    Forward_Args args;
+    bool train;
 };
 
 class Trainer {
@@ -85,6 +87,7 @@ private:
     float beta_2;
     vector<float*> gsum;
     vector<float*> xsum;
+    int args_num;
 };
 
 #endif /* Neural_Network_hpp */

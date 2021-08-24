@@ -12,11 +12,13 @@
 #include <stdio.h>
 #include <vector>
 #include <cstring>
+#include <iomanip>
 
 #include "Utilities.hpp"
 
 using std::fill;
 using std::vector;
+using std::ostream;
 
 typedef vector<float> vfloat;
 
@@ -51,6 +53,7 @@ public:
     vfloat toVector();
     void toIMG(const char *filename);
     void shape();
+    friend ostream& operator<<(ostream& os, Tensor& t);
 //private:
     int width;
     int height;

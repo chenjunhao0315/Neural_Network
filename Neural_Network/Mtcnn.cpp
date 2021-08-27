@@ -12,6 +12,7 @@ PNet::PNet(const char *model_name) {
     threshold[0] = 0.97;
     pnet = Neural_Network("mtcnn");
     pnet.load(model_name);
+//    pnet.shape();
 }
 
 PNet::PNet(int batch_size) {
@@ -35,7 +36,7 @@ PNet::PNet(int batch_size) {
     pnet.addOutput("cls_prob");
     pnet.addOutput("bbox_pred");
     pnet.addOutput("land_pred");
-    pnet.makeLayer(batch_size);
+    pnet.compile(batch_size);
     pnet.shape();
 }
 
@@ -109,19 +110,25 @@ Feature_map PNet::predict(IMG &img) {
     for (h = 0; h < map_height; ++h, y += stride) {
         x = -padding;
         for (w = 0; w < map_width; ++w, x += stride) {
-            for (f_h = 0; f_h < 12; ++f_h) {
-                coordinate_h = y + f_h;
-                for (f_w = 0; f_w < 12; ++f_w) {
-                    coordinate_w = x + f_w;
-                    for (f_d = 0; f_d < 3; ++f_d) {
+            for (f_d = 0; f_d < 3; ++f_d) {
+                for (f_h = 0; f_h < 12; ++f_h) {
+                    coordinate_h = y + f_h;
+                    for (f_w = 0; f_w < 12; ++f_w) {
+                        coordinate_w = x + f_w;
                         if (coordinate_w >= 0 && coordinate_w < width && coordinate_h >= 0 && coordinate_h < height)
-                            data[((12 * f_h) + f_w) * 3 + f_d] = img_data[((width * coordinate_h) + coordinate_w) * 3 + f_d];
+                            data[((12 * f_h) + f_w) + 144 * f_d] = img_data[((width * coordinate_h) + coordinate_w) * 3 + f_d];
                         else
-                            data[((12 * f_h) + f_w) * 3 + f_d] = 0;
+                            data[((12 * f_h) + f_w) + 144 * f_d] = 0;
                     }
                 }
             }
-            map[h][w] = pnet.Forward(&input);
+            vtensorptr output = pnet.Forward(&input);
+            vfloat feature; feature.reserve(6);
+            for (int i = 0; i < 2; ++i) {
+                vfloat extract = output[i]->toVector();
+                feature.insert(feature.end(), extract.begin(), extract.end());
+            }
+            map[h][w] = feature;
         }
     }
     delete [] img_data;
@@ -233,11 +240,21 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
         crop = crop.resize(Size(24, 24));
         unsigned char *pixel = crop.toPixelArray();
         float *pixel_c = crop_img.weight;
-        for (int i = 1728; i--; ) {
-            pixel_c[i] = ((float)pixel[i] - 127.5) * 0.0078125;
+        int count = 0;
+        for (int d = 0; d < 3; ++d) {
+            for (int h = 0; h < 24; ++h) {
+                for (int w = 0; w < 24; ++w) {
+                    pixel_c[count++] = ((float)pixel[((24 * h) + w) * 3 + d] - 127.5) * 0.0078125;
+                }
+            }
         }
         
-        vfloat rnet_detect = rnet.Forward(&crop_img);
+        vtensorptr output = rnet.Forward(&crop_img);
+        vfloat rnet_detect; rnet_detect.reserve(16);
+        for (int i = 0; i < 3; ++i) {
+            vfloat extract = output[i]->toVector();
+            rnet_detect.insert(rnet_detect.end(), extract.begin(), extract.end());
+        }
         if (rnet_detect[1] > threshold[0]) {
             Bbox rnet_detect_box(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2, rnet_detect[1], rnet_detect[2], rnet_detect[3], rnet_detect[4], rnet_detect[5]);
             rnet_bbox.push_back(rnet_detect_box);
@@ -274,13 +291,14 @@ RNet::RNet() {
     rnet.addOutput("cls_prob");
     rnet.addOutput("bbox_pred");
     rnet.addOutput("land_pred");
-    rnet.makeLayer();
+    rnet.compile();
     rnet.shape();
 }
 
 RNet::RNet(const char *model_name) {
     rnet = Neural_Network("mtcnn");
     rnet.load(model_name);
+//    rnet.shape();
 }
 
 ONet::ONet() {
@@ -308,13 +326,14 @@ ONet::ONet() {
     onet.addOutput("cls_prob");
     onet.addOutput("bbox_pred");
     onet.addOutput("land_pred");
-    onet.makeLayer();
+    onet.compile();
     onet.shape();
 }
 
 ONet::ONet(const char *model_name) {
     onet = Neural_Network("mtcnn");
     onet.load(model_name);
+//    onet.shape();
 }
 
 vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
@@ -327,11 +346,21 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
         unsigned char *pixel = crop.toPixelArray();
         Tensor crop_img(48, 48, 3, 0);
         float *pixel_c = crop_img.weight;
-        for (int j = 0; j < 3 * 48 * 48; ++j) {
-            pixel_c[j] = ((float)pixel[j] - 127.5) * 0.0078125;
+        int count = 0;
+        for (int d = 0; d < 3; ++d) {
+            for (int h = 0; h < 48; ++h) {
+                for (int w = 0; w < 48; ++w) {
+                    pixel_c[count++] = ((float)pixel[((48 * h) + w) * 3 + d] - 127.5) * 0.0078125;
+                }
+            }
         }
         
-        vfloat onet_detect = onet.Forward(&crop_img);
+        vtensorptr output = onet.Forward(&crop_img);
+        vfloat onet_detect; onet_detect.reserve(16);
+        for (int i = 0; i < 3; ++i) {
+            vfloat extract = output[i]->toVector();
+            onet_detect.insert(onet_detect.end(), extract.begin(), extract.end());
+        }
         if (onet_detect[1] > threshold[0]) {
             Bbox rnet_detect_box(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2, onet_detect[1], onet_detect[2], onet_detect[3], onet_detect[4], onet_detect[5], onet_detect[6], onet_detect[7], onet_detect[8], onet_detect[9], onet_detect[10], onet_detect[11], onet_detect[12], onet_detect[13], onet_detect[14], onet_detect[15]);
             onet_bbox.push_back(rnet_detect_box);
@@ -404,8 +433,13 @@ void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &d
             fclose(f);
         }
         float normal_pixel[3 * width * width];
-        for (int i = 0; i < 3 * width * width; ++i) {
-            normal_pixel[i] = ((float)pixel[i] - 127.5) / 128.0;
+        int index = 0;
+        for (int d = 0; d < 3; ++d) {
+            for (int h = 0; h < width; ++h) {
+                for (int w = 0; w < width; ++w) {
+                    normal_pixel[index++] = ((float)pixel[((h * width) + w) * 3 + d] - 127.5) / 128.0;
+                }
+            }
         }
         data_set.push_back(Tensor(normal_pixel, width, width, 3));
     }
@@ -419,7 +453,7 @@ void mtcnn_evaluate(Neural_Network *nn, vtensor &data_set, vector<vfloat> &label
     int pos = 0;
     int neg = 0;
     for (int i = 0; i < data_set.size(); ++i) {
-        vfloat out = nn->Forward(&data_set[i]);
+        vfloat out = nn->Forward(&data_set[i])[0]->toVector();
         if (label_set[i][0] == 1) {
             if (out[1] > out[0]) {
                 correct++;
@@ -468,37 +502,37 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
     
     printf("PNet Get %d proposal box! time: %lldms\n", (int)bbox.size(), c.getElapsed());
 
-//    IMG pnet_detect(img);
-//    for (int i = 0; i < bbox.size(); ++i) {
-//        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
-//    }
-//    pnet_detect.save("pnet_predict.jpg", 80);
+    IMG pnet_detect(img);
+    for (int i = 0; i < bbox.size(); ++i) {
+        pnet_detect.drawRectangle(Rect{(bbox[i].x1), (bbox[i].y1), (bbox[i].x2), (bbox[i].y2)}, RED);
+    }
+    pnet_detect.save("pnet_predict.jpg", 80);
 
     c.start();
     vector<Bbox> rnet_bbox = rnet->detect(img, bbox);
     printf("RNet Get %d proposal box! time: %lldms\n", (int)rnet_bbox.size(), c.getElapsed());
 
-//    IMG rnet_detect(img);
-//    for (int i = 0; i < rnet_bbox.size(); ++i) {
-//        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, Color(255, 0, 0));
-//    }
-//    rnet_detect.save("rnet_predict.jpg", 80);
+    IMG rnet_detect(img);
+    for (int i = 0; i < rnet_bbox.size(); ++i) {
+        rnet_detect.drawRectangle(Rect{(rnet_bbox[i].x1), (rnet_bbox[i].y1), (rnet_bbox[i].x2), (rnet_bbox[i].y2)}, Color(255, 0, 0));
+    }
+    rnet_detect.save("rnet_predict.jpg", 80);
 
     c.start();
     vector<Bbox> onet_bbox = onet->detect(img, rnet_bbox);
     printf("ONet Get %d proposal box! time: %lldms\n", (int)onet_bbox.size(), c.getElapsed());
 
-//    IMG onet_detect(img);
-//    for (int i = 0; i < onet_bbox.size(); ++i) {
-//        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
-//        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED);
-//        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius, radius);
-//        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius, radius);
-//        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius, radius);
-//        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius, radius);
-//        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius, radius);
-//    }
-//    onet_detect.save("onet_predict.jpg", 80);
+    IMG onet_detect(img);
+    for (int i = 0; i < onet_bbox.size(); ++i) {
+        int radius = min(onet_bbox[i].x2 - onet_bbox[i].x1 + 1, onet_bbox[i].y2 - onet_bbox[i].y1 + 1) / 30 + 1;
+        onet_detect.drawRectangle(Rect{(onet_bbox[i].x1), (onet_bbox[i].y1), (onet_bbox[i].x2), (onet_bbox[i].y2)}, RED);
+        onet_detect.drawCircle(Point(onet_bbox[i].lefteye_x, onet_bbox[i].lefteye_y), RED, radius, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].righteye_x, onet_bbox[i].righteye_y), RED, radius, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].nose_x, onet_bbox[i].nose_y), RED, radius, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].leftmouth_x, onet_bbox[i].leftmouth_y), RED, radius, radius);
+        onet_detect.drawCircle(Point(onet_bbox[i].rightmouth_x, onet_bbox[i].rightmouth_y), RED, radius, radius);
+    }
+    onet_detect.save("onet_predict.jpg", 80);
     return onet_bbox;
 }
 
@@ -605,8 +639,13 @@ Tensor MtcnnLoader::getImg(int index) {
         fwrite(pixel, sizeof(unsigned char), 3 * net_size * net_size, f);
         fclose(f);
     }
-    for (int i = image_step; i--; ) {
-        normal_pixel[i] = ((float)pixel[i] - 127.5) / 128.0;
+    index = 0;
+    for (int d = 0; d < 3; ++d) {
+        for (int h = 0; h < net_size; ++h) {
+            for (int w = 0; w < net_size; ++w) {
+                normal_pixel[index++] = ((float)pixel[((h * net_size) + w) * 3 + d] - 127.5) / 128.0;
+            }
+        }
     }
     return Tensor(normal_pixel, net_size, net_size, 3);
 }
@@ -677,7 +716,7 @@ void MtcnnTrainer::evaluate(Neural_Network &nn) {
     for (int i = 0; i < data_set_size; ++i) {
         Tensor img = loader->getImg(i);
         vfloat label = loader->getLabel(i);
-        vfloat out = nn.Forward(&img);
+        vfloat out = nn.Forward(&img)[0]->toVector();
         if (label[0] == 1) {
             if (out[1] > out[0]) {
                 correct++;

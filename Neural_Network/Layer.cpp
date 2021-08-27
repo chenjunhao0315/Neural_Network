@@ -23,6 +23,7 @@ Model_Layer::~Model_Layer() {
         case LayerType::BatchNormalization: delete batchnorm_layer; break;
         case LayerType::UpSample: delete upsample_layer; break;
         case LayerType::Concat: delete concat_layer; break;
+        case LayerType::YOLOv3: delete yolov3_layer; break;
         default: break;
     }
     input_layer = nullptr;
@@ -39,6 +40,7 @@ Model_Layer::~Model_Layer() {
     batchnorm_layer = nullptr;
     upsample_layer = nullptr;
     concat_layer = nullptr;
+    yolov3_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -56,6 +58,7 @@ Model_Layer::Model_Layer() {
     batchnorm_layer = nullptr;
     upsample_layer = nullptr;
     concat_layer = nullptr;
+    yolov3_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -73,6 +76,7 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     batchnorm_layer = nullptr;
     upsample_layer = nullptr;
     concat_layer = nullptr;
+    yolov3_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -117,6 +121,9 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
                 break;
             case LayerType::Concat:
                 concat_layer = new ConcatLayer(*L.concat_layer);
+                break;
+            case LayerType::YOLOv3:
+                yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
                 break;
             default:
                 break;
@@ -140,6 +147,7 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     batchnorm_layer = L.batchnorm_layer;
     upsample_layer = L.upsample_layer;
     concat_layer = L.concat_layer;
+    yolov3_layer = L.yolov3_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
@@ -154,6 +162,7 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     L.batchnorm_layer = nullptr;
     L.upsample_layer = nullptr;
     L.concat_layer = nullptr;
+    L.yolov3_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -171,6 +180,7 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     batchnorm_layer = nullptr;
     upsample_layer = nullptr;
     concat_layer = nullptr;
+    yolov3_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -216,6 +226,9 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             case LayerType::Concat:
                 concat_layer = new ConcatLayer(*L.concat_layer);
                 break;
+            case LayerType::YOLOv3:
+                yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
+                break;
             default:
                 break;
         }
@@ -238,6 +251,7 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     batchnorm_layer = nullptr;
     upsample_layer = nullptr;
     concat_layer = nullptr;
+    yolov3_layer = nullptr;
     type = string_to_type(opt_["type"]);
     
     switch (type) {
@@ -269,6 +283,8 @@ Model_Layer::Model_Layer(LayerOption opt_) {
             upsample_layer = new UpSampleLayer(opt_); break;
         case LayerType::Concat:
             concat_layer = new ConcatLayer(opt_); break;
+        case LayerType::YOLOv3:
+            yolov3_layer = new YOLOv3Layer(opt_); break;
         default:
             fprintf(stderr, "Unknown layer type!\n"); break;
     }
@@ -303,6 +319,8 @@ LayerType Model_Layer::string_to_type(string type) {
         return LayerType::UpSample;
     } else if (type == "Concat") {
         return LayerType::Concat;
+    } else if (type == "YOLOv3") {
+        return LayerType::YOLOv3;
     }
     return LayerType::Error;
 }
@@ -337,6 +355,8 @@ Tensor* Model_Layer::Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_, Fo
             return upsample_layer->Forward(input_tensor_);
         case LayerType::Concat:
             return concat_layer->Forward(input_tensor_, shortcut_tensor_);
+        case LayerType::YOLOv3:
+            return yolov3_layer->Forward(input_tensor_);
         default:
             break;
     }
@@ -349,6 +369,8 @@ float Model_Layer::Backward(vfloat& target) {
             return softmax_layer->Backward(target);
         case LayerType::EuclideanLoss:
             return euclideanloss_layer->Backward(target);
+        case LayerType::YOLOv3:
+            return yolov3_layer->Backward(target);
         default:
             break;
     }
@@ -415,6 +437,8 @@ void Model_Layer::shape() {
         upsample_layer->shape();
     } else if (type == LayerType::Concat) {
         concat_layer->shape();
+    } else if (type == LayerType::YOLOv3) {
+        yolov3_layer->shape();
     }
 }
 
@@ -448,6 +472,8 @@ int Model_Layer::getParameter(int type_) {
             return upsample_layer->getParameter(type_);
         case LayerType::Concat:
             return concat_layer->getParameter(type_);
+        case LayerType::YOLOv3:
+            return yolov3_layer->getParameter(type_);
         default:
             break;
     }
@@ -483,6 +509,8 @@ bool Model_Layer::save(FILE *f) {
         return upsample_layer->save(f);
     } else if (type == LayerType::Concat) {
         return concat_layer->save(f);
+    } else if (type == LayerType::YOLOv3) {
+        return yolov3_layer->save(f);
     }
     return 0;
 }
@@ -516,6 +544,8 @@ bool Model_Layer::load(FILE *f) {
         return upsample_layer->load(f);
     } else if (type == LayerType::Concat) {
         return concat_layer->load(f);
+    } else if (type == LayerType::YOLOv3) {
+        return yolov3_layer->load(f);
     }
     return 0;
 }
@@ -550,6 +580,8 @@ void Model_Layer::ClearGrad() {
             return upsample_layer->ClearGrad();
         case LayerType::Concat:
             return concat_layer->ClearGrad();
+        case LayerType::YOLOv3:
+            return yolov3_layer->ClearGrad();
         default:
             break;
     }
@@ -584,7 +616,7 @@ int Model_Layer::getWorkspaceSize() {
 Train_Args BaseLayer::getTrainArgs() {
     switch(type) {
         case LayerType::Convolution:
-            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension, info.output_dimension, info.output_dimension, vfloat{0, 1});
+            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension, info.output_dimension, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
         case LayerType::Fullyconnected:
             return Train_Args(kernel, biases, info.input_number, info.output_dimension, info.output_dimension, vfloat{0, 1});
         case LayerType::PRelu:
@@ -785,6 +817,7 @@ string BaseLayer::type_to_string() {
         case BatchNormalization: return "BatchNorm";
         case UpSample: return "UpSample";
         case Concat: return "Concat";
+        case YOLOv3: return "YOLOv3";
         case Error: return "Error";
     }
     return "Unknown";
@@ -992,6 +1025,8 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.output_dimension = atoi(opt["number_kernel"].c_str());
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
+    info.batchnorm = (opt.find("batchnorm") != opt.end());
+    
     
     float bias = (opt.find("bias") == opt.end()) ? 0 : atof(opt["bias"].c_str());
     
@@ -1008,10 +1043,9 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     int input_height = info.input_height;
     int stride = info.stride;
     int neg_padding = -info.padding;
-    int out_dim, out_height, out_width;
+    int out_height, out_width;
     int x, y;
     int kernel_w, kernel_h, kernel_dim;
-    int output_dimension = info.output_dimension;
     int output_height = info.output_height;
     int output_width = info.output_width;
     int coordinate_x, coordinate_y;
@@ -1026,7 +1060,6 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     
     info.workspace_size = workspace_size;
     info.input_index_size = workspace_size;
-    info.output_index_size = out_size * output_dimension;
     
     input_index = new int [workspace_size];
     fill(input_index, input_index + workspace_size, -1);
@@ -1038,23 +1071,17 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
         for (out_width = 0; out_width < output_width; x += stride, ++out_width)
         for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
             coordinate_y = y + kernel_h;
-            for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                coordinate_x = x + kernel_w;
-                if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
-                    for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim)
-                input_index[++count] = ((input_width * coordinate_y) + coordinate_x) * input_dimension + kernel_dim;
-                else
-                    count += input_dimension;
+            for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim) {
+                for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
+                    coordinate_x = x + kernel_w;
+                    if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
+                        input_index[++count] = ((input_width * coordinate_y) + coordinate_x) + (input_width * input_height) * kernel_dim;
+                    else
+                        count++;
+                }
             }
         }
     }
-    
-    output_index = new int [out_size * output_dimension];
-    count = -1;
-    for (out_dim = 0; out_dim < output_dimension; ++out_dim)
-    for (out_height = 0; out_height < output_height; ++out_height)
-    for (out_width = 0; out_width < output_width; ++out_width)
-    output_index[++count] = ((out_height * output_width) + out_width) * output_dimension + out_dim;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
@@ -1066,7 +1093,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
     int out_size = info.output_width * info.output_height;
     
     int one_batch_input_size = info.input_number;
-    int one_batch_output_size = info.output_number;
     
     float *input_weight = input_tensor->weight;
     float *output_weight = output_tensor->weight;
@@ -1084,7 +1110,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
         float conv, bias;
         float *kernel_weight, *kernel_weight_ptr;
         
-        int *output_index_ptr = output_index;
         float *src;
         Tensor *kernel_ptr = kernel;
         for (int out_dim = info.output_dimension; out_dim--; ) {
@@ -1096,11 +1121,10 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
                 kernel_weight_ptr = kernel_weight;
                 for (count = kernel_n; count--; )
                     conv += *(kernel_weight_ptr++) * *(src++);
-                output_weight[*(output_index_ptr++)] = conv + bias;
+                *(output_weight++) = conv + bias;
             }
         }
         input_weight += one_batch_input_size;
-        output_weight += one_batch_output_size;
     }
     return output_tensor;
 }
@@ -1119,7 +1143,6 @@ void ConvolutionLayer::Backward() {
     int kernel_index;
     
     int one_batch_input_size = info.input_number;
-    int one_batch_output_size = info.output_number;
     
     float *input_weight = input_tensor->weight;
     float *input_grad = input_tensor->delta_weight;
@@ -1128,7 +1151,6 @@ void ConvolutionLayer::Backward() {
     for (int b = info.batch_size; b--; ) {
         float *bias_grad = biases->delta_weight;
         
-        int weight_intex_ptr = -1;
         for (int out_dim = 0; out_dim < info.output_dimension; ++out_dim) {
             Tensor *kernel_act = kernel + out_dim;
             kernel_weight = kernel_act->weight;
@@ -1136,7 +1158,7 @@ void ConvolutionLayer::Backward() {
             input_index_ptr = input_index;
             
             for (out_index = out_size; out_index; --out_index) {
-                chain_grad = output_grad[output_index[++weight_intex_ptr]];
+                chain_grad = *(output_grad++);
                 for (kernel_index = 0; kernel_index < kernel_n; ++kernel_index) {
                     if ((index = *(input_index_ptr++)) != -1) {
                         kernel_grad[kernel_index] += input_weight[index] * chain_grad;
@@ -1148,7 +1170,6 @@ void ConvolutionLayer::Backward() {
         }
         input_weight += one_batch_input_size;
         input_grad += one_batch_input_size;
-        output_grad += one_batch_output_size;
     }
 }
 
@@ -1167,11 +1188,11 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     
     info.kernel_height = (opt.find("kernel_height") == opt.end()) ? info.kernel_width : atoi(opt["kernel_height"].c_str());
     info.stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
-    info.padding = (opt.find("padding") == opt.end()) ? 0 : atoi(opt["padding"].c_str());
+    info.padding = (opt.find("padding") == opt.end()) ? 0 : ((opt["padding"] == "same") ? ((info.kernel_width - 1)) : atoi(opt["padding"].c_str()));
     
     info.output_dimension = info.input_dimension;
-    info.output_width = (info.input_width + info.padding * 2 - info.kernel_width) / info.stride + 1;
-    info.output_height = (info.input_height + info.padding * 2 - info.kernel_height) / info.stride + 1;
+    info.output_width = (info.input_width + info.padding - info.kernel_width) / info.stride + 1;
+    info.output_height = (info.input_height + info.padding - info.kernel_height) / info.stride + 1;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
     choosex.assign(info.output_number * info.batch_size, 0);
@@ -1184,36 +1205,32 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     int kernel_height = info.kernel_height;
     int input_width = info.input_width;
     int input_height = info.input_height;
-    int input_dimension = info.input_dimension;
+    int input_channel_size = input_width * input_height;
     int stride = info.stride;
-    int neg_padding = -info.padding;
+    int neg_padding = -info.padding / 2;
     
     input_index = new int [info.output_number * kernel_width * kernel_height];
     fill(input_index, input_index + info.output_number * kernel_width * kernel_height, -1);
-    output_index = new int [info.output_number];
     
     int input_counter = 0;
-    int weight_counter = 0;
     
     info.input_index_size = info.output_number * kernel_width * kernel_height;
-    info.output_index_size = info.output_number;
     
     for (int output_d = 0; output_d < output_dimension; ++output_d) {
-        int offset_w = neg_padding;
-        for (int output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
-            int offset_h = neg_padding;
-            for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
-                for (int kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                    int act_w = offset_w + kernel_w;
-                    for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                        int act_h = offset_h + kernel_h;
+        int offset_h = neg_padding;
+        for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
+            int offset_w = neg_padding;
+            for (int output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
+                for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
+                    int act_h = offset_h + kernel_h;
+                    for (int kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
+                        int act_w = offset_w + kernel_w;
                         if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
-                            input_index[input_counter] = ((act_h * input_width) + act_w) * input_dimension + output_d;
+                            input_index[input_counter] = ((act_h * input_width) + act_w) + (input_channel_size) * output_d;
                         }
                         ++input_counter;
                     }
                 }
-                output_index[weight_counter++] = ((output_h * output_width) + output_w) * output_dimension + output_d;
             }
         }
     }
@@ -1231,7 +1248,7 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     int win_x = -1, win_y = -1;
     int kernel_w, kernel_h;
     float value = 0.0;
-    int neg_padding = -info.padding;
+    int neg_padding = -info.padding / 2;
     int stride = info.stride;
     int kernel_width = info.kernel_width;
     int kernel_height = info.kernel_height;
@@ -1239,23 +1256,21 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     int counter = 0;
     
     int one_batch_input_size = info.input_number;
-    int one_batch_output_size = info.output_number;
     
     float *input_weight = input_tensor->weight;
     float *output_weight = output_tensor->weight;
     
     for (int b = info.batch_size; b--; ) {
         int *input_index_ptr = input_index;
-        int *output_index_ptr = output_index;
         int index;
         for (int output_d = 0; output_d < output_dimension; ++output_d) {
-            offset_w = neg_padding;
-            for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
-                offset_h = neg_padding;
-                for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
+            offset_h = neg_padding;
+            for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
+                offset_w = neg_padding;
+                for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
                     maximum = -100000000;
-                    for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                        for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
+                    for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
+                        for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
                             if ((index = *(input_index_ptr++)) != -1) {
                                 value = input_weight[index];
                                 if (value > maximum) {
@@ -1268,12 +1283,11 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
                     }
                     choosex[counter] = win_x;
                     choosey[counter++] = win_y;
-                    output_weight[*(output_index_ptr++)] = maximum;
+                    *(output_weight++) = maximum;
                 }
             }
         }
         input_weight += one_batch_input_size;
-        output_weight += one_batch_output_size;
     }
     return output_tensor;
 }
@@ -1285,20 +1299,16 @@ void PoolingLayer::Backward() {
     float chain_grad;
     int out_size = info.output_width * info.output_height;
     
-    int one_batch_output_size = info.output_number;
     float *output_grad = output_tensor->delta_weight;
     
     for (int b = 0; b < info.batch_size; ++b) {
-        int *output_index_ptr = output_index;
-
         for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
             for (int out_counter = 0; out_counter < out_size; ++out_counter) {
-                chain_grad = output_grad[*(output_index_ptr++)];
-                input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad, b * info.input_number, info.batch_size);
+                chain_grad = *(output_grad++);
+                input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad, b * info.input_number);
                 ++counter;
             }
         }
-        output_grad += one_batch_output_size;
     }
 }
 
@@ -1656,7 +1666,9 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
     int minc = (c1 < c2) ? c1 : c2;
     
     int one_batch_input_size = info.input_number;
+    int output_channel_size = w2 * h2;
     int one_batch_output_size = info.input_number;
+    int shortcut_channel_size = w1 * h1;
     int one_batch_shortcut_size = shortcut_tensor->size / info.batch_size;
     
     float *in = input_tensor->weight;
@@ -1668,8 +1680,8 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
         for(k = 0; k < minc; ++k){
             for(j = 0; j < minh; ++j){
                 for(i = 0; i < minw; ++i){
-                    int out_index = (i * sample + w2 * (j * sample)) * c2 + k;
-                    int add_index = (i * stride + w1 * (j * stride)) * c1 + k;
+                    int out_index = (i * sample + w2 * (j * sample)) + output_channel_size * k;
+                    int add_index = (i * stride + w1 * (j * stride)) + shortcut_channel_size * k;
                     out[out_index] = in[out_index] + add[add_index];
                 }
             }
@@ -1710,15 +1722,17 @@ void ShortCutLayer::Backward() {
     int one_batch_shortcut_size = shortcut_tensor->size / info.batch_size;
     
     float *out = shortcut_tensor->delta_weight;
+    int shortcut_channel_size = w2 * h2;
     float *add = output_tensor->delta_weight;
+    int output_channel_size = w1 * h1;
     
     for (int b = info.batch_size; b--; ) {
         int i, j, k;
         for(k = 0; k < minc; ++k){
             for(j = 0; j < minh; ++j){
                 for(i = 0; i < minw; ++i){
-                    int out_index = (i * sample + w2 * (j * sample)) * c2 + k;
-                    int add_index = (i * stride + w1 * (j * stride)) * c1 + k;
+                    int out_index = (i * sample + w2 * (j * sample)) + shortcut_channel_size * k;
+                    int add_index = (i * stride + w1 * (j * stride)) + output_channel_size * k;
                     out[out_index] += add[add_index];
                 }
             }
@@ -1839,17 +1853,6 @@ BatchNormalizationlayer::BatchNormalizationlayer(LayerOption opt_) {
     
     biases = new Tensor(1, 1, info.output_dimension, 0);
     
-    info.input_index_size = info.output_width * info.output_height * info.output_dimension;
-    
-    int *input_index_ptr = input_index = new int [info.input_index_size];
-    for (int d = 0; d < info.output_dimension; ++d) {
-        for (int h = 0; h < info.output_height; ++h) {
-            for (int w = 0; w < info.output_width; ++w) {
-                *(input_index_ptr++) = ((h * info.output_width) + w) * info.output_dimension + d;
-            }
-        }
-    }
-    
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
@@ -1869,7 +1872,6 @@ Tensor* BatchNormalizationlayer::Forward(Tensor *input_tensor_, Forward_Args *ar
     
     int batch_size = info.batch_size;
     int output_dimension = info.output_dimension;
-    int one_batch_size = info.input_number;
     int total_size = info.input_number * batch_size;
     int channel_size = info.output_width * info.output_height;
     
@@ -1877,33 +1879,29 @@ Tensor* BatchNormalizationlayer::Forward(Tensor *input_tensor_, Forward_Args *ar
     copy_cpu(total_size, output, x);
     
     if (args->train) {
-        cal_mean(output, batch_size, output_dimension, channel_size, input_index, mean);
-        cal_variance(output, mean, batch_size, output_dimension, channel_size, input_index, variance);
+        cal_mean(output, batch_size, output_dimension, channel_size, mean);
+        cal_variance(output, mean, batch_size, output_dimension, channel_size, variance);
         scal_cpu(output_dimension, 0.99, running_mean);
         axpy_cpu(output_dimension, 0.01, mean, running_mean);
         scal_cpu(output_dimension, 0.99, running_variance);
         axpy_cpu(output_dimension, 0.01, variance, running_variance);
         
-        normalize(output, mean, variance, batch_size, output_dimension, channel_size, input_index);
+        normalize(output, mean, variance, batch_size, output_dimension, channel_size);
         copy_cpu(total_size, output, x_norm);
     } else {
-        normalize(output, running_mean, running_variance, batch_size, output_dimension, channel_size, input_index);
+        normalize(output, running_mean, running_variance, batch_size, output_dimension, channel_size);
     }
     
-    int *input_index_ptr;
-    int index;
     float scale_value, bias_value;
     for (int b = 0; b < batch_size; ++b) {
-        input_index_ptr = input_index;
         for (int d = 0; d < output_dimension; ++d) {
             scale_value = scale[d];
             bias_value = bias[d];
             for (int i = 0; i < channel_size; ++i) {
-                index = *(input_index_ptr++);
-                output[index] = output[index] * scale_value + bias_value;
+                *output = *output * scale_value + bias_value;
+                ++output;
             }
         }
-        output += one_batch_size;
     }
     
     return output_tensor;
@@ -1928,11 +1926,9 @@ void BatchNormalizationlayer::Backward() {
     int one_batch_size = info.input_number;
     int channel_size = info.output_width * info.output_height;
     
-    int *input_index_ptr, index;
     float chain_grad, scale_value, mean_value;
     
     for (int b = 0; b < batch_size; ++b) {
-        input_index_ptr = input_index;
         for (int d = 0; d < output_dimension; ++d) {
             float &bias_delta_value = bias_delta[d];
             float &scale_delta_value = scale_delta[d];
@@ -1941,18 +1937,14 @@ void BatchNormalizationlayer::Backward() {
             scale_value = scale[d];
             mean_value = mean[d];
             for (int i = 0; i < channel_size; ++i) {
-                index = *(input_index_ptr++);
-                chain_grad = output_delta[index];
+                chain_grad = *output_delta;
                 bias_delta_value += chain_grad;
-                scale_delta_value += chain_grad * x_norm[index];
-                chain_grad = output_delta[index] *= scale_value;
+                scale_delta_value += chain_grad * *(x_norm++);
+                chain_grad = *(output_delta++) *= scale_value;
                 mean_delta_value += chain_grad;
-                variance_delta_value += chain_grad * (x[index] - mean_value);
+                variance_delta_value += chain_grad * (*(x++) - mean_value);
             }
         }
-        x += one_batch_size;
-        x_norm += one_batch_size;
-        output_delta += one_batch_size;
     }
     
     for (int d = 0; d < output_dimension; ++d) {
@@ -1968,19 +1960,16 @@ void BatchNormalizationlayer::Backward() {
     float mean_delta_value;
     
     for (int b = 0; b < batch_size; ++b) {
-        input_index_ptr = input_index;
         for (int d = 0; d < output_dimension; ++d) {
             mean_value = mean[d];
             mean_delta_value = mean_delta[d] / (channel_size * batch_size);
             variance_scale = 1.0 / (sqrt(variance[d] + .00001f));
             variance_delta_value = variance_delta[d];
             for (int i = 0; i < channel_size; ++i) {
-                index = *(input_index_ptr++);
-                output_delta[index] = output_delta[index] * variance_scale + variance_delta_value * 2.0 * (x[index] - mean_value) / (channel_size * batch_size) + mean_delta_value;
+                *output_delta = *output_delta * variance_scale + variance_delta_value * 2.0 * (*(x++) - mean_value) / (channel_size * batch_size) + mean_delta_value;
+                ++output_delta;
             }
         }
-        x += one_batch_size;
-        output_delta += one_batch_size;
     }
     
     output_delta = output_tensor->delta_weight;
@@ -2037,15 +2026,17 @@ void UpSampleLayer::Backward() {
 }
 
 void UpSampleLayer::upsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward) {
-    int one_batch_input_size = width * height * dimension;
-    int one_batch_output_size = one_batch_input_size * stride * stride;
+    int one_batch_input_size = info.input_number;
+    int input_channel_size = width * height;
+    int one_batch_output_size = info.output_number;
+    int output_channel_size = input_channel_size * stride * stride;
     
     for (int b = 0; b < batch_size; ++b) {
         for (int d = 0; d < dimension; ++d) {
             for (int h = 0; h < height * stride; ++h) {
                 for (int w = 0; w < width * stride; ++w) {
-                    int input_index = b * one_batch_input_size + ((h / stride * width) + w / stride) * dimension + d;
-                    int output_index = b * one_batch_output_size + ((h * width) + w) * dimension + d;
+                    int input_index = b * one_batch_input_size + ((h / stride * width) + w / stride) + input_channel_size * d;
+                    int output_index = b * one_batch_output_size + ((h * width) + w) + output_channel_size * d;
                     if (forward)
                         dst[output_index] = src[input_index];
                     else
@@ -2067,6 +2058,7 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     info.input_width = atoi(opt["input_width"].c_str());
     info.input_height = atoi(opt["input_height"].c_str());
     info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
@@ -2076,37 +2068,7 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     assert(info.output_height == concat_height);
     info.concat_dimension = atoi(opt["concat_dimension"].c_str());
     info.output_dimension = info.input_dimension + info.concat_dimension;
-    
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    
-    info.input_index_size = info.output_number;
-    int *input_index_ptr = input_index = new int [info.input_index_size];
-    
-    for (int d = 0; d < info.input_dimension; ++d) {
-        for (int h = 0; h < info.input_height; ++h) {
-            for (int w = 0; w < info.input_width; ++w) {
-                *(input_index_ptr++) = ((h * info.input_width) + w) * info.input_dimension + d;
-            }
-        }
-    }
-    for (int d = 0; d < info.concat_dimension; ++d) {
-        for (int h = 0; h < concat_height; ++h) {
-            for (int w = 0; w < concat_width; ++w) {
-                *(input_index_ptr++) = ((h * concat_width) + w) * info.concat_dimension + d;
-            }
-        }
-    }
-    
-    info.output_index_size = info.input_index_size;
-    int *output_index_ptr = output_index = new int [info.output_index_size];
-    
-    for (int d = 0; d < info.output_dimension; ++d) {
-        for (int h = 0; h < info.output_height; ++h) {
-            for (int w = 0; w < info.output_width; ++w) {
-                *(output_index_ptr++) = ((h * info.output_width) + w) * info.output_dimension + d;
-            }
-        }
-    }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
@@ -2115,9 +2077,6 @@ Tensor* ConcatLayer::Forward(Tensor *input_tensor_, Tensor *concat_tensor_) {
     input_tensor = input_tensor_;
     concat_tensor = concat_tensor_;
     
-    int *input_index_ptr = input_index;
-    int *output_index_ptr = output_index;
-    
     float *src = input_tensor->weight;
     float *concat = concat_tensor->weight;
     float *output = output_tensor->weight;
@@ -2125,34 +2084,16 @@ Tensor* ConcatLayer::Forward(Tensor *input_tensor_, Tensor *concat_tensor_) {
     int concat_size = info.input_width * info.input_height * info.concat_dimension;
     
     for (int b = 0; b < info.batch_size; ++b) {
-        input_index_ptr = input_index;
-        output_index_ptr = output_index;
-        for (int d = 0; d < info.input_dimension; ++d) {
-            for (int h = 0; h < info.input_height; ++h) {
-                for (int w = 0; w < info.input_width; ++w) {
-                    output[*(output_index_ptr++)] = src[*(input_index_ptr++)];
-                }
-            }
-        }
-        for (int d = 0; d < info.concat_dimension; ++d) {
-            for (int h = 0; h < info.input_height; ++h) {
-                for (int w = 0; w < info.input_width; ++w) {
-                    output[*(output_index_ptr++)] = concat[*(input_index_ptr++)];
-                }
-            }
-        }
-        concat += concat_size;
-        src += info.input_number;
-        output += info.output_number;
+        for (int i = info.input_number; i--; )
+            *(output++) = *(src++);
+        for (int i = concat_size; i--; )
+            *(output++) = *(concat++);
     }
     
     return output_tensor;
 }
 
 void ConcatLayer::Backward() {
-    int *input_index_ptr = input_index;
-    int *output_index_ptr = output_index;
-    
     float *src_delta = input_tensor->delta_weight;
     float *concat_delta = concat_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
@@ -2160,32 +2101,17 @@ void ConcatLayer::Backward() {
     int concat_size = info.input_width * info.input_height * info.concat_dimension;
     
     for (int b = 0; b < info.batch_size; ++b) {
-        input_index_ptr = input_index;
-        output_index_ptr = output_index;
-        for (int d = 0; d < info.input_dimension; ++d) {
-            for (int h = 0; h < info.input_height; ++h) {
-                for (int w = 0; w < info.input_width; ++w) {
-                    src_delta[*(input_index_ptr++)] += output_delta[*(output_index_ptr++)];
-                }
-            }
-        }
-        for (int d = 0; d < info.concat_dimension; ++d) {
-            for (int h = 0; h < info.input_height; ++h) {
-                for (int w = 0; w < info.input_width; ++w) {
-                    concat_delta[*(input_index_ptr++)] += output_delta[*(output_index_ptr++)];
-                }
-            }
-        }
-        concat_delta += concat_size;
-        src_delta += info.input_number;
-        output_delta += info.output_number;
+        for (int i = info.input_number; i--; )
+            *(src_delta++) += *(output_delta++);
+        for (int i = concat_size; i--; )
+            *(concat_delta++) += *(output_delta++);
     }
 }
 
 YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     opt = opt_;
-    type = LayerType::Concat;
-    name = (opt.find("name") == opt.end()) ? "cc" : opt["name"];
+    type = LayerType::YOLOv3;
+    name = (opt.find("name") == opt.end()) ? "yolov3" : opt["name"];
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
     info.batch_size = atoi(opt["batch_size"].c_str());
@@ -2200,27 +2126,291 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
+    info.total_anchor_num = atoi(opt["total_anchor_num"].c_str());
     info.anchor_num = atoi(opt["anchor_num"].c_str());
     info.classes = atoi(opt["classes"].c_str());
+    info.max_boxes = atoi(opt["max_boxes"].c_str());
+    info.net_width = atoi(opt["net_width"].c_str());
+    info.net_height = atoi(opt["net_height"].c_str());
     
     kernel = new Tensor [1];
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
-    for (int i = 0; i < info.anchor_num; ++i)
-        kernel[0].weight[i] = i;
+    if (opt.find("mask") == opt.end()) {
+        for (int i = 0; i < info.anchor_num; ++i)
+            kernel[0].weight[i] = i;
+    } else {
+        stringstream ss;
+        ss << opt["mask"];
+        int n;
+        char c;
+        for (int i = 0; i < info.anchor_num; ++i) {
+            ss >> n >> c;
+            kernel[0].weight[i] = n;
+        }
+    }
+    info.kernel_num = 1;
     
-    biases = new Tensor(1, 1, 2 * info.anchor_num, 0);
+    biases = new Tensor(1, 1, 2 * info.total_anchor_num, 0); // Anchor
+    stringstream ss;
+    ss << opt["anchor"];
+    int w, h;
+    char c;
+    for (int i = 0; i < info.total_anchor_num; ++i) {
+        ss >> w >> c >> h;
+        biases->weight[i * 2 + 0] = w;
+        biases->weight[i * 2 + 1] = h;
+    }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
 Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
-    memcpy(input_tensor->weight, output_tensor->weight, sizeof(float) * info.output_number * info.batch_size);
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
+    int channel_size = info.output_width * info.output_height;
+    
+    copy_cpu(info.output_number * info.batch_size, input, output);
     for (int b = 0; b < info.batch_size; ++b) {
         for (int n = 0; n < info.anchor_num; ++n) {
-            
+            int index = yolo_index(b, n, 0, 0, 0);
+            activate_array(output + index, 2 * channel_size, SIGMOID);
+            index = yolo_index(b, n, 0, 0, 4);
+            activate_array(output + index, (1 + info.classes) * channel_size, SIGMOID);
         }
     }
     
-    return output_tensor;
+    vector<Detection> dets = get_detection_without_correction();
+    detection = Tensor(1, (info.classes + 5), (int)dets.size(), 0);
+    float *value = detection.weight;
+    for (int i = 0; i < (int)dets.size(); ++i) {
+        *(value++) = dets[i].bbox.x;
+        *(value++) = dets[i].bbox.y;
+        *(value++) = dets[i].bbox.w;
+        *(value++) = dets[i].bbox.h;
+        *(value++) = dets[i].objectness;
+        for (int c = 0; c < info.classes; ++c) {
+            *(value++) = dets[i].prob[c];
+        }
+    }
+    
+    return &detection;
+}
+
+float YOLOv3Layer::Backward(vfloat& target) {
+    float ignore_iou_threshold = 0.7; // TODO: should be input
+    float truth_iou_threshold = 1.0;
+    
+    float avg_iou = 0;
+    float recall = 0;
+    float recall75 = 0;
+    float avg_cat = 0;
+    float avg_obj = 0;
+    float avg_anyobj = 0;
+    int count = 0;
+    int class_count = 0;
+    float loss = 0;
+    
+    int width = info.output_width;
+    int height = info.output_height;
+    int net_width = info.net_width;
+    int net_height = info.net_height;
+    int classes = info.classes;
+    int channel_size = width * height;
+    int target_size = 5 * info.classes * info.max_boxes;
+    
+    float *mask = kernel[0].weight;
+    float *bias = biases->weight;
+    
+    float *output = output_tensor->weight;
+    float *input_delta = input_tensor->delta_weight;
+    
+    for (int b = 0; b < info.batch_size; ++b) {
+        for (int j = 0; j < info.output_height; ++j) {
+            for (int i = 0; i < info.output_width; ++i) {
+                for (int n = 0; n < info.anchor_num; ++n) {
+                    int box_index = yolo_index(b, n, i, j, 0);
+                    Box pred = get_box(box_index, mask[n], i, j, width, height, info.net_width, info.net_height, channel_size);
+                    float best_iou = 0;
+                    int best_t = 0;
+                    for(int t = 0; t < info.max_boxes; ++t){
+                        Box truth = vfloat_to_box(target, 5 * t + b * target_size);
+                        if(!truth.x)
+                            break;
+                        float iou = box_iou(pred, truth);
+                        if (iou > best_iou) {
+                            best_iou = iou;
+                            best_t = t;
+                        }
+                    }
+                    int obj_index = yolo_index(b, n, i, j, 4);
+                    avg_anyobj += output[obj_index];
+                    input_delta[obj_index] = 0 - output[obj_index];
+                    if (best_iou > ignore_iou_threshold) {
+                        input_delta[obj_index] = 0;
+                    }
+                    if (best_iou > truth_iou_threshold) {
+                        input_delta[obj_index] = 1 - output[obj_index];
+
+                        int cls = target[best_t * (4 + 1) + b * target_size + 4];
+//                        if (l.map) class = l.map[class];
+                        int class_index = yolo_index(b, n, i, j, 5);
+                        delta_yolo_class(output, input_delta, class_index, cls, classes, channel_size, nullptr);
+                        Box truth = vfloat_to_box(target, best_t * (4 + 1) + b * target_size);
+                        delta_yolo_box(truth, output, bias, input_delta, mask[n], box_index, i, j, width, height, net_width, net_height, (2 - truth.w * truth.h), channel_size);
+                    }
+                }
+            }
+        }
+        for(int t = 0; t < info.max_boxes; ++t){
+            Box truth = vfloat_to_box(target, 5 * t + b * target_size);
+
+            if(!truth.x)
+                break;
+            float best_iou = 0;
+            int best_n = 0;
+            int i = (truth.x * width);
+            int j = (truth.y * height);
+            Box truth_shift = truth;
+            truth_shift.x = truth_shift.y = 0;
+            for(int n = 0; n < info.total_anchor_num; ++n){
+                Box pred;
+                pred.w = bias[2 * n + 0] / net_width;
+                pred.h = bias[2 * n + 1] / net_height;
+                float iou = box_iou(pred, truth_shift);
+                if (iou > best_iou){
+                    best_iou = iou;
+                    best_n = n;
+                }
+            }
+            
+            int mask_n = int_index(mask, best_n, info.anchor_num);
+            if(mask_n >= 0){
+                int box_index = yolo_index(b, mask_n, i, j, 0);
+                float iou = delta_yolo_box(truth, output, bias, input_delta, best_n, box_index, i, j, width, height, net_width, net_height, (2 - truth.w * truth.h), channel_size);
+                int obj_index = yolo_index(b, mask_n, i, j, 4);
+                avg_obj += output[obj_index];
+                input_delta[obj_index] = 1 - output[obj_index];
+
+                int cls = target[t * (4 + 1) + b * target_size + 4];
+//                if (l.map) class = l.map[class];
+                int class_index = yolo_index(b, mask_n, i, j, 5);
+                delta_yolo_class(output, input_delta, class_index, cls, classes, channel_size, &avg_cat);
+
+                ++count;
+                ++class_count;
+                if(iou > .5) recall += 1;
+                if(iou > .75) recall75 += 1;
+                avg_iou += iou;
+            }
+        }
+    }
+    loss = pow(mag_array(input_delta, info.output_number * info.batch_size), 2);
+    
+    return loss;
+}
+
+float YOLOv3Layer::mag_array(float *a, int n) {
+    float sum = 0;
+    for(int i = 0; i < n; ++i){
+        sum += a[i] * a[i];
+    }
+    return sqrt(sum);
+}
+
+int YOLOv3Layer::int_index(float *a, int val, int n) {
+    for(int i = 0; i < n; ++i) {
+        if(a[i] == val)
+            return i;
+    }
+    return -1;
+}
+
+void YOLOv3Layer::delta_yolo_class(float *feature, float *delta, int index, int cls, int classes, int stride, float *avg_cat) {
+    if (delta[index]){
+        delta[index + stride*cls] = 1 - feature[index + stride*cls];
+        if(avg_cat)
+            *avg_cat += feature[index + stride*cls];
+        return;
+    }
+    for(int n = 0; n < classes; ++n){
+        delta[index + stride*n] = ((n == cls) ? 1 : 0) - feature[index + stride * n];
+        if(n == cls && avg_cat)
+            *avg_cat += feature[index + stride*n];
+    }
+}
+
+float YOLOv3Layer::delta_yolo_box(Box &truth, float *feature, float *bias, float *delta, int n, int index, int w, int h, int width, int height, int net_width, int net_height, float scale, int stride) {
+    Box pred = get_box(index, n, w, h, width, height, net_width, net_height, stride);
+    float iou = box_iou(pred, truth);
+
+    float tx = (truth.x * width - w);
+    float ty = (truth.y * height - h);
+    float tw = log(truth.w * w / bias[2 * n + 0]);
+    float th = log(truth.h * h / bias[2 * n + 1]);
+
+    delta[index + 0 * stride] = scale * (tx - feature[index + 0 * stride]);
+    delta[index + 1 * stride] = scale * (ty - feature[index + 1 * stride]);
+    delta[index + 2 * stride] = scale * (tw - feature[index + 2 * stride]);
+    delta[index + 3 * stride] = scale * (th - feature[index + 3 * stride]);
+    return iou;
+}
+
+int YOLOv3Layer::yolo_index(int b, int anchor_num, int w, int h, int entry) {
+    int channel_size = info.output_width * info.output_height;
+    int batch_offset = b * info.output_number;
+    int anchor_offset = anchor_num * channel_size * (info.classes + 5);
+    int entry_offset = entry * channel_size;
+    int position_offset = h * info.output_width + w;
+    return batch_offset + anchor_offset + entry_offset + position_offset;
+}
+
+vector<Detection> YOLOv3Layer::get_detection_without_correction() {
+    float threshold = 0.5; // TODO: threshold input
+    float *feature = output_tensor->weight;
+    
+    int width = info.output_width;
+    int height = info.output_height;
+    int net_width = info.net_width;
+    int net_height = info.net_height;
+    int classes = info.classes;
+    int channel_size = width * height;
+    float *mask = kernel[0].weight;
+    
+    vector<Detection> dets;
+    
+    for (int n = 0; n < info.anchor_num; ++n) {
+        for (int h = 0; h < height; ++h) {
+            for (int w = 0; w < width; ++w) {
+                int obj_index = yolo_index(0, n, w, h, 4);
+                float objectness = feature[obj_index];
+                if (objectness > threshold) {
+                    Detection det; det.prob.reserve(classes);
+                    int box_index = yolo_index(0, n, w, h, 0);
+                    det.objectness = objectness;
+                    det.bbox = get_box(box_index, mask[n], w, h, width, height, net_width, net_height, channel_size);
+                    for (int c = 0; c < classes; ++c) {
+                        int class_index = yolo_index(0, n, w, h, 5 + c);
+                        float prob = objectness * feature[class_index];
+                        det.prob.push_back((prob > threshold) ? prob : 0);
+                    }
+                    dets.push_back(det);
+                }
+            }
+        }
+    }
+    return dets;
+}
+
+Box YOLOv3Layer::get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride) {
+    Box b;
+    float *x = output_tensor->weight;
+    float *bias = biases->weight;
+    
+    b.x = (w + x[index + 0 * stride]) / width;
+    b.y = (h + x[index + 1 * stride]) / height;
+    b.w = exp(x[index + 2 * stride]) * bias[2 * n] / net_width;
+    b.h = exp(x[index + 3 * stride]) * bias[2 * n + 1] / net_height;
+    
+    return b;
 }

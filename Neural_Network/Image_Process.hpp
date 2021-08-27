@@ -102,6 +102,7 @@ public:
     void convertTo(MatType type);
     void release();
     void showPicInfo();
+    void paste(IMG &img, Point p);
     void histogram(Size size = Size(360, 240), int resolution = 1, const char *histogram_name = "histogram.jpg");
     void drawRectangle(Rect rect, Color color, int width = 0);
     void drawLine(Point p1, Point p2, Color color);

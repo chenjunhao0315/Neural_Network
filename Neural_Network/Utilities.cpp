@@ -34,6 +34,10 @@ float Random() {
     return unif(generator);
 }
 
+float Random(float min, float max) {
+    return (Random() + 1) / 2.0 * max;
+}
+
 Clock::Clock() {
     time_start = high_resolution_clock::now();
     time_stop = high_resolution_clock::now();
@@ -47,64 +51,62 @@ void Clock::stop() {
     time_stop = high_resolution_clock::now();
 }
 
-void cal_mean(float *src, int batch_size, int dimension, int size, int *input_index, float *mean) {
+void cal_mean(float *src, int batch_size, int dimension, int size, float *mean) {
     float scale = 1.0 / (batch_size * size);
-    int *index = input_index, *index_ptr;
-    int one_batch_size = size * dimension;
     int d, b, i;
 
     fill_cpu(dimension, mean, 0);
     for (b = 0; b < batch_size; ++b) {
-        index_ptr = index;
         for (d = 0; d < dimension; ++d) {
             float &mean_value = mean[d];
             for (i = 0; i < size; ++i) {
-                mean_value += src[*(index_ptr++)];
+                mean_value += *(src++);
             }
+            if (isnan(mean_value) || isinf(mean_value))
+                printf("strange\n");
         }
-        src += one_batch_size;
     }
     scal_cpu(dimension, scale, mean);
 }
 
-void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, int *input_index, float *variance) {
+void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, float *variance) {
     float scale = 1.0 / (batch_size * size - 1);
-    int *index = input_index, *index_ptr;
-    int one_batch_size = dimension * size;
     int d, b, i;
     float mean_value;
 
     fill_cpu(dimension, variance, 0);
     for (b = batch_size; b--; ) {
-        index_ptr = index;
         for (d = 0; d < dimension; ++d) {
             float &variance_value = variance[d];
             mean_value = mean[d];
             for (i = 0; i < size; ++i) {
-                variance_value += pow((src[*(index_ptr++)] - mean[d]), 2);
+                variance_value += pow((*(src++) - mean[d]), 2);
             }
+            if (variance_value == 0)
+                printf("strange\n");
         }
-        src += one_batch_size;
     }
     scal_cpu(dimension, scale, variance);
 }
 
-void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size, int *input_index) {
-    int *index_ptr, index;
-    int one_batch_size = dimension * size;
+void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size) {
     float mean_value, variance_scale;
     
     for (int b = batch_size; b--; ) {
-        index_ptr = input_index;
         for (int d = 0; d < dimension; ++d) {
             mean_value = mean[d];
             variance_scale = 1.0 / (sqrt(variance[d]) + 0.000001f);
+            if (isnan(variance_scale) || isinf(variance_scale))
+                printf("error\n");
             for (int i = size; i--; ) {
-                index = *(index_ptr++);
-                src[index] = (src[index] - mean_value) * variance_scale;
+                if (isnan(*src) || isinf(*src))
+                    printf("error\n");
+                *src = (*(src) - mean_value) * variance_scale;
+                if (isnan(*src) || isinf(*src))
+                    printf("error\n");
+                ++src;
             }
         }
-        src += one_batch_size;
     }
 }
 
@@ -126,4 +128,73 @@ void axpy_cpu(int size, float scale, float *src, float *dst) {
 void fill_cpu(int size, float *src, float parameter) {
     for (int i = size; i--; )
         *(src++) = parameter;
+}
+
+void activate_array(float *src, int length, ACTIVATE_METHOD method) {
+    for (int i = length; i--; ++src) {
+        *(src) = activate(*(src), method);
+    }
+}
+
+float activate(float src, ACTIVATE_METHOD method) {
+    if (isnan(src))
+        printf("error\n");
+    switch (method) {
+        case SIGMOID:
+            return 1.0 / (1.0 + exp(-src));
+        default:
+            break;
+    }
+    return 0;
+}
+
+void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c) {
+    int channel_size = w * h;
+    float *src_ptr = src, *channel_ptr = src;
+    for (int d = 0; d < c; ++d) {
+        src_ptr = channel_ptr;
+        for (int i = channel_size; i--; ) {
+            *(dst++) = *(src_ptr);
+            src_ptr += c;
+        }
+        ++channel_ptr;
+    }
+}
+
+float overlap(float x1, float w1, float x2, float w2) {
+    float l1 = x1 - w1 / 2;
+    float l2 = x2 - w2 / 2;
+    float left = l1 > l2 ? l1 : l2;
+    float r1 = x1 + w1 / 2;
+    float r2 = x2 + w2 / 2;
+    float right = r1 < r2 ? r1 : r2;
+    return right - left;
+}
+
+float box_intersection(Box &a, Box &b) {
+    float w = overlap(a.x, a.w, b.x, b.w);
+    float h = overlap(a.y, a.h, b.y, b.h);
+    if(w < 0 || h < 0)
+        return 0;
+    float area = w*h;
+    return area;
+}
+
+float box_union(Box &a, Box &b) {
+    float i = box_intersection(a, b);
+    float u = a.w * a.h + b.w * b.h - i;
+    return u;
+}
+
+float box_iou(Box &a, Box &b) {
+    return box_intersection(a, b) / box_union(a, b);
+}
+
+Box vfloat_to_box(vfloat &src, int index) {
+    Box b;
+    b.x = src[index + 0];
+    b.y = src[index + 1];
+    b.w = src[index + 2];
+    b.h = src[index + 3];
+    return b;
 }

@@ -802,6 +802,25 @@ IMG IMG::local_color_correction(float radius) {
     return dst;
 }
 
+void IMG::paste(IMG &img, Point p) {
+    if (type != MAT_8UC3) {
+        printf("[IMG][Paste] Unsupport data type!\n");
+        return;
+    }
+    
+    for (int o_h = p.y, p_h = 0; p_h < img.height; ++o_h, ++p_h) {
+        for (int o_w = p.x, p_w = 0; p_w < img.width; ++o_w, ++p_w) {
+            if (o_h < height && o_w < width) {
+                Vec3b &dst = mat.at<Vec3b>(o_w, o_h);
+                Vec3b &src = img.mat.at<Vec3b>(p_w, p_h);
+                dst[0] = src[0];
+                dst[1] = src[1];
+                dst[2] = src[2];
+            }
+        }
+    }
+}
+
 void IMG::histogram(Size size, int resolution, const char *histogram_name) {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
         printf("[IMG][Histogram] Unsupport data type!\n");
@@ -852,10 +871,10 @@ void IMG::drawPixel(Point p, Color color) {
 
 void IMG::drawRectangle(Rect rect, Color color, int width_) {
     int l_w = (width_ == 0) ? floor(min(width, height) / 1000.0) + 1 : width_;
-    int x1 = clip(rect.x1, 0, width);
-    int y1 = clip(rect.y1, 0, height);
-    int x2 = clip(rect.x2, 0, width);
-    int y2 = clip(rect.y2, 0, height);
+    int x1 = clip(rect.x1, 0 + l_w, width - l_w);
+    int y1 = clip(rect.y1, 0 + l_w, height - l_w);
+    int x2 = clip(rect.x2, 0 + l_w, width - l_w);
+    int y2 = clip(rect.y2, 0 + l_w, height - l_w);
     for (int x = x1; x <= x2; ++x) {
         for (int w = 0; w < l_w; ++w) {
             this->drawPixel(Point(x, y1 + w), color);

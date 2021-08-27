@@ -15,12 +15,15 @@
 #include <fstream>
 #include <cstring>
 #include <unordered_map>
+#include <cassert>
+#include <sstream>
 
 #include "Tensor.hpp"
 
 using namespace std;
 
 typedef vector<Tensor> vtensor;
+typedef vector<Tensor*> vtensorptr;
 typedef unordered_map<string, string> LayerOption;
 
 struct Train_Args {
@@ -58,6 +61,7 @@ enum LayerType {
     BatchNormalization,
     UpSample,
     Concat,
+    YOLOv3,
     Error
 };
 
@@ -114,6 +118,7 @@ private:
     BatchNormalizationlayer *batchnorm_layer;
     UpSampleLayer *upsample_layer;
     ConcatLayer *concat_layer;
+    YOLOv3Layer *yolov3_layer;
 };
 
 // Base layer
@@ -138,7 +143,7 @@ public:
     LayerType type;
     string name;
     string input_name;
-    struct info_ {
+    struct Info {
         int input_number;
         int output_number;
         int output_width;
@@ -157,9 +162,14 @@ public:
         int output_index_size;
         int batch_size;
         int kernel_num;
+        int total_anchor_num;
         int anchor_num;
         int classes;
+        int max_boxes;
+        int net_width;
+        int net_height;
         bool reverse;
+        bool batchnorm;
     } info;
     LayerOption opt;
     Tensor* input_tensor;
@@ -298,8 +308,17 @@ class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
-    void Backward();
+    float Backward(vfloat& target);
 private:
+    int yolo_index(int b, int anchor_num, int w, int h, int entry);
+    vector<Detection> get_detection_without_correction();
+    Box get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride);
+    float delta_yolo_box(Box &truth, float *feature, float *bias, float *delta, int n, int index, int w, int h, int width, int height, int net_width, int net_height, float scale, int stride);
+    void delta_yolo_class(float *feature, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
+    int int_index(float *a, int val, int n);
+    float mag_array(float *a, int n);
+    
+    Tensor detection;
 };
 
 #endif /* Layer_hpp */

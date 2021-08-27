@@ -144,9 +144,9 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     fill(delta_weight, delta_weight + n, 0);
     
     for (int i = 0; i < n; ++i) {
-        weight[i * 3] = V1[i];
-        weight[i * 3 + 1] = V2[i];
-        weight[i * 3 + 2] = V3[i];
+        weight[i] = V1[i];
+        weight[i + n] = V2[i];
+        weight[i + 2 * n] = V3[i];
     }
 }
 
@@ -212,19 +212,19 @@ void Tensor::shape() {
 }
 
 void Tensor::set(int width_, int height_, int dimension_, float value) {
-    weight[((height_ * width) + width_) * dimension + dimension_] = value;
+    weight[((height_ * width) + width_) + (width * height * dimension_)] = value;
 }
 
 float Tensor::get(int width_, int height_, int dimension_) {
-    return weight[((height_ * width) + width_) * dimension + dimension_];
+    return weight[((height_ * width) + width_) + (width * height * dimension_)];
 }
 
 float Tensor::getGrad(int width_, int height_, int dimension_) {
-    return delta_weight[((height_ * width) + width_) * dimension + dimension_];
+    return delta_weight[((height_ * width) + width_) + (width * height * dimension_)];
 }
 
-void Tensor::addGrad(int width_, int height_, int dimension_, float value, int shift_, int batch) {
-    delta_weight[((width * height_) + width_) * dimension / batch + dimension_ + shift_] += value;
+void Tensor::addGrad(int width_, int height_, int dimension_, float value, int shift_) {
+    delta_weight[((width * height_) + width_) + (width * height * dimension_) + shift_] += value;
 }
 
 void Tensor::save(FILE *f) {
@@ -233,6 +233,13 @@ void Tensor::save(FILE *f) {
     fwrite(&dimension, sizeof(int), 1, f);
     fwrite(&size, sizeof(int), 1, f);
     fwrite(weight, sizeof(float), size, f);
+//    for (int d = 0; d < dimension; ++d) {
+//        for (int h = 0; h < height; ++h) {
+//            for (int w = 0; w < width; ++w) {
+//                fwrite(&weight[((h * width) + w) * dimension + d], sizeof(float), 1, f);
+//            }
+//        }
+//    }
 }
 
 void Tensor::load(FILE *f) {

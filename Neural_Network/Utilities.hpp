@@ -11,8 +11,13 @@
 #include <stdio.h>
 #include <random>
 #include <chrono>
+#include <vector>
+#include "Tensor.hpp"
 
 using namespace std::chrono;
+using std::vector;
+
+typedef vector<float> vfloat;
 
 static std::random_device rd;
 static std::mt19937 generator(rd());
@@ -22,13 +27,42 @@ float Random();
 float Random(float min, float max);
 float guassRandom();
 float randn(float mu, float std);
-void cal_mean(float *src, int batch_size, int dimension, int size, int *input_index, float *mean);
-void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, int *input_index, float *variance);
-void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size, int *input_index);
+void cal_mean(float *src, int batch_size, int dimension, int size, float *mean);
+void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, float *variance);
+void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size);
 void fill_cpu(int size, float *src, float parameter);
 void copy_cpu(int size, float *src, float *dst);
 void scal_cpu(int size, float scale, float *src);
 void axpy_cpu(int size, float scale, float *src, float *dst);
+
+void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);
+
+enum ACTIVATE_METHOD {
+    SIGMOID
+};
+
+void activate_array(float *src, int length, ACTIVATE_METHOD method);
+
+float activate(float src, ACTIVATE_METHOD method);
+
+struct Box {
+    float x, y, w, h;
+};
+
+struct Detection {
+    Box bbox;
+    int classes;
+    vector<float> prob;
+    float objectness;
+    int sort_class;
+};
+
+float overlap(float x1, float w1, float x2, float w2);
+float box_intersection(Box &a, Box &b);
+float box_union(Box &a, Box &b);
+float box_iou(Box &a, Box &b);
+
+Box vfloat_to_box(vfloat &src, int index);
 
 class Clock {
 public:

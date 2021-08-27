@@ -10,26 +10,24 @@
 
 #include <stdio.h>
 #include "Neural_Network.hpp"
-
-struct Box {
-    int x, y, w, h;
-};
-
-struct Detection {
-    Box bbox;
-    int classes;
-    float *prob;
-    float *mask;
-    float objectness;
-    int sort_class;
-};
+#include "Image_Process.hpp"
 
 class YOLOv3 {
 public:
+    YOLOv3(const char *model_name);
     YOLOv3(int num_class_ = 80);
-private:
+    vector<Detection> detect(IMG &input);
+//private:
+    IMG pre_process_img(IMG& img, int net_w, int net_h);
+    vector<Detection> correct_box(Tensor *box_list, int img_w, int img_h, int net_w, int net_h, bool relative);
+    void yolo_nms(vector<Detection> &list, int classes ,float threshold);
+    
     Neural_Network network;
-    int num_class;
+    int classes;
+    float threshold;
+    int net_width, net_height;
 };
+
+void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold);
 
 #endif /* YOLOv3_hpp */

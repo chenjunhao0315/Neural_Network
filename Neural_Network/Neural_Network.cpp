@@ -263,26 +263,53 @@ void Neural_Network::addLayer(LayerOption opt_) {
     
     opt_layer.push_back(opt_);
     
-    if (opt_["activation"] == "Relu") {
-        auto_opt["type"] = "Relu";
+    if (opt_.find("batchnorm") != opt_.end()) {
+        auto_opt["type"] = "BatchNormalization";
+        if (opt_.find("name") != opt_.end()) {
+            auto_opt["name"] = "bn_" + opt_["name"];
+        }
         opt_layer.push_back(auto_opt);
-    } else if (opt_["activation"] == "Softmax") {
-        auto_opt["type"] = "Softmax";
-        auto_opt["number_class"] = auto_opt["number_neurons"];
-        opt_layer.push_back(auto_opt);
-    } else if (opt_["activation"] == "PRelu") {
-        auto_opt["type"] = "PRelu";
-        opt_layer.push_back(auto_opt);
-    } else if (opt_["activation"] == "LRelu") {
-        auto_opt["type"] = "LRelu";
-        opt_layer.push_back(auto_opt);
-    } else if (opt_["activation"] == "Sigmoid") {
-        auto_opt["type"] = "Sigmoid";
-        opt_layer.push_back(auto_opt);
+    }
+    
+    auto_opt.clear();
+    if (opt_.find("activation") != opt_.end()) {
+        string method = opt_["activation"];
+        if (method == "Relu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "re_" + opt_["name"];
+            }
+            auto_opt["type"] = "Relu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Softmax") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sm_" + opt_["name"];
+            }
+            auto_opt["type"] = "Softmax";
+            auto_opt["number_class"] = auto_opt["number_neurons"];
+            opt_layer.push_back(auto_opt);
+        } else if (method == "PRelu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "pr_" + opt_["name"];
+            }
+            auto_opt["type"] = "PRelu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "LRelu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "lr_" + opt_["name"];
+            }
+            auto_opt["type"] = "LRelu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Sigmoid") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sg_" + opt_["name"];
+            }
+            auto_opt["type"] = "Sigmoid";
+            opt_layer.push_back(auto_opt);
+        }
     }
 }
 
-void Neural_Network::makeLayer(int batch_size_) {
+void Neural_Network::compile(int batch_size_) {
     unordered_map<string, int> id_table;
     batch_size = batch_size_;
 //    layer.reserve(opt_layer.size());
@@ -307,6 +334,9 @@ void Neural_Network::makeLayer(int batch_size_) {
             opt["concat_width"] = to_string(layer[id_table[opt["concat"]]].getParameter(0));
             opt["concat_height"] = to_string(layer[id_table[opt["concat"]]].getParameter(1));
             opt["concat_dimension"] = to_string(layer[id_table[opt["concat"]]].getParameter(2));
+        } else if (opt["type"] == "YOLOv3") {
+            opt["net_width"] = to_string(layer[0].getParameter(0));
+            opt["net_height"] = to_string(layer[0].getParameter(1));
         }
         layer[i] = Model_Layer(opt);
         layer_number++;
@@ -343,25 +373,31 @@ Neural_Network::nn_status Neural_Network::status() {
     return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
-vfloat Neural_Network::Forward(Tensor *input_tensor_, bool train) {
+vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
 //    Forward_Args forward_args(train, workspace);
     args.train = train;
     Tensor *act = layer[0].Forward(input_tensor_);
     terminal[opt_layer[0]["name"]] = act;
-    //    act->showWeight();
+//    act->showWeight();
     for (int i = 1; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
         act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), &args);
         terminal[opt["name"]] = act;
-//                cout << opt["name"] << ": ";
-//                act->showWeight();
+//        if (opt["type"] == "BatchNormalization")
+//            cout << *act;
+//        cout << opt["name"] << ": ";
+//        act->showWeight();
     }
     
-    vfloat output = terminal[output_layer[0]]->toVector();
     int output_size = (int)output_layer.size();
+    vtensorptr output; output.reserve(output_size);
+    
+    output.push_back(terminal[output_layer[0]]);
+    
     for (int i = 1; i < output_size; ++i) {
-        vfloat temp = terminal[output_layer[i]]->toVector();
-        output.insert(output.end(), temp.begin(), temp.end());
+        output.push_back(terminal[output_layer[i]]);
+//        vfloat temp = terminal[output_layer[i]]->toVector();
+//        output.insert(output.end(), temp.begin(), temp.end());
     }
     return output;
 }
@@ -425,7 +461,7 @@ vfloat Neural_Network::predict(Tensor *input) {
     //    if (layer[layer.size() - 1].type_to_string() != "Softmax") {
     //        printf("Last layer need to be softmax.\n");
     //    }
-    vfloat output = Forward(input);
+    vfloat output = Forward(input)[0]->toVector();
     float max_value = output[0];
     int max_index = 0, index, length = (int)output.size() / batch_size;
     for (index = 1; index < length; ++index) {
@@ -504,7 +540,7 @@ Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
 }
 
 vfloat Trainer::train(vtensor &data_set, vector<vfloat> &target_set, int epoch) {
-    auto rng = std::default_random_engine((unsigned)time(NULL));
+    auto rng = std::mt19937((unsigned)time(NULL));
     vector<int> index;
     float loss = 0;
     size_t data_set_size = data_set.size();
@@ -640,7 +676,7 @@ void Trainer::decade(float rate) {
 }
 
 vfloat Trainer::train_batch(vtensor &data_set, vector<vfloat> &target_set, int epoch) {
-    auto rng = std::default_random_engine((unsigned)time(NULL));
+    auto rng = std::mt19937((unsigned)time(NULL));
     vector<int> index;
     float loss = 0;
     size_t data_set_size = data_set.size();

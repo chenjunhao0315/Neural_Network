@@ -38,7 +38,7 @@ public:
     void set(int width_, int height_, int dimension_, float value);
     float get(int width_, int height_, int dimension_);
     float getGrad(int width_, int height_, int dimension_);
-    void addGrad(int width_, int height_, int dimension_, float value, int shift_ = 0, int batch = 1);
+    void addGrad(int width_, int height_, int dimension_, float value, int shift_ = 0);
     void showWeight();
     void showDeltaWeight();
     float* getWeight();

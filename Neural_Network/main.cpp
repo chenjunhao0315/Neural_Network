@@ -22,18 +22,24 @@ int main(int argc, const char * argv[]) {
     
 //    Neural_Network nn("sequential");
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}});
-//    nn.addLayer(LayerOption{{"type", "BatchNormalization"}});
-//    nn.addLayer(LayerOption{{"type", "PRelu"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_1"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
+//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_1"}, {"name", "shortcut_1"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
+//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "shortcut_1"}, {"name", "shortcut_2"}});
+////    nn.addLayer(LayerOption{{"type", "BatchNormalization"}});
+////    nn.addLayer(LayerOption{{"type", "PRelu"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
 //    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
-//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "4"}});
-//    nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}});
-//    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "4"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "10"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}});
+////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+////    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "4"}});
+////    nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}});
+////    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "4"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "10"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//    nn.makeLayer(2);
+//    nn.compile(2);
 ////         nn.load("test.bin");
 //    nn.shape();
 ////////    nn.save("test.bin");
@@ -78,7 +84,7 @@ int main(int argc, const char * argv[]) {
 //    Clock c;
 //    trainer.train_batch(data_train, data_label, 10);
 //    c.stop_and_show();
-//
+////
 //    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //    nn.save("test.bin");
 //         nn.shape();
@@ -339,145 +345,23 @@ int main(int argc, const char * argv[]) {
 //    mtcnn_trainer.evaluate(pnet.pnet);
 //    pnet.pnet.save("pnet_newdata.bin");
     
-    
-//    Neural_Network nn("sequential");
-//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "50"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "50"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}});
-//    nn.addLayer(LayerOption {{"type", "EuclideanLoss"}});
-//    nn.makeLayer(2);
-//    nn.shape();
+    IMG input("target.jpg");
 //
-//    Tensor a(1, 1, 2, 0);
-//    Tensor b(1, 1, 2, 1);
-//    vfloat la = {1.0, 0, 0};
-//    vfloat lb = {0, 1,0, 0};
-//    vtensor set; set.push_back(a); set.push_back(b);
-//    vector<vfloat> label; label.push_back(la); label.push_back(lb);
+    class YOLOv3 nn;
 //
-//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"learning_rate", 0.001}, {"batch_size", 2}});
-//
+    nn.detect(input);
+    input.save("test.jpg");
+
+
+//    Mtcnn mtcnn("1630017229_149_212958.062500.bin", "1630045057_23_52704.917969.bin", "1630045562_6_10078.381836.bin");
+//    mtcnn.min_face_size = 0;
+//    IMG img("target.jpg");
 //    Clock c;
-//    trainer.train_batch(set, label, 50);
+//    vector<Bbox> result = mtcnn.detect(img);
 //    c.stop_and_show();
-//
-//    vfloat result = nn.Forward(&a);
-//    for (auto i : result)
-//        cout << i << " ";
-//    cout << endl;
-//
-//    result = nn.Forward(&b);
-//    for (auto i : result)
-//        cout << i << " ";
-//    cout << endl;
-    
-//    int output_width = 3, output_height = 3, output_dimension = 4;
-//    int input_index_size = output_width * output_height * output_dimension;
-//
-//    int *input_index = new int [input_index_size];
-//    int *input_index_ptr = input_index;
-//    for (int d = 0; d < output_dimension; ++d) {
-//        for (int h = 0; h < output_height; ++h) {
-//            for (int w = 0; w < output_width; ++w) {
-//                *(input_index_ptr++) = ((h * output_width) + w) * output_dimension + d;
-//            }
-//        }
-//    }
-//
-//    Tensor a(output_width, output_height, output_dimension);
-//    Tensor b(output_width, output_height, output_dimension);
-//    Tensor c(output_width, output_height, output_dimension * 2);
-//    float *a_ptr = a.weight;
-//    float *b_ptr = b.weight;
-//    float *c_ptr = c.weight;
-//
-//    for (int j = input_index_size; j--; ) {
-//        *(c_ptr++) = *(a_ptr++);
-//    }
-//    for (int j = input_index_size; j--; ) {
-//        *(c_ptr++) = *(b_ptr++);
-//    }
-//
-//    float mean[4];
-//    float variance[4];
-//
-////    cout << a;
-//    for (int d = 0; d < output_dimension; ++d) {
-//        float sum = 0;
-//        for (int h = 0; h < output_height; ++h) {
-//            for (int w = 0; w < output_width; ++w) {
-//                sum += a.get(w, h, d);
-//                printf("%f,", a.get(w, h, d));
-//            }
-//        }
-//        printf("\n");
-//    }
-//    a_ptr = a.weight;
-//    cal_mean(a_ptr, 1, output_dimension, output_width * output_height, input_index, mean);
-//    cal_variance(a_ptr, mean, 1, output_dimension, output_width * output_height, input_index, variance);
-//    printf("Mean: %f %f %f %f\n", mean[0], mean[1], mean[2], mean[3]);
-//    printf("Var: %f %f %f %f\n", variance[0], variance[1], variance[2], mean[3]);
-//    normalize(a.weight, mean, variance, 1, output_dimension, output_width * output_height, input_index);
-//    cout << a;
-//    printf("\n");
-//
-////    cout << b;
-//    for (int d = 0; d < output_dimension; ++d) {
-//        float sum = 0;
-//        for (int h = 0; h < output_height; ++h) {
-//            for (int w = 0; w < output_width; ++w) {
-//                sum += a.get(w, h, d);
-//                printf("%f,", b.get(w, h, d));
-//            }
-//        }
-//        printf("\n");
-//    }
-//    b_ptr = b.weight;
-//    cal_mean(b_ptr, 1, output_dimension, output_width * output_height, input_index, mean);
-//    cal_variance(b_ptr, mean, 1, output_dimension, output_width * output_height, input_index, variance);
-//    printf("Mean: %f %f %f %f\n", mean[0], mean[1], mean[2], mean[3]);
-//    printf("Var: %f %f %f %f\n", variance[0], variance[1], variance[2], mean[3]);
-////    normalize(b.weight, mean, variance, 1, output_dimension, output_width * output_height, input_index);
-////    cout << b;
-//    printf("\n");
-////
-//    c_ptr = c.weight;
-////    cout << c;
-//    cal_mean(c_ptr, 2, output_dimension, output_width * output_height, input_index, mean);
-//    cal_variance(c_ptr, mean, 2, output_dimension, output_width * output_height, input_index, variance);
-//    printf("Mean: %f %f %f %f\n", mean[0], mean[1], mean[2], mean[3]);
-//    printf("Var: %f %f %f %f\n", variance[0], variance[1], variance[2], mean[3]);
-////    normalize(c.weight, mean, variance, 1, output_dimension, output_width * output_height, input_index);
-//    printf("\n");
-//
-//    Tensor d(output_width, output_height, output_dimension);
-//    Tensor e(output_width, output_height, output_dimension);
-//    c_ptr = c.weight;
-//    float *d_ptr = d.weight;
-//    float *e_ptr = e.weight;
-//    for (int i = 0; i < input_index_size; ++i) {
-//        *(d_ptr++) = *(c_ptr++);
-//    }
-//    for (int i = 0; i < input_index_size; ++i) {
-//        *(e_ptr++) = *(c_ptr++);
-//    }
-//
-//    cout << d;
-//    cout << e;
-    
-//    YOLOv3 nn;
-    
-    Mtcnn mtcnn;
-    mtcnn.min_face_size = 0;
-    IMG img("target.jpg");
-    Clock c;
-    vector<Bbox> result = mtcnn.detect(img);
-    c.stop_and_show();
-    mtcnn.mark(img, result, true);
-    img.save("result.jpg", 80);
-    mtcnn.layout(result);
-    
+//    mtcnn.mark(img, result, true);
+//    img.save("result.jpg", 80);
+//    mtcnn.layout(result);
     
     return 0;
 }

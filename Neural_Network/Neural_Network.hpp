@@ -30,11 +30,11 @@ public:
     Neural_Network(string model_ = "sequential");
     void addLayer(LayerOption opt_);
     void addOutput(string name);
-    void makeLayer(int batch_size_ = 1);
+    void compile(int batch_size_ = 1);
     void shape();
     int getBatchSize() {return batch_size;}
     nn_status status();
-    vfloat Forward(Tensor *input_tensor_, bool train = false);
+    vtensorptr Forward(Tensor *input_tensor_, bool train = false);
     float Backward(vfloat &target);
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vector<vfloat> &target);

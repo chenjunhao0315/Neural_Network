@@ -111,6 +111,7 @@ public:
     void fillRect(Rect rect, Color color);
     void putText(const char *str, Point p, Color color, int size = 18);
     bool save(const char *filename = "out.jpg", float quality = 80);
+    bool empty();
     
     int width, height, channel;
 private:

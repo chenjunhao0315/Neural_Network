@@ -2180,7 +2180,7 @@ Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
         }
     }
     
-    vector<Detection> dets = get_detection_without_correction();
+    vector<Detection> dets = yolo_get_detection_without_correction();
     detection = Tensor(1, (info.classes + 5), (int)dets.size(), 0);
     float *value = detection.weight;
     for (int i = 0; i < (int)dets.size(); ++i) {
@@ -2230,7 +2230,7 @@ float YOLOv3Layer::Backward(vfloat& target) {
             for (int i = 0; i < info.output_width; ++i) {
                 for (int n = 0; n < info.anchor_num; ++n) {
                     int box_index = yolo_index(b, n, i, j, 0);
-                    Box pred = get_box(box_index, mask[n], i, j, width, height, info.net_width, info.net_height, channel_size);
+                    Box pred = yolo_get_box(box_index, mask[n], i, j, width, height, info.net_width, info.net_height, channel_size);
                     float best_iou = 0;
                     int best_t = 0;
                     for(int t = 0; t < info.max_boxes; ++t){
@@ -2341,7 +2341,7 @@ void YOLOv3Layer::delta_yolo_class(float *feature, float *delta, int index, int 
 }
 
 float YOLOv3Layer::delta_yolo_box(Box &truth, float *feature, float *bias, float *delta, int n, int index, int w, int h, int width, int height, int net_width, int net_height, float scale, int stride) {
-    Box pred = get_box(index, n, w, h, width, height, net_width, net_height, stride);
+    Box pred = yolo_get_box(index, n, w, h, width, height, net_width, net_height, stride);
     float iou = box_iou(pred, truth);
 
     float tx = (truth.x * width - w);
@@ -2365,7 +2365,7 @@ int YOLOv3Layer::yolo_index(int b, int anchor_num, int w, int h, int entry) {
     return batch_offset + anchor_offset + entry_offset + position_offset;
 }
 
-vector<Detection> YOLOv3Layer::get_detection_without_correction() {
+vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
     float threshold = 0.5; // TODO: threshold input
     float *feature = output_tensor->weight;
     
@@ -2388,7 +2388,7 @@ vector<Detection> YOLOv3Layer::get_detection_without_correction() {
                     Detection det; det.prob.reserve(classes);
                     int box_index = yolo_index(0, n, w, h, 0);
                     det.objectness = objectness;
-                    det.bbox = get_box(box_index, mask[n], w, h, width, height, net_width, net_height, channel_size);
+                    det.bbox = yolo_get_box(box_index, mask[n], w, h, width, height, net_width, net_height, channel_size);
                     for (int c = 0; c < classes; ++c) {
                         int class_index = yolo_index(0, n, w, h, 5 + c);
                         float prob = objectness * feature[class_index];
@@ -2402,7 +2402,7 @@ vector<Detection> YOLOv3Layer::get_detection_without_correction() {
     return dets;
 }
 
-Box YOLOv3Layer::get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride) {
+Box YOLOv3Layer::yolo_get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride) {
     Box b;
     float *x = output_tensor->weight;
     float *bias = biases->weight;

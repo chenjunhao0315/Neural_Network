@@ -345,12 +345,19 @@ int main(int argc, const char * argv[]) {
 //    mtcnn_trainer.evaluate(pnet.pnet);
 //    pnet.pnet.save("pnet_newdata.bin");
     
-    IMG input("target.jpg");
-//
-    class YOLOv3 nn;
-//
-    nn.detect(input);
-    input.save("test.jpg");
+//    IMG input("target.jpg");
+////
+//    class YOLOv3 nn(80);
+////
+//    nn.detect(input);
+//    input.save("test.jpg");
+    
+    YOLOv3_DataLoader loader("train.txt");
+    loader.mark_truth(1096);
+    
+//    IMG img("/Volumes/TKE12480/train2017/000000320612.jpg");
+    
+    
 
 
 //    Mtcnn mtcnn("1630017229_149_212958.062500.bin", "1630045057_23_52704.917969.bin", "1630045562_6_10078.381836.bin");

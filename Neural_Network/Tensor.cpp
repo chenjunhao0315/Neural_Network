@@ -233,13 +233,6 @@ void Tensor::save(FILE *f) {
     fwrite(&dimension, sizeof(int), 1, f);
     fwrite(&size, sizeof(int), 1, f);
     fwrite(weight, sizeof(float), size, f);
-//    for (int d = 0; d < dimension; ++d) {
-//        for (int h = 0; h < height; ++h) {
-//            for (int w = 0; w < width; ++w) {
-//                fwrite(&weight[((h * width) + w) * dimension + d], sizeof(float), 1, f);
-//            }
-//        }
-//    }
 }
 
 void Tensor::load(FILE *f) {

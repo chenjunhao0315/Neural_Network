@@ -215,7 +215,7 @@
 //    // End Conv_lobj_branch
 //    // Conv_lbbox(3 * 3)
 //    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_lbbox"}});
-//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"anchor", "116,90  156,198  373,326"}, {"name", "yolo_large"}});
+//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "10,13  16,30  33,23  30,61  62,45  59,119  116,90  156,198  373,326"}, {"mask", "6, 7, 8"}, {"name", "yolo_large"}});
 //    // End Conv_lbbox
 //    
 //    // Conv_58(1 * 1)
@@ -248,7 +248,7 @@
 //    // End Conv_mobj_branch
 //    // Conv_mbbox(3 * 3)
 //    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_mbbox"}});
-//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"anchor", "30,61  62,45  59,119"}, {"name", "yolo_middle"}});
+//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "10,13  16,30  33,23  30,61  62,45  59,119  116,90  156,198  373,326"}, {"mask", "3, 4, 5"}, {"name", "yolo_middle"}});
 //    // End Conv_mbbox
 //    
 //    // Conv_64(1 * 1)
@@ -281,7 +281,7 @@
 //    // End Conv_sobj_branch
 //    // Conv_sbbox(3 * 3)
 //    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
-//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"anchor", "10,13  16,30  33,23"}, {"name", "yolo_small"}});
+//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "10,13  16,30  33,23  30,61  62,45  59,119  116,90  156,198  373,326"}, {"mask", "0, 1, 2"}, {"name", "yolo_small"}});
 //    // End Conv_sbbox
 //    
 //    network.addOutput("yolo_large");
@@ -297,7 +297,7 @@ YOLOv3::YOLOv3(int classes_) {
     classes = classes_;
     net_width = 416;
     net_height = 416;
-    
+
     network = Neural_Network();
     network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
     // Conv_1
@@ -330,7 +330,7 @@ YOLOv3::YOLOv3(int classes_) {
     // Conv_8
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_8"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
     // End Conv_8
-    
+
     // Conv_lobj_branch
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_lobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
     // End Conv_lobj_branch
@@ -338,13 +338,13 @@ YOLOv3::YOLOv3(int classes_) {
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_lbbox"}});
     // End Conv_lbbox
     network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"name", "yolo_small"}});
-    
+
     // Conv_9
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_9"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"input_name", "lr_conv_8"}});
     // End Conv_9
     network.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample_1"}});
     network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_5"}, {"name", "concat_1"}});
-    
+
     // Conv_sobj_branch
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
     // End Conv_sobj_branch
@@ -352,7 +352,7 @@ YOLOv3::YOLOv3(int classes_) {
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
     // End Conv_sbbox
     network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"name", "yolo_big"}});
-    
+
     network.addOutput("yolo_small");
     network.addOutput("yolo_big");
     network.compile();
@@ -366,7 +366,7 @@ YOLOv3::YOLOv3(const char *model_name) {
 }
 
 vector<Detection> YOLOv3::detect(IMG &input) {
-    IMG src_img = pre_process_img(input, 416, 416);
+    IMG src_img = yolo_pre_process_img(input, 416, 416);
     Tensor src_tensor(net_width, net_height, 3, 0);
     convert_index_base_to_channel_base((float *)src_img.getMat().ptr(), src_tensor.weight, 416, 416, 3);
     
@@ -375,8 +375,8 @@ vector<Detection> YOLOv3::detect(IMG &input) {
     c.stop_and_show();
     
     vector<Detection> dets;
-    for (int i = 0; i < 2; ++i) {
-        vector<Detection> det = correct_box(feature_map[i], input.width, input.height, net_width, net_height, 0);
+    for (int i = 0; i < feature_map.size(); ++i) {
+        vector<Detection> det = yolo_correct_box(feature_map[i], input.width, input.height, net_width, net_height, 0);
         dets.insert(dets.end(), det.begin(), det.end());
     }
     
@@ -443,7 +443,7 @@ void YOLOv3::yolo_nms(vector<Detection> &det_list, int classes ,float threshold)
     }
 }
 
-vector<Detection> YOLOv3::correct_box(Tensor *box_list, int img_w, int img_h, int net_w, int net_h, bool relative) {
+vector<Detection> YOLOv3::yolo_correct_box(Tensor *box_list, int img_w, int img_h, int net_w, int net_h, bool relative) {
     int list_length = box_list->dimension;
     vector<Detection> corrected_box; corrected_box.resize(list_length);
     float *list_info = box_list->weight;
@@ -474,7 +474,7 @@ vector<Detection> YOLOv3::correct_box(Tensor *box_list, int img_w, int img_h, in
     return corrected_box;
 }
 
-IMG YOLOv3::pre_process_img(IMG &img, int net_w, int net_h) {
+IMG YOLOv3::yolo_pre_process_img(IMG &img, int net_w, int net_h) {
     IMG canvas(net_w, net_h, 3, MAT_8UC3, Scalar(128, 128, 128));
     
     int img_w  = img.width, img_h = img.height;
@@ -483,7 +483,49 @@ IMG YOLOv3::pre_process_img(IMG &img, int net_w, int net_h) {
     
     IMG resize = img.resize(Size(new_w, new_h));
     canvas.paste(resize, Point((net_w - new_w) / 2, (net_h - new_h) / 2));
-    canvas.convertTo(MAT_32FC3);
+    Mat gain(1, 1, MAT_32FC1, Scalar(0.00392157));
+    canvas = canvas.filter(gain, MAT_32FC3);
     return canvas;
 }
 
+YOLOv3_DataLoader::~YOLOv3_DataLoader() {
+    dataset.clear();
+}
+
+YOLOv3_DataLoader::YOLOv3_DataLoader(const char *filename) {
+    ifstream train_data;
+    train_data.open("train.txt");
+    
+    while(!train_data.eof()) {
+        string filename;
+        train_data >> filename;
+        int box_num;
+        train_data >> box_num;
+        yolo_label label;
+        label.filename = filename;
+        for (int i = 0; i < box_num; ++i) {
+            Detection det;
+            Box &b = det.bbox;
+            train_data >> b.x >> b.y >> b.w >> b.h >> det.sort_class;
+            label.det.push_back(det);
+        }
+        dataset.push_back(label);
+    }
+    train_data.close();
+}
+
+void YOLOv3_DataLoader::mark_truth(int index) {
+    IMG img(dataset[index].filename.c_str());
+    vector<Detection> det = dataset[index].det;
+    for (int i = 0; i < det.size(); ++i) {
+        det[i].prob.resize(80);
+        det[i].prob[det[i].sort_class] = 1;
+        det[i].objectness = 1;
+        det[i].bbox.x *= img.width;
+        det[i].bbox.w *= img.width;
+        det[i].bbox.y *= img.height;
+        det[i].bbox.h *= img.height;
+    }
+    yolo_mark(det, img, 80, 0.9);
+    img.save();
+}

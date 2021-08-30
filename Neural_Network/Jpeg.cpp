@@ -57,6 +57,21 @@ bool JPEG::save(const char *filename, float quality, bool isRGB, bool down_sampl
     return encoder->write(filename, quality, down_sample);
 }
 
+JPEG_DECODER::~JPEG_DECODER() {
+    if (Exif)
+        delete Exif;
+    if (data.data_indicator)
+        delete [] data.data_indicator;
+    if (data.comp[0].pixels)
+        delete [] data.comp[0].pixels;
+    if (data.comp[1].pixels)
+        delete [] data.comp[1].pixels;
+    if (data.comp[2].pixels)
+        delete [] data.comp[2].pixels;
+    if (data.rgb)
+        delete [] data.rgb;
+}
+
 JPEG_DECODER::JPEG_DECODER(const char *filename) {
     FILE *f = fopen(filename, "rb");
     size_t size;
@@ -144,11 +159,15 @@ Jpeg_Status JPEG_DECODER::decode() {
 //                printf("DRI MARKER\n");
                 readDRI();
                 break;
+            case COM_MARKER:
+                skipMARKER();
+                break;
             default:
                 if ((data.pos[-1] & 0xF0) == 0xE0)
                     skipMARKER();
-                else
+                else {
                     return UNSUPPORT;
+                }
                 
         }
     }
@@ -363,6 +382,11 @@ int JPEG_DECODER::showBits(int bits) {
     unsigned char newbyte;
     if (!bits) return 0;
     while (data.bufbits < bits) {
+        if (data.size <= 0) {
+            data.buf = (data.buf << 8) | 0xFF;
+            data.bufbits += 8;
+            continue;
+        }
         newbyte = *data.pos++;
         data.size--;
         data.bufbits += 8;

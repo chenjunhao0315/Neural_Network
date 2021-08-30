@@ -311,8 +311,8 @@ public:
     float Backward(vfloat& target);
 private:
     int yolo_index(int b, int anchor_num, int w, int h, int entry);
-    vector<Detection> get_detection_without_correction();
-    Box get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride);
+    vector<Detection> yolo_get_detection_without_correction();
+    Box yolo_get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride);
     float delta_yolo_box(Box &truth, float *feature, float *bias, float *delta, int n, int index, int w, int h, int width, int height, int net_width, int net_height, float scale, int stride);
     void delta_yolo_class(float *feature, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
     int int_index(float *a, int val, int n);

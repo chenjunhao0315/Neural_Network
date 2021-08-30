@@ -72,7 +72,7 @@ IMG::IMG(const char *filename) {
         delete [] pixel_array;
         fclose(f);
     } else if (image_type == ImageType::UNSUPPORT) {
-        printf("[IMG] Unsupport!\n");
+        printf("[IMG] Unsupport file type!\n");
     } else if (image_type == ImageType::OPEN_FAIL) {
         printf("[IMG] Open file fail!\n");
     }
@@ -191,6 +191,10 @@ bool IMG::save(const char *filename, float quality) {
         printf("Format unsupport!\n");
     }
     return false;
+}
+
+bool IMG::empty() {
+    return width == 0 && height == 0;
 }
 
 IMG IMG::resize(Size size, float factor_w, float factor_h, int method) {

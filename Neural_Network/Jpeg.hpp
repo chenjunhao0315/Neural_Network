@@ -75,6 +75,7 @@ private:
 
 class JPEG_DECODER {
 public:
+    ~JPEG_DECODER();
     JPEG_DECODER(const char *filename);
     
     Jpeg_Status status() {return data.status;}
@@ -228,7 +229,8 @@ enum MARKER {
     APP0_MARKER = 0xE0, APP1_MARKER = 0xE1,
     SOF0_MARKER = 0xC0, SOF2_MARKER = 0xC2,
     DQT_MARKER = 0xDB, DHT_MARKER = 0xC4,
-    DRI_MARKER = 0xDD, SOS_MARKER = 0xDA
+    DRI_MARKER = 0xDD, SOS_MARKER = 0xDA,
+    COM_MARKER = 0xFE
 };
 
 enum EXIF_PARAMETER {

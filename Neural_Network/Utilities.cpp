@@ -35,7 +35,20 @@ float Random() {
 }
 
 float Random(float min, float max) {
-    return (Random() + 1) / 2.0 * max;
+    return (Random() + 1) / 2.0 * (max - min) + min;
+}
+
+float Random_scale(float s) {
+    float scale = Random(1, s);
+    if(Random() > 0)
+        return scale;
+    return 1.0 / scale;
+}
+
+float Random_precal(float min, float max, float rand) {
+    if (min > max)
+        std::swap(min, max);
+    return (rand * (max - min)) + min;
 }
 
 Clock::Clock() {
@@ -89,6 +102,7 @@ void cal_variance(float *src, float *mean, int batch_size, int dimension, int si
     scal_cpu(dimension, scale, variance);
 }
 
+
 void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size) {
     float mean_value, variance_scale;
     
@@ -105,6 +119,45 @@ void normalize(float *src, float *mean, float *variance, int batch_size, int dim
                 if (isnan(*src) || isinf(*src))
                     printf("error\n");
                 ++src;
+            }
+        }
+    }
+}
+
+void mean_cpu(float *x, int batch, int filters, int spatial, float *mean) {
+    float scale = 1.0 / (batch * spatial);
+    for(int i = 0; i < filters; ++i){
+        mean[i] = 0;
+        for(int j = 0; j < batch; ++j){
+            for(int k = 0; k < spatial; ++k){
+                int index = j * filters * spatial + i * spatial + k;
+                mean[i] += x[index];
+            }
+        }
+        mean[i] *= scale;
+    }
+}
+
+void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, float *variance) {
+    float scale = 1.0 / (batch * spatial - 1);
+    for(int i = 0; i < filters; ++i){
+        variance[i] = 0;
+        for(int j = 0; j < batch; ++j){
+            for(int k = 0; k < spatial; ++k){
+                int index = j * filters * spatial + i * spatial + k;
+                variance[i] += pow((x[index] - mean[i]), 2);
+            }
+        }
+        variance[i] *= scale;
+    }
+}
+
+void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial) {
+    for(int b = 0; b < batch; ++b){
+        for(int f = 0; f < filters; ++f){
+            for(int i = 0; i < spatial; ++i){
+                int index = b * filters * spatial + f * spatial + i;
+                x[index] = (x[index] - mean[f]) / (sqrt(variance[f]) + 0.000001);
             }
         }
     }
@@ -130,9 +183,15 @@ void fill_cpu(int size, float *src, float parameter) {
         *(src++) = parameter;
 }
 
+float sum_array(float *a, int n) {
+    float sum = 0;
+    for(int i = 0; i < n; ++i) sum += a[i];
+    return sum;
+}
+
 void activate_array(float *src, int length, ACTIVATE_METHOD method) {
-    for (int i = length; i--; ++src) {
-        *(src) = activate(*(src), method);
+    for(int i = 0; i < length; ++i){
+        src[i] = activate(src[i], method);
     }
 }
 
@@ -197,4 +256,10 @@ Box vfloat_to_box(vfloat &src, int index) {
     b.w = src[index + 2];
     b.h = src[index + 3];
     return b;
+}
+
+float constrain(float min, float max, float a) {
+    if (a < min) return min;
+    if (a > max) return max;
+    return a;
 }

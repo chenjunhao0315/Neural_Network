@@ -100,6 +100,7 @@ public:
     LayerType string_to_type(string type);
     bool save(FILE *f);
     bool load(FILE *f);
+    bool load_raw(FILE *f);
     Train_Args getTrainArgs();
     int getWorkspaceSize();
 private:
@@ -138,6 +139,7 @@ public:
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
     bool load(FILE *f);
+    bool load_raw(FILE *f);
     Train_Args getTrainArgs();
 //protected:
     LayerType type;
@@ -153,6 +155,7 @@ public:
         int input_height;
         int input_dimension;
         int concat_dimension;
+        int shortcut_dimension;
         int kernel_width;
         int kernel_height;
         int stride;
@@ -259,6 +262,7 @@ public:
     Tensor* Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_);
     void Backward();
 private:
+    void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
     Tensor *shortcut_tensor;
 };
 
@@ -283,6 +287,13 @@ public:
     BatchNormalizationlayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
     void Backward();
+private:
+    void scale_bias(float *output, float *scales, int batch, int n, int size);
+    void backward_bias(float *bias_updates, float *delta, int batch, int n, int size);
+    void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
+    void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
+    void variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta);
+    void normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta);
 };
 
 class UpSampleLayer : public BaseLayer {
@@ -310,11 +321,11 @@ public:
     Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
     float Backward(vfloat& target);
 private:
-    int yolo_index(int b, int anchor_num, int w, int h, int entry);
+    int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
-    Box yolo_get_box(int index, int n, int w, int h, int width, int height, int net_width, int net_height, int stride);
-    float delta_yolo_box(Box &truth, float *feature, float *bias, float *delta, int n, int index, int w, int h, int width, int height, int net_width, int net_height, float scale, int stride);
-    void delta_yolo_class(float *feature, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
+    Box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride);
+    float delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride);
+    void delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
     int int_index(float *a, int val, int n);
     float mag_array(float *a, int n);
     

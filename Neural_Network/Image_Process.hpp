@@ -60,6 +60,13 @@ enum ResizeMethod {
     NEAREST = 1
 };
 
+enum ConvertMethod {
+    SAME = 0,
+    RGB_TO_GRAY,
+    RGB_TO_HSV,
+    HSV_TO_RGB
+};
+
 class Kernel;
 
 class IMG {
@@ -70,10 +77,16 @@ class IMG {
         UNSUPPORT,
         OPEN_FAIL
     };
+    
+    enum ColorSpace {
+        GRAYSCALE,
+        RGB,
+        HSV
+    };
 public:
     ~IMG();
     IMG();
-    IMG(int width, int height, int channel, MatType type = MAT_8UC3, Scalar color = Scalar(0, 0, 0));
+    IMG(int width, int height, MatType type = MAT_8UC3, Scalar color = Scalar(0, 0, 0));
     IMG(const char *filename);
     IMG(const IMG &I);
     IMG(IMG &&I);
@@ -81,7 +94,7 @@ public:
     unsigned char * toPixelArray();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1, int method = 0);
     IMG crop(Rect rect);
-    IMG convertGray();
+    IMG convert(ConvertMethod method);
     IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
     IMG median_blur(int radius);
     IMG filter(Mat kernel, MatType dstType = MAT_UNDEFINED);
@@ -95,10 +108,14 @@ public:
     IMG closing(Kernel kernel);
     IMG add(IMG &addend, MatType dstType = MAT_UNDEFINED);
     IMG subtract(IMG &minuend, MatType dstType = MAT_UNDEFINED);
+    IMG scale(float scale, MatType dstType = MAT_UNDEFINED);
     IMG addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType dstType = MAT_UNDEFINED);
     IMG convertScaleAbs(float scale = 1, float alpha = 0);
+    IMG hsv_distort(float hue, float sat, float expo);
     IMG local_color_correction(float radius = 10);
     Mat& getMat() {return mat;}
+    void scale_channel(int channel, float scale);
+    void flip();
     void convertTo(MatType type);
     void release();
     void showPicInfo();
@@ -125,6 +142,9 @@ private:
     void subCircle(int xc, int yc, int x, int y, Color color);
     void bilinearResize(Mat &src, Mat &dst, float factor_w, float factor_h);
     void nearestResize(Mat &src, Mat &dst, float factor_w, float factor_h);
+    IMG convert_rgb_to_gray();
+    IMG convert_rgb_to_hsv();
+    IMG convert_hsv_to_rgb();
 };
 
 int clip(int value, int min, int max);

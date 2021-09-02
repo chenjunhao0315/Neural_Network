@@ -99,7 +99,7 @@ Feature_map PNet::predict(IMG &img) {
     Tensor input(12, 12, 3, 0);
     
     unsigned char *rgb = img.toPixelArray();
-    int img_size = img.width * img.height * img.channel;
+    int img_size = img.width * img.height * 3;
     float *img_data = new float [img_size];
     for (int i = 0; i < img_size; ++i) {
         img_data[i] = ((float)rgb[i] - 127.5) * 0.0078125;
@@ -492,7 +492,7 @@ vector<Bbox> Mtcnn::detect(IMG &img) {
         printf("[Mtcnn] Network error!\n");
         return vector<Bbox>();
     }
-    if (img.channel != 3) {
+    if (img.getMat().depth() != 3) {
         printf("[Mtcnn] Image format unsupport!\n");
         return vector<Bbox>();
     }

@@ -20,26 +20,24 @@ using namespace std::chrono;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-//    Neural_Network nn("sequential");
+//    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_1"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "1"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_1"}});
+//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "2"}, {"padding", "1"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
 //    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_1"}, {"name", "shortcut_1"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
-//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "shortcut_1"}, {"name", "shortcut_2"}});
-////    nn.addLayer(LayerOption{{"type", "BatchNormalization"}});
-////    nn.addLayer(LayerOption{{"type", "PRelu"}});
-//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
+////    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "shortcut_1"}, {"name", "shortcut_2"}});
+////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
+////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "20"}, {"kernel_width", "5"}, {"stride", "1"}, {"padding", "same"}, {"activation", "PRelu"}});
 ////    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}});
 ////    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "4"}});
 ////    nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}});
 ////    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "4"}});
 ////    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "10"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//    nn.compile(2);
+//    nn.compile(8);
 ////         nn.load("test.bin");
 //    nn.shape();
 ////////    nn.save("test.bin");
@@ -79,7 +77,7 @@ int main(int argc, const char * argv[]) {
 //
 ////    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //
-//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADADELTA}, {"learning_rate", 0.01}});
+//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.001}});
 //
 //    Clock c;
 //    trainer.train_batch(data_train, data_label, 10);
@@ -345,20 +343,30 @@ int main(int argc, const char * argv[]) {
 //    mtcnn_trainer.evaluate(pnet.pnet);
 //    pnet.pnet.save("pnet_newdata.bin");
     
-//    IMG input("target.jpg");
-////
-//    class YOLOv3 nn(80);
-////
-//    nn.detect(input);
-//    input.save("test.jpg");
+
+    class YOLOv3 nn(80);
+//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.0001}});
+//
+//    YOLOv3_DataLoader loader("train.txt");
+//    loader.mark_truth(0);
+//
+//    yolo_train_args test = loader.get_train_arg(0);
+//    for (int i = 0; i < 20; ++i) {
+//        
+//        float loss = trainer.train(test.data, test.label)[0];
+//        printf("loss: %f\n", loss);
+//    }
+//    IMG img = loader.get_img(0);
+    IMG img("target.jpg");
+    nn.detect(img);
+    img.save("test.jpg");
     
-    YOLOv3_DataLoader loader("train.txt");
-    loader.mark_truth(1096);
+//    IMG img("target.jpg");
+//    img.flip();
+//    img.save();
+    
     
 //    IMG img("/Volumes/TKE12480/train2017/000000320612.jpg");
-    
-    
-
 
 //    Mtcnn mtcnn("1630017229_149_212958.062500.bin", "1630045057_23_52704.917969.bin", "1630045562_6_10078.381836.bin");
 //    mtcnn.min_face_size = 0;

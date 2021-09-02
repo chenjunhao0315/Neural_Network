@@ -30,22 +30,48 @@ public:
 
 void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold);
 
+struct Box_label {
+    int id;
+    float x, y, w, h;
+    float left, right, top, bottom;
+};
+
 struct yolo_label {
     yolo_label() {}
-    yolo_label(vector<Detection> det_) : det(det_) {}
+    yolo_label(vector<Box_label> boxes_) : boxes(boxes_) {}
     string filename;
-    vector<Detection> det;
+    vector<Box_label> boxes;
+};
+
+struct yolo_train_args {
+    yolo_train_args(Tensor &data_, vfloat label_) : data(data_), label(label_) {}
+    Tensor data;
+    vfloat label;
 };
 
 class YOLOv3_DataLoader {
 public:
     ~YOLOv3_DataLoader();
     YOLOv3_DataLoader(const char *filename);
-    yolo_label get_label(int index) {return dataset[index];}
+    yolo_train_args get_train_arg(int index);
     void mark_truth(int index);
     int size() {return (int)dataset.size() - 1;}
-private:
+//private:
+    IMG get_img(int index);
+    vector<Box_label> get_label(int index);
+    vfloat get_box(int index, float dx, float dy, float sx, float sy, bool flip, int net_w, int net_h);
+    void correct_box(vector<Box_label> &boxes, float dx, float dy, float sx, float sy, bool flip);
     vector<yolo_label> dataset;
+};
+
+class YOLOv3_Trainer {
+public:
+    YOLOv3_Trainer(Neural_Network *network_, Trainer *trainer_, YOLOv3_DataLoader *loader_) : network(network_), trainer(trainer_), loader(loader_) {}
+    void train(int epoch);
+private:
+    Neural_Network *network;
+    Trainer *trainer;
+    YOLOv3_DataLoader *loader;
 };
 
 #endif /* YOLOv3_hpp */

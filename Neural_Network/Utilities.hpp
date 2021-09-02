@@ -25,8 +25,16 @@ static std::uniform_real_distribution<float> unif(-1.0, 1.0);
 
 float Random();
 float Random(float min, float max);
+float Random_scale(float s);
+float Random_precal(float min, float max, float rand);
 float guassRandom();
 float randn(float mu, float std);
+
+
+void mean_cpu(float *x, int batch, int filters, int spatial, float *mean);
+void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, float *variance);
+void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial);
+
 void cal_mean(float *src, int batch_size, int dimension, int size, float *mean);
 void cal_variance(float *src, float *mean, int batch_size, int dimension, int size, float *variance);
 void normalize(float *src, float *mean, float *variance, int batch_size, int dimension, int size);
@@ -41,9 +49,12 @@ enum ACTIVATE_METHOD {
     SIGMOID
 };
 
+float sum_array(float *a, int n);
 void activate_array(float *src, int length, ACTIVATE_METHOD method);
 
 float activate(float src, ACTIVATE_METHOD method);
+
+float constrain(float min, float max, float a);
 
 struct Box {
     float x, y, w, h;

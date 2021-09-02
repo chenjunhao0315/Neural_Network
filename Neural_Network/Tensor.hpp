@@ -50,6 +50,7 @@ public:
     int length() {return size;}
     void save(FILE *f);
     void load(FILE *f);
+    void load_raw(FILE *f);
     vfloat toVector();
     void toIMG(const char *filename);
     void shape();

@@ -245,6 +245,41 @@ bool Neural_Network::save(const char *model_name) {
     return true;
 }
 
+bool Neural_Network::load_darknet(const char *weights_name) {
+    FILE *f = fopen(weights_name, "rb");
+    if (!f)
+        return false;
+    fseek(f, 0, SEEK_END);
+    size_t check = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    int major;
+    int minor;
+    int revision;
+    int seen;
+    fread(&major, sizeof(int), 1, f);
+    fread(&minor, sizeof(int), 1, f);
+    fread(&revision, sizeof(int), 1, f);
+    if ((major*10 + minor) >= 2 && major < 1000 && minor < 1000){
+        fread(&seen, sizeof(size_t), 1, f);
+    } else {
+        int iseen = 0;
+        fread(&iseen, sizeof(int), 1, f);
+        seen = iseen;
+    }
+    printf("Major: %d Minor: %d Revision: %d Seen: %d\n", major, minor, revision, seen);
+    
+    for (int i = 0; i < opt_layer.size(); ++i) {
+        LayerOption &opt = opt_layer[i];
+        if (opt["type"] == "Convolution") {
+            if (opt.find("batchnorm") != opt.end()) {
+                layer[i + 1].load_raw(f);
+            }
+            layer[i].load_raw(f);
+        }
+    }
+    return true;
+}
+
 void Neural_Network::addOutput(string name) {
     output_layer.push_back(name);
 }
@@ -337,6 +372,8 @@ void Neural_Network::compile(int batch_size_) {
         } else if (opt["type"] == "YOLOv3") {
             opt["net_width"] = to_string(layer[0].getParameter(0));
             opt["net_height"] = to_string(layer[0].getParameter(1));
+        } else if (opt["type"] == "ShortCut") {
+            opt["shortcut_dimension"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(2));
         }
         layer[i] = Model_Layer(opt);
         layer_number++;
@@ -383,8 +420,6 @@ vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
         LayerOption &opt = opt_layer[i];
         act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), &args);
         terminal[opt["name"]] = act;
-//        if (opt["type"] == "BatchNormalization")
-//            cout << *act;
 //        cout << opt["name"] << ": ";
 //        act->showWeight();
     }
@@ -452,6 +487,15 @@ float Neural_Network::Backward(vfloat& target) {
                 layer[path[2][i]].Backward();
             }
             loss *= 0.5;
+        }
+    } else if (model == "yolov3") {
+        loss += layer[path[0][0]].Backward(target);
+        for (int i = 1; i < path[0].size(); ++i) {
+            layer[path[0][i]].Backward();
+        }
+        loss += layer[path[1][0]].Backward(target);
+        for (int i = 1; i < path[1].size(); ++i) {
+            layer[path[1][i]].Backward();
         }
     }
     return loss;

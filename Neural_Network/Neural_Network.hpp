@@ -41,6 +41,7 @@ public:
     void ClearGrad();
     bool save(const char *model_name);
     bool load(const char *model_name, int batch_size_ = 1);
+    bool load_darknet(const char *weights_name);
     vector<Train_Args> getTrainArgs();
     void alloc_workspace();
 private:

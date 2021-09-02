@@ -190,6 +190,32 @@ Mat& Mat::operator=(std::initializer_list<float> list) {
     return *this;
 }
 
+ostream& operator<<(ostream& os, Mat& m) {
+    int size = m.width * m.height * m.depth();
+    if (m.type == MAT_8UC1 || m.type == MAT_8UC3) {
+        unsigned char *ptr = m.ptr();
+        for (int i = size; i--; )
+            std::cout << *(ptr++) << " ";
+    } else if (m.type == MAT_8SC1 || m.type == MAT_8SC3) {
+        char *ptr = (char*)m.ptr();
+        for (int i = size; i--; )
+            std::cout << *(ptr++) << " ";
+    } else if (m.type == MAT_32UC1 || m.type == MAT_32UC3) {
+        unsigned int *ptr = (unsigned int *)m.ptr();
+        for (int i = size; i--; )
+            std::cout << *(ptr++) << " ";
+    } else if (m.type == MAT_32SC1 || m.type == MAT_32SC3) {
+        int *ptr = (int *)m.ptr();
+        for (int i = size; i--; )
+            std::cout << *(ptr++) << " ";
+    } else if (m.type == MAT_32FC1 || m.type == MAT_32FC3) {
+        float *ptr = (float *)m.ptr();
+        for (int i = size; i--; )
+            std::cout << *(ptr++) << " ";
+    }
+    return os;
+}
+
 Mat Mat::convertTo(MatType dstType, float scale, float shift) {
     Mat dst(width, height, dstType);
     if (depth() != getDepth(dstType)) {
@@ -254,41 +280,81 @@ Mat Mat::add(Mat &addend_, MatType dstType_) {
     return dst;
 }
 
-Mat Mat::divide(Mat &dividend_, MatType dstType_) {
-    if (depth() != dividend_.depth()) {
+Mat Mat::divide(Mat &divisor_, MatType dstType_) {
+    if (depth() != divisor_.depth()) {
         printf("[Mat][Divide] Channel unmatched!\n");
         return Mat();
     }
-    if (!(width == dividend_.width && height == dividend_.height)) {
+    if (!(width == divisor_.width && height == divisor_.height)) {
         printf("[Mat][Divide] Size unmatched!\n");
         return Mat();
     }
     
     
     MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
-    Mat dividend = dividend_.convertTo(dstType);
+    Mat divisor = divisor_.convertTo(dstType);
     Mat dst(width, height, dstType);
     
     TernaryFunc divideFunc = getdivideMatFunc(type, dstType);
     if (getDepth(dstType) == 3)
-        divideFunc(data, dividend.ptr(), dst.ptr(), width * height * 3);
+        divideFunc(data, divisor.ptr(), dst.ptr(), width * height * 3);
     else
-        divideFunc(data, dividend.ptr(), dst.ptr(), width * height);
+        divideFunc(data, divisor.ptr(), dst.ptr(), width * height);
+    return dst;
+}
+
+Mat Mat::multiply(Mat &multiplier_, MatType dstType_) {
+    if (depth() != multiplier_.depth()) {
+        printf("[Mat][Multiply] Channel unmatched!\n");
+        return Mat();
+    }
+    if (!(width == multiplier_.width && height == multiplier_.height)) {
+        printf("[Mat][Multiply] Size unmatched!\n");
+        return Mat();
+    }
+    
+    
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat multiplier = multiplier_.convertTo(dstType);
+    Mat dst(width, height, dstType);
+    
+    TernaryFunc multiplyFunc = getmultiplyMatFunc(type, dstType);
+    if (getDepth(dstType) == 3)
+        multiplyFunc(data, multiplier.ptr(), dst.ptr(), width * height * 3);
+    else
+        multiplyFunc(data, multiplier.ptr(), dst.ptr(), width * height);
+    return dst;
+}
+
+Mat Mat::scale(float scale, MatType dstType_) {
+    MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
+    Mat dst(width, height, dstType);
+    
+    Mat gain(1, 1, MAT_32FC1, Scalar(scale));
+    ConvTool tool(type, dstType, gain);
+    tool.start(*this, dst);
+    
     return dst;
 }
 
 Mat Mat::addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType) {
     
-    Mat src1(width, height, type);
-    Mat gain_alpha(1, 1, MAT_32FC1, Scalar(alpha));
-    ConvTool stage_1(type, dstType, gain_alpha);
-    stage_1.start(*this, src1);
-    Mat src2(width, height, type);
-    Mat gain_beta(1, 1, MAT_32FC1, Scalar(beta));
-    ConvTool stage_2(addend.getType(), dstType, gain_beta);
-    stage_2.start(addend, src2);
+//    Mat src1(width, height, type);
+//    Mat gain_alpha(1, 1, MAT_32FC1, Scalar(alpha));
+//    ConvTool stage_1(type, dstType, gain_alpha);
+//    stage_1.start(*this, src1);
+//
+//    Mat src2(width, height, type);
+//    Mat gain_beta(1, 1, MAT_32FC1, Scalar(beta));
+//    ConvTool stage_2(addend.getType(), dstType, gain_beta);
+//    stage_2.start(addend, src2);
+    
+    Mat src1 = this->scale(alpha, dstType);
+    Mat src2 = addend.scale(beta, dstType);
     
     Mat dst = src1.add(src2, dstType);
+    src1.release();
+    src2.release();
     Mat gain_gamma(width, height, dstType, Scalar(gamma, gamma, gamma));
     dst = dst.add(gain_gamma);
     
@@ -318,6 +384,12 @@ Mat Mat::absScale(float scale, float alpha) {
         }
     }
     return dst;
+}
+
+void Mat::scale_channel(int channel, float scale) {
+    Mat gain(1, 1, MAT_32FC1, Scalar(scale));
+    ConvTool tool(type, type, gain);
+    tool.start(*this, *this, channel);
 }
 
 void Mat::fillWith(Scalar &s) {
@@ -389,7 +461,7 @@ TernaryFunc getaddMatFunc(MatType srcType, MatType dstType) {
 }
 
 TernaryFunc getdivideMatFunc(MatType srcType, MatType dstType) {
-    static TernaryFunc addTable[5][5] = {
+    static TernaryFunc divideTable[5][5] = {
         {divideMat<unsigned char, unsigned char>, divideMat<unsigned char, char>, divideMat<unsigned char, unsigned int>, divideMat<unsigned char, int>, divideMat<unsigned char, float>},
         {divideMat<char, unsigned char>, divideMat<char, char>, divideMat<char, unsigned int>, divideMat<char, int>, divideMat<char, float>},
         {divideMat<unsigned int, unsigned char>, divideMat<unsigned int, char>, divideMat<unsigned int, unsigned int>, divideMat<unsigned int, int>, divideMat<unsigned int, float>},
@@ -397,7 +469,19 @@ TernaryFunc getdivideMatFunc(MatType srcType, MatType dstType) {
         {divideMat<float, unsigned char>, divideMat<float, char>, divideMat<float, unsigned int>, divideMat<float, int>, divideMat<float, float>}
     };
     
-    return addTable[srcType >> 1][dstType >> 1];
+    return divideTable[srcType >> 1][dstType >> 1];
+}
+
+TernaryFunc getmultiplyMatFunc(MatType srcType, MatType dstType) {
+    static TernaryFunc multiplyTable[5][5] = {
+        {multiplyMat<unsigned char, unsigned char>, multiplyMat<unsigned char, char>, multiplyMat<unsigned char, unsigned int>, multiplyMat<unsigned char, int>, multiplyMat<unsigned char, float>},
+        {multiplyMat<char, unsigned char>, multiplyMat<char, char>, multiplyMat<char, unsigned int>, multiplyMat<char, int>, multiplyMat<char, float>},
+        {multiplyMat<unsigned int, unsigned char>, multiplyMat<unsigned int, char>, multiplyMat<unsigned int, unsigned int>, multiplyMat<unsigned int, int>, multiplyMat<unsigned int, float>},
+        {multiplyMat<int, unsigned char>, multiplyMat<int, char>, multiplyMat<int, unsigned int>, multiplyMat<int, int>, multiplyMat<int, float>},
+        {multiplyMat<float, unsigned char>, multiplyMat<float, char>, multiplyMat<float, unsigned int>, multiplyMat<float, int>, multiplyMat<float, float>}
+    };
+    
+    return multiplyTable[srcType >> 1][dstType >> 1];
 }
 
 int getDepth(MatType type) {
@@ -422,7 +506,7 @@ int getDepth(MatType type) {
 // End Mat
 
 // ConvTool
-void ConvTool::start(Mat &src, Mat &dst) {
+void ConvTool::start(Mat &src, Mat &dst, int channel) {
     if (kernel.depth() != 1) {
         printf("[Mat][ConvTool] Only accept 1 channel kernel!\n");
         return;
@@ -440,87 +524,87 @@ void ConvTool::start(Mat &src, Mat &dst) {
     if (srcType == MAT_8UC1 || srcType == MAT_8UC3) {
         if (dstType == MAT_8UC1 || dstType == MAT_8UC3) {
             ConvEngine<unsigned char, unsigned char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_8SC1 || dstType == MAT_8SC3) {
             ConvEngine<unsigned char, char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32UC1 || dstType == MAT_32UC3) {
             ConvEngine<unsigned char, unsigned int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32SC1 || dstType == MAT_32SC3) {
             ConvEngine<unsigned char, int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32FC1 || dstType == MAT_32FC3) {
             ConvEngine<unsigned char, float> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         }
     } else if (srcType == MAT_8SC1 || srcType == MAT_8SC3) {
         if (dstType == MAT_8UC1 || dstType == MAT_8UC3) {
             ConvEngine<char, unsigned char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_8SC1 || dstType == MAT_8SC3) {
             ConvEngine<char, char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32UC1 || dstType == MAT_32UC3) {
             ConvEngine<char, unsigned int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32SC1 || dstType == MAT_32SC3) {
             ConvEngine<char, int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32FC1 || dstType == MAT_32FC3) {
             ConvEngine<char, float> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         }
     } else if (srcType == MAT_32UC1 || srcType == MAT_32UC3) {
         if (dstType == MAT_8UC1 || dstType == MAT_8UC3) {
             ConvEngine<unsigned int, unsigned char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_8SC1 || dstType == MAT_8SC3) {
             ConvEngine<unsigned int, char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32UC1 || dstType == MAT_32UC3) {
             ConvEngine<unsigned int, unsigned int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32SC1 || dstType == MAT_32SC3) {
             ConvEngine<unsigned int, int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32FC1 || dstType == MAT_32FC3) {
             ConvEngine<unsigned int, float> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         }
     } else if (srcType == MAT_32SC1 || srcType == MAT_32SC3) {
         if (dstType == MAT_8UC1 || dstType == MAT_8UC3) {
             ConvEngine<int, unsigned char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_8SC1 || dstType == MAT_8SC3) {
             ConvEngine<int, char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32UC1 || dstType == MAT_32UC3) {
             ConvEngine<int, unsigned int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32SC1 || dstType == MAT_32SC3) {
             ConvEngine<int, int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32FC1 || dstType == MAT_32FC3) {
             ConvEngine<int, float> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         }
     } else if (srcType == MAT_32FC1 || srcType == MAT_32FC3) {
         if (dstType == MAT_8UC1 || dstType == MAT_8UC3) {
             ConvEngine<float, unsigned char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_8SC1 || dstType == MAT_8SC3) {
             ConvEngine<float, char> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32UC1 || dstType == MAT_32UC3) {
             ConvEngine<float, unsigned int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32SC1 || dstType == MAT_32SC3) {
             ConvEngine<float, int> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         } else if (dstType == MAT_32FC1 || dstType == MAT_32FC3) {
             ConvEngine<float, float> engine(dst.depth(), dst.width, dst.height, src.depth(), src.width, kernel.width);
-            engine.process(src.ptr(), dst.ptr(), kernel.ptr());
+            engine.process(src.ptr(), dst.ptr(), kernel.ptr(), channel);
         }
     }
 }

@@ -17,10 +17,10 @@ IMG::IMG() {
     channel = 0;
 }
 
-IMG::IMG(int width_, int height_, int channel_, MatType type_, Scalar color) {
+IMG::IMG(int width_, int height_, MatType type_, Scalar color) {
     width = width_;
     height = height_;
-    channel = channel_;
+    channel = getDepth(type_);
     type = type_;
     if (!(color.val[0] == 0 && color.val[1] == 0 && color.val[2] == 0)) {
         mat = Mat(width_, height_, type_, color);
@@ -30,7 +30,7 @@ IMG::IMG(int width_, int height_, int channel_, MatType type_, Scalar color) {
 }
 
 IMG::IMG(const char *filename) {
-    width = 0; height = 0; channel = 0;
+    width = 0; height = 0;
     ImageType image_type = getType(filename);
     if (image_type == ImageType::JPEG) {
         class JPEG img(filename);
@@ -46,7 +46,7 @@ IMG::IMG(const char *filename) {
         height = img.getHeight();
         channel = img.getChannel();
         type = MAT_8UC3;
-        if (channel == 1)
+        if (img.getChannel() == 1)
             type = MAT_8UC1;
         mat = Mat(width, height, type, img.getPixel());
         Info = img.getPicInfo();
@@ -64,7 +64,7 @@ IMG::IMG(const char *filename) {
     } else if (image_type == ImageType::PGM) {
         FILE *f = fopen(filename, "r");
         fscanf(f, "P5\n%d %d\n255\n", &width, &height);
-        channel = 3;
+        channel = 1;
         type = MAT_8UC1;
         unsigned char *pixel_array = new unsigned char [width * height];
         fread(pixel_array, sizeof(unsigned char), width * height, f);
@@ -139,6 +139,10 @@ void IMG::release() {
     mat.release();
 }
 
+void IMG::scale_channel(int channel, float scale) {
+    mat.scale_channel(channel, scale);
+}
+
 void IMG::convertTo(MatType type_) {
     type = type_;
     mat = mat.convertTo(type_);
@@ -167,7 +171,7 @@ bool IMG::save(const char *filename, float quality) {
         }
         FILE *f = fopen(filename, "wb");
         fprintf(f, "P6\n%d %d\n255\n", width, height);
-        fwrite(mat.ptr(), sizeof(unsigned char), channel * width * height, f);
+        fwrite(mat.ptr(), sizeof(unsigned char), 3 * width * height, f);
         fclose(f);
         return true;
     } else if (store_type == IMG::ImageType::PGM) {
@@ -177,7 +181,7 @@ bool IMG::save(const char *filename, float quality) {
         }
         FILE *f = fopen(filename, "wb");
         fprintf(f, "P5\n%d %d\n255\n", width, height);
-        fwrite(mat.ptr(), sizeof(unsigned char), mat.depth() * width * height, f);
+        fwrite(mat.ptr(), sizeof(unsigned char), width * height, f);
         fclose(f);
         return true;
     } else if (store_type == IMG::ImageType::JPEG) {
@@ -211,7 +215,7 @@ IMG IMG::resize(Size size, float factor_w, float factor_h, int method) {
         return IMG();
     }
     
-    IMG result(dst_width, dst_height, channel, type);
+    IMG result(dst_width, dst_height, type);
     
     switch(method) {
         case BILINEAR:
@@ -290,7 +294,7 @@ IMG IMG::crop(Rect rect) {
     int y1 = rect.y1, y2 = rect.y2;
     int w = x2 - x1 + 1;
     int h = y2 - y1 + 1;
-    IMG result(w, h, channel, type);
+    IMG result(w, h, type);
     
     Mat &dst = result.getMat();
     int dst_elemsize = dst.elemSize();
@@ -316,12 +320,26 @@ IMG IMG::crop(Rect rect) {
     return result;
 }
 
-IMG IMG::convertGray() {
+IMG IMG::convert(ConvertMethod method) {
+    switch (method) {
+        case RGB_TO_GRAY:
+            return convert_rgb_to_gray();
+        case RGB_TO_HSV:
+            return convert_rgb_to_hsv();
+        case HSV_TO_RGB:
+            return convert_hsv_to_rgb();
+        default:
+            break;
+    }
+    return IMG();
+}
+
+IMG IMG::convert_rgb_to_gray() {
     if (type != MAT_8UC3) {
-        printf("[IMG][ConvertGray] Unsupport!\n");
+        printf("[IMG][RGB->GRAY] Unsupport!\n");
         return IMG();
     }
-    IMG result(width, height, 1, MAT_8UC1);
+    IMG result(width, height, MAT_8UC1);
     
     Mat &dst = result.getMat();
     unsigned char *src_ptr = mat.ptr();
@@ -335,6 +353,111 @@ IMG IMG::convertGray() {
     return result;
 }
 
+IMG IMG::convert_rgb_to_hsv() {
+    if (type != MAT_8UC3) {
+        printf("[IMG][RGB->HSV] Unsupport!\n");
+        return IMG();
+    }
+    
+    IMG result(width, height, MAT_32FC3);
+    
+    Mat &src = mat;
+    Mat &dst = result.getMat();
+    
+    unsigned char *src_ptr = src.ptr();
+    float *dst_ptr = (float*)dst.ptr();
+    float scale = 1.0 / 255;
+    int size = width * height;
+    float r, g, b;
+    float h, s, v;
+    
+    for (int i = size; i--; ) {
+        r = src_ptr[0] * scale;
+        g = src_ptr[1] * scale;
+        b = src_ptr[2] * scale;
+        float maximum = max(r, max(g, b));
+        float minimum = min(r, min(g, b));
+        float delta = maximum - minimum;
+        v = maximum;
+        if (maximum == 0){
+            s = 0;
+            h = 0;
+        } else {
+            s = delta / maximum;
+            if(r == maximum){
+                h = (g - b) / delta;
+            } else if (g == maximum) {
+                h = 2 + (b - r) / delta;
+            } else {
+                h = 4 + (r - g) / delta;
+            }
+            if (h < 0)
+                h += 6;
+            h = h / 6.0;
+        }
+        dst_ptr[0] = h;
+        dst_ptr[1] = s;
+        dst_ptr[2] = v;
+        
+        src_ptr += 3;
+        dst_ptr += 3;
+    }
+    return result;
+}
+
+IMG IMG::convert_hsv_to_rgb() {
+    if (type != MAT_32FC3) {
+        printf("[IMG][HSV->RGB] Unsupport!\n");
+        return IMG();
+    }
+    
+    IMG result(width, height, MAT_8UC3);
+    
+    Mat &dst = result.getMat();
+    float *src_ptr = (float*)mat.ptr();
+    unsigned char *dst_ptr = dst.ptr();
+    int size = width * height;
+    float r, g, b;
+    float h, s, v;
+    float f, p, q, t;
+    
+    for (int i = size; i--; ) {
+        h = 6 * src_ptr[0];
+        s = src_ptr[1];
+        v = src_ptr[2];
+        if (s == 0) {
+            r = g = b = v;
+        } else {
+            int index = floor(h);
+            f = h - index;
+            p = v * (1 - s);
+            q = v * (1 - s * f);
+            t = v * (1 - s * (1 - f));
+            if(index == 0){
+                r = v; g = t; b = p;
+            } else if (index == 1) {
+                r = q; g = v; b = p;
+            } else if (index == 2) {
+                r = p; g = v; b = t;
+            } else if (index == 3) {
+                r = p; g = q; b = v;
+            } else if (index == 4) {
+                r = t; g = p; b = v;
+            } else {
+                r = v; g = p; b = q;
+            }
+        }
+        dst_ptr[0] = saturate_cast<unsigned char>(r * 255);
+        dst_ptr[1] = saturate_cast<unsigned char>(g * 255);
+        dst_ptr[2] = saturate_cast<unsigned char>(b * 255);
+        
+        src_ptr += 3;
+        dst_ptr += 3;
+    }
+    
+    return result;
+}
+
 IMG IMG::filter(Mat kernel, MatType dstType) {
     if (kernel.width != kernel.height) {
         printf("Unsupport!\n");
@@ -344,14 +467,12 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
         printf("Unsupport!\n");
         return IMG();
     }
-    //    if (mat.depth() != getDepth(dstType)) {
-    //        printf("[IMG][Filter] Channel unmatched!\n");
-    //        return IMG();
-    //    }
+    if (mat.depth() != getDepth(dstType)) {
+        printf("[IMG][Filter] Channel unmatched!\n");
+        return IMG();
+    }
     
-    int result_channel = (dstType == MAT_UNDEFINED) ?  mat.depth() : ((dstType % 2) ? 3 : 1);
-    
-    IMG result(width, height, result_channel, (dstType == MAT_UNDEFINED) ? type : dstType);
+    IMG result(width, height, (dstType == MAT_UNDEFINED) ? type : dstType);
     
     Mat &dst = result.getMat();
     
@@ -371,7 +492,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
         return IMG();
     }
     
-    IMG result(width, height, channel, type);
+    IMG result(width, height, type);
     int radius = (radius_ == 0) ? floor(sigma_x_ * 2.57) + 1 : (int)radius_ + 1;
     float sigma_x = (sigma_x_ == 0) ? 1.0 * radius / 2.57 : sigma_x_;
     float sigma_y = (sigma_y_ == 0) ? 1.0 * radius / 2.57 : sigma_y_;
@@ -462,7 +583,7 @@ IMG IMG::median_blur(int radius) {
         printf("[IMG][Median_blur] Unsupport type!\n");
         return IMG();
     }
-    IMG dst(width, height, channel, type);
+    IMG dst(width, height, type);
     
     int padding = (radius - 1) / 2;
     int x, y;
@@ -517,7 +638,7 @@ IMG IMG::sobel() {
     int sobel_x[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
     int sobel_y[] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
     
-    IMG result(width, height, 1, MAT_8UC1);
+    IMG result(width, height, MAT_8UC1);
     
     int index_filter;
     unsigned char *src_ptr = mat.ptr();
@@ -563,6 +684,7 @@ IMG IMG::laplacian(float gain_) {
 IMG IMG::canny(float threshold1, float threshold2) {
     if (mat.depth() != 1) {
         printf("[IMG][Canny] Only accept grayscale!\n");
+        return IMG();
     }
     Canny CannyTool(threshold1, threshold2);
     return CannyTool.start(*this);
@@ -573,7 +695,7 @@ IMG IMG::threshold(unsigned char threshold, unsigned char max) {
         printf("[IMG][Threshold] Only accept grayscale!\n");
         return IMG();
     }
-    IMG result(width, height, channel, MAT_8UC1);
+    IMG result(width, height, MAT_8UC1);
     
     Mat &dst = result.getMat();
     unsigned char *dst_ptr = dst.ptr();
@@ -594,7 +716,7 @@ IMG IMG::dilate(Kernel kernel) {
         printf("[IMG][Dilate] Kernel unsupport!\n");
         return IMG();
     }
-    IMG result(width, height, channel, MAT_8UC1);
+    IMG result(width, height, MAT_8UC1);
     
     int x, y;
     int coordinate_w, coordinate_h;
@@ -636,7 +758,7 @@ IMG IMG::erode(Kernel kernel) {
         printf("[IMG][Erode] Kernel unsupport!\n");
         return IMG();
     }
-    IMG result(width, height, channel, MAT_8UC1);
+    IMG result(width, height, MAT_8UC1);
     
     int x, y;
     int coordinate_w, coordinate_h;
@@ -678,7 +800,7 @@ IMG IMG::opening(Kernel kernel) {
         printf("[IMG][Opening] Kernel unsupport!\n");
         return IMG();
     }
-    IMG result(width, height, channel);
+    IMG result(width, height);
     result = this->erode(kernel);
     result = result.dilate(kernel);
     return result;
@@ -693,7 +815,7 @@ IMG IMG::closing(Kernel kernel) {
         printf("Unsupport!\n");
         return IMG();
     }
-    IMG result(width, height, channel);
+    IMG result(width, height);
     result = this->dilate(kernel);
     result = result.erode(kernel);
     return result;
@@ -709,7 +831,7 @@ IMG IMG::add(IMG &addend, MatType dstType) {
         return IMG();
     }
     
-    IMG dst_img(width, height, mat.depth(), (dstType == MAT_UNDEFINED) ? type : dstType);
+    IMG dst_img(width, height, (dstType == MAT_UNDEFINED) ? type : dstType);
     Mat &src1 = mat;
     Mat &src2 = addend.getMat();
     Mat &dst = dst_img.getMat();
@@ -728,11 +850,20 @@ IMG IMG::subtract(IMG &minuend, MatType dstType) {
         return IMG();
     }
     
-    IMG dst_img(width, height, mat.depth(), (dstType == MAT_UNDEFINED) ? type : dstType);
+    IMG dst_img(width, height, (dstType == MAT_UNDEFINED) ? type : dstType);
     Mat &src1 = mat;
     Mat &src2 = minuend.getMat();
     Mat &dst = dst_img.getMat();
     dst = src1.subtract(src2, dstType);
+    
+    return dst_img;
+}
+
+IMG IMG::scale(float scale, MatType dstType) {
+    IMG dst_img = *this;
+    dst_img.convertTo((dstType == MAT_UNDEFINED) ? type : dstType);
+    Mat &dst_mat = dst_img.getMat();
+    dst_mat = dst_mat.scale(scale);
     
     return dst_img;
 }
@@ -748,7 +879,7 @@ IMG IMG::addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType 
     }
     MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
     
-    IMG dst_img(width, height, mat.depth(), dstType);
+    IMG dst_img(width, height, dstType);
     Mat &src1 = mat;
     Mat &src2 = addend.getMat();
     Mat &dst = dst_img.getMat();
@@ -759,12 +890,29 @@ IMG IMG::addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType 
 
 IMG IMG::convertScaleAbs(float scale, float alpha) {
     MatType dstType = (mat.depth() == 3) ? MAT_8UC3 : MAT_8UC1;
-    IMG dst_img(width, height, mat.depth(), dstType);
+    IMG dst_img(width, height, dstType);
     Mat &dst = dst_img.getMat();
     dst = mat.absScale(scale, alpha);
     dst = dst.convertTo(dstType);
     
     return dst_img;
+}
+
+IMG IMG::hsv_distort(float hue, float sat, float expo) {
+    IMG result = this->convert(RGB_TO_HSV);
+    result.scale_channel(1, sat);
+    result.scale_channel(2, expo);
+    float *ptr = (float*)result.getMat().ptr();
+    
+    for (int i = width * height; i--; ) {
+        *(ptr) = *(ptr) + hue;
+        if (*(ptr) > 1)
+            *(ptr) -= 1;
+        if (*(ptr) < 0)
+            *(ptr) += 1;
+        ptr += 3;
+    }
+    return result.convert(HSV_TO_RGB);
 }
 
 IMG IMG::local_color_correction(float radius) {
@@ -783,9 +931,7 @@ IMG IMG::local_color_correction(float radius) {
         *(mid_stage_ptr++) = 255 - ((src_ptr[0] + src_ptr[1] + src_ptr[2]) / 3);
         src_ptr += 3;
     }
-    printf("average\n");
     mid_stage = mid_stage.gaussian_blur(radius);
-    printf("gaussian\n");
     
     IMG dst(mat.width, mat.height, MAT_8UC3);
     
@@ -801,7 +947,6 @@ IMG IMG::local_color_correction(float radius) {
         }
         ++mid_stage_ptr;
     }
-    printf("final\n");
     
     return dst;
 }
@@ -820,6 +965,24 @@ void IMG::paste(IMG &img, Point p) {
                 dst[0] = src[0];
                 dst[1] = src[1];
                 dst[2] = src[2];
+            }
+        }
+    }
+}
+
+void IMG::flip() {
+    if (type != MAT_8UC1 && type != MAT_8UC3) {
+        printf("[IMG][Flip] Unsupport type!\n");
+        return;
+    }
+    
+    int row_size = width * channel;
+    unsigned char *ptr;
+    for (int h = 0; h < height; ++h) {
+        ptr = mat.ptr<unsigned char>(h);
+        for (int w = 0; w < width / 2 * channel; w += channel) {
+            for (int c = 0; c < channel; ++c) {
+                swap(*(ptr + w + c), *(ptr + row_size - w + c));
             }
         }
     }
@@ -849,7 +1012,7 @@ void IMG::histogram(Size size, int resolution, const char *histogram_name) {
         calc[d] = normalize(calc[d], 0, size.height);
     }
     
-    IMG histo(size.width, size.height, 3, MAT_8UC3, Scalar(255, 255, 255));
+    IMG histo(size.width, size.height, MAT_8UC3, Scalar(255, 255, 255));
     Color color_table[3] = {RED, GREEN, BLUE};
     if (depth == 1)
         color_table[0] = BLACK;

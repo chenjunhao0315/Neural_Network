@@ -297,8 +297,8 @@ YOLOv3::YOLOv3(int classes_) {
     classes = classes_;
     net_width = 416;
     net_height = 416;
-
-    network = Neural_Network();
+    
+    network = Neural_Network("yolov3");
     network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
     // Conv_1
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_1"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
@@ -330,15 +330,15 @@ YOLOv3::YOLOv3(int classes_) {
     // Conv_8
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_8"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
     // End Conv_8
-
+    
     // Conv_lobj_branch
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_lobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
     // End Conv_lobj_branch
     // Conv_lbbox
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_lbbox"}});
     // End Conv_lbbox
-    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"name", "yolo_small"}});
-
+    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"max_boxes", "90"}, {"name", "yolo_small"}});
+    
     // Conv_9
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_9"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"input_name", "lr_conv_8"}});
     // End Conv_9
@@ -351,11 +351,12 @@ YOLOv3::YOLOv3(int classes_) {
     // Conv_sbbox
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
     // End Conv_sbbox
-    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"name", "yolo_big"}});
+    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"max_boxes", "90"}, {"name", "yolo_big"}});
 
     network.addOutput("yolo_small");
     network.addOutput("yolo_big");
     network.compile();
+    network.load_darknet("yolov3-tiny.weights");
     network.shape();
 }
 
@@ -368,10 +369,10 @@ YOLOv3::YOLOv3(const char *model_name) {
 vector<Detection> YOLOv3::detect(IMG &input) {
     IMG src_img = yolo_pre_process_img(input, 416, 416);
     Tensor src_tensor(net_width, net_height, 3, 0);
-    convert_index_base_to_channel_base((float *)src_img.getMat().ptr(), src_tensor.weight, 416, 416, 3);
+    convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, 416, 416, 3);
     
     Clock c;
-    vtensorptr feature_map = network.Forward(&src_tensor, true);
+    vtensorptr feature_map = network.Forward(&src_tensor);
     c.stop_and_show();
     
     vector<Detection> dets;
@@ -382,6 +383,7 @@ vector<Detection> YOLOv3::detect(IMG &input) {
     
     yolo_nms(dets, classes, threshold);
     yolo_mark(dets, input, 80, 0.5);
+    input.save("?.jpg");
     
     
     return vector<Detection>();
@@ -424,7 +426,7 @@ void YOLOv3::yolo_nms(vector<Detection> &det_list, int classes ,float threshold)
         else if(diff > 0) return -1;
         return 0;
     };
-
+    
     for(k = 0; k < classes; ++k){
         for(i = 0; i < total; ++i){
             det_list[i].sort_class = k;
@@ -475,7 +477,7 @@ vector<Detection> YOLOv3::yolo_correct_box(Tensor *box_list, int img_w, int img_
 }
 
 IMG YOLOv3::yolo_pre_process_img(IMG &img, int net_w, int net_h) {
-    IMG canvas(net_w, net_h, 3, MAT_8UC3, Scalar(128, 128, 128));
+    IMG canvas(net_w, net_h, MAT_8UC3, Scalar(127, 127, 127));
     
     int img_w  = img.width, img_h = img.height;
     int new_w = int(img_w * min((float)net_w / img_w, (float)net_h / img_h));
@@ -483,8 +485,9 @@ IMG YOLOv3::yolo_pre_process_img(IMG &img, int net_w, int net_h) {
     
     IMG resize = img.resize(Size(new_w, new_h));
     canvas.paste(resize, Point((net_w - new_w) / 2, (net_h - new_h) / 2));
-    Mat gain(1, 1, MAT_32FC1, Scalar(0.00392157));
-    canvas = canvas.filter(gain, MAT_32FC3);
+//    Mat gain(1, 1, MAT_32FC1, Scalar(0.00392157));
+//    canvas = canvas.filter(gain, MAT_32FC3);
+    canvas = canvas.scale(0.00392157, MAT_32FC3);
     return canvas;
 }
 
@@ -501,13 +504,16 @@ YOLOv3_DataLoader::YOLOv3_DataLoader(const char *filename) {
         train_data >> filename;
         int box_num;
         train_data >> box_num;
-        yolo_label label;
+        yolo_label label; label.boxes.reserve(box_num);
         label.filename = filename;
         for (int i = 0; i < box_num; ++i) {
-            Detection det;
-            Box &b = det.bbox;
-            train_data >> b.x >> b.y >> b.w >> b.h >> det.sort_class;
-            label.det.push_back(det);
+            Box_label box;
+            train_data >> box.x >> box.y >> box.w >> box.h >> box.id;
+            box.left = box.x - box.w / 2;
+            box.right = box.x + box.w / 2;
+            box.top = box.y - box.h / 2;
+            box.bottom = box.y + box.h / 2;
+            label.boxes.push_back(box);
         }
         dataset.push_back(label);
     }
@@ -516,16 +522,215 @@ YOLOv3_DataLoader::YOLOv3_DataLoader(const char *filename) {
 
 void YOLOv3_DataLoader::mark_truth(int index) {
     IMG img(dataset[index].filename.c_str());
-    vector<Detection> det = dataset[index].det;
-    for (int i = 0; i < det.size(); ++i) {
+    vector<Box_label> &boxes = dataset[index].boxes;
+    vector<Detection> det; det.resize(boxes.size());
+    for (int i = 0; i < boxes.size(); ++i) {
+        Box_label &box = boxes[i];
         det[i].prob.resize(80);
-        det[i].prob[det[i].sort_class] = 1;
+        det[i].prob[box.id] = 1;
         det[i].objectness = 1;
-        det[i].bbox.x *= img.width;
-        det[i].bbox.w *= img.width;
-        det[i].bbox.y *= img.height;
-        det[i].bbox.h *= img.height;
+        det[i].bbox.x = box.x * img.width;
+        det[i].bbox.w = box.w * img.width;
+        det[i].bbox.y = box.y * img.height;
+        det[i].bbox.h = box.h * img.height;
     }
     yolo_mark(det, img, 80, 0.9);
     img.save();
+}
+
+vector<Box_label> YOLOv3_DataLoader::get_label(int index) {
+    static auto rng = std::mt19937((unsigned)time(NULL));
+    vector<Box_label> &data = dataset[index].boxes;
+    shuffle(data.begin(), data.end(), rng);
+    
+    return data;
+}
+
+IMG YOLOv3_DataLoader::get_img(int index) {
+    return IMG(dataset[index].filename.c_str());
+}
+
+yolo_train_args YOLOv3_DataLoader::get_train_arg(int index) {
+    int net_w = 416;
+    int net_h = 416;
+    float jitter = 0.3;
+    float hue = 0.1;
+    float saturation = 1.5;
+    float exposure = 1.5;
+    
+    IMG origin = get_img(index);
+    
+    int oh = origin.height;
+    int ow = origin.width;
+    
+    int dw = (ow * jitter);
+    int dh = (oh * jitter);
+    
+    float r1 = 0, r2 = 0, r3 = 0, r4 = 0, r_scale;
+    float dhue = 0, dsat = 0, dexp = 0;
+    
+    r1 = Random(0, 1);
+    r2 = Random(0, 1);
+    r3 = Random(0, 1);
+    r4 = Random(0, 1);
+    
+    r_scale = Random(0, 1);
+    
+    dhue = Random(-hue, hue);
+    dsat = Random_scale(saturation);
+    dexp = Random_scale(exposure);
+    
+    bool flip = (Random() > 0);
+    
+    int pleft = Random_precal(-dw, dw, r1);
+    int pright = Random_precal(-dw, dw, r2);
+    int ptop = Random_precal(-dh, dh, r3);
+    int pbot = Random_precal(-dh, dh, r4);
+    
+    float img_ar = (float)ow / (float)oh;
+    float net_ar = (float)net_w/ (float)net_h;
+    float result_ar = img_ar / net_ar;
+    if (result_ar > 1) {
+        float oh_tmp = ow / net_ar;
+        float delta_h = (oh_tmp - oh) / 2;
+        ptop = ptop - delta_h;
+        pbot = pbot - delta_h;
+    }
+    else {
+        float ow_tmp = oh * net_ar;
+        float delta_w = (ow_tmp - ow) / 2;
+        pleft = pleft - delta_w;
+        pright = pright - delta_w;
+    }
+    
+    int swidth = ow - pleft - pright;
+    int sheight = oh - ptop - pbot;
+    
+    float sx = (float)swidth / ow;
+    float sy = (float)sheight / oh;
+    
+    IMG cropped = origin.crop(Rect(pleft, ptop, pleft + swidth, ptop + sheight));
+    
+    float dx = ((float)pleft / ow) / sx;
+    float dy = ((float)ptop / oh) / sy;
+    
+    IMG resize = cropped.resize(Size(net_w, net_h));
+    resize = resize.hsv_distort(dhue, dsat, dexp);
+    
+    vfloat label = get_box(index, dx, dy, 1.0 / sx, 1.0 / sy, flip, net_w, net_h);
+    
+    resize = resize.scale(1.0 / 255.0, MAT_32FC3);
+    Tensor data(net_w, net_h, 3, 0);
+    convert_index_base_to_channel_base((float*)resize.toPixelArray(), data.weight, net_w, net_h, 3);
+    
+    return yolo_train_args(data, label);
+}
+
+vfloat YOLOv3_DataLoader::get_box(int index, float dx, float dy, float sx, float sy, bool flip, int net_w, int net_h) {
+    int max_boxes = 90;
+    float lowest_w = 1.0 / net_w;
+    float lowest_h = 1.0 / net_h;
+    vfloat boxes(5 * max_boxes, 0);
+    vector<Box_label> box_label = get_label(index);
+    correct_box(box_label, dx, dy, sx, sy, flip);
+    
+    float x, y, w, h;
+    int id;
+    int jump = 0;
+    for (int i = 0; i < box_label.size(); ++i) {
+        x = box_label[i].x;
+        y = box_label[i].y;
+        w = box_label[i].w;
+        h = box_label[i].h;
+        id = box_label[i].id;
+        if ((w < lowest_w || h < lowest_h))
+            ++jump;
+        else {
+            boxes[(i - jump) * 5 + 0] = x;
+            boxes[(i - jump) * 5 + 1] = y;
+            boxes[(i - jump) * 5 + 2] = w;
+            boxes[(i - jump) * 5 + 3] = h;
+            boxes[(i - jump) * 5 + 4] = id;
+        }
+    }
+    
+    return boxes;
+}
+
+void YOLOv3_DataLoader::correct_box(vector<Box_label> &boxes, float dx, float dy, float sx, float sy, bool flip) {
+    for (int i = 0; i < boxes.size(); ++i) {
+        if(boxes[i].x == 0 && boxes[i].y == 0) {
+            boxes[i].x = 999999;
+            boxes[i].y = 999999;
+            boxes[i].w = 999999;
+            boxes[i].h = 999999;
+            continue;
+        }
+        if ((boxes[i].x + boxes[i].w / 2) < 0 || (boxes[i].y + boxes[i].h / 2) < 0 ||
+            (boxes[i].x - boxes[i].w / 2) > 1 || (boxes[i].y - boxes[i].h / 2) > 1)
+        {
+            boxes[i].x = 999999;
+            boxes[i].y = 999999;
+            boxes[i].w = 999999;
+            boxes[i].h = 999999;
+            continue;
+        }
+        boxes[i].left   = boxes[i].left  * sx - dx;
+        boxes[i].right  = boxes[i].right * sx - dx;
+        boxes[i].top    = boxes[i].top   * sy - dy;
+        boxes[i].bottom = boxes[i].bottom* sy - dy;
+        
+        if(flip){
+            float swap = boxes[i].left;
+            boxes[i].left = 1. - boxes[i].right;
+            boxes[i].right = 1. - swap;
+        }
+        
+        boxes[i].left = constrain(0, 1, boxes[i].left);
+        boxes[i].right = constrain(0, 1, boxes[i].right);
+        boxes[i].top = constrain(0, 1, boxes[i].top);
+        boxes[i].bottom = constrain(0, 1, boxes[i].bottom);
+        
+        boxes[i].x = (boxes[i].left + boxes[i].right)/2;
+        boxes[i].y = (boxes[i].top + boxes[i].bottom)/2;
+        boxes[i].w = (boxes[i].right - boxes[i].left);
+        boxes[i].h = (boxes[i].bottom - boxes[i].top);
+        
+        boxes[i].w = constrain(0, 1, boxes[i].w);
+        boxes[i].h = constrain(0, 1, boxes[i].h);
+    }
+}
+
+void YOLOv3_Trainer::train(int epoch) {
+    //    int batch_size = network->getBatchSize();
+    //    auto rng = std::mt19937((unsigned)time(NULL));
+    //    vector<int> index; index.reserve(loader->size());
+    //    float loss = 0;
+    //    size_t data_set_size = loader->size();
+    //    for (int i = 0; i < data_set_size; ++i) {
+    //        index.push_back(i);
+    //    }
+    //    for (int i = 0; i < epoch; ++i) {
+    //        printf("Epoch %d Training[", i + 1);
+    //        loss = 0;
+    //        shuffle(index.begin(), index.end(), rng);
+    //        for (int j = 0; j + batch_size <= data_set_size; ) {
+    //            Tensor data(1, 1, 416 * 416 * batch_size, 0);
+    //            float *data_ptr = data.weight;
+    //            vfloat label; label.reserve(5 * 90 * batch_size);
+    //            for (int k = 0; k < batch_size; ++k, ++j) {
+    //                Tensor src = loader->get_img(index[j]);
+    ////                vfloat l = loader->get_label(index[j], 90);
+    //                vfloat l;
+    //                float *src_ptr = src.weight;
+    //                for (int l = 0; l < src.size; ++l) {
+    //                    *(data_ptr++) = *(src_ptr++);
+    //                }
+    //                label.insert(label.end(), l.begin(), l.end());
+    //            }
+    //            loss += trainer->train_batch(data, label)[0];
+    //        }
+    //        printf("] ");
+    //        printf("loss: %f\n", loss);
+    //    }
 }

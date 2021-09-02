@@ -75,7 +75,7 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     delta_weight = new float [size]();
     
     // assign random value
-    float scale = sqrt(1.0 / size);
+    float scale = sqrt(2.0 / size);
     for (int i = size; --i; ) {
         weight[i] = randn(0.0, scale);
     }
@@ -242,6 +242,10 @@ void Tensor::load(FILE *f) {
     fread(&size, sizeof(int), 1, f);
     delete [] weight;
     weight = new float [size];
+    fread(weight, sizeof(float), size, f);
+}
+
+void Tensor::load_raw(FILE *f) {
     fread(weight, sizeof(float), size, f);
 }
 

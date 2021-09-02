@@ -15,6 +15,8 @@
 
 #include "Cast.hpp"
 
+using std::ostream;
+
 enum MatType {
     MAT_8UC1 = 0,
     MAT_8UC3 = 1,
@@ -60,6 +62,8 @@ public:
     Mat& operator=(const Mat &M);
     Mat& operator=(std::initializer_list<float> list);
     
+    friend ostream& operator<<(ostream& os, Mat& m);
+    
     void release();
     int depth();
     int elemSize() {return step[1];}
@@ -71,9 +75,13 @@ public:
     
     Mat subtract(Mat &minuend, MatType dstType = MAT_UNDEFINED);
     Mat add(Mat &addend, MatType dstType = MAT_UNDEFINED);
-    Mat divide(Mat &dividend, MatType dstType = MAT_UNDEFINED);
+    Mat divide(Mat &divisor, MatType dstType = MAT_UNDEFINED);
+    Mat multiply(Mat &multiplier, MatType dstType = MAT_UNDEFINED);
+    Mat scale(float scale, MatType dstType = MAT_UNDEFINED);
     Mat addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType);
     Mat absScale(float scale = 1, float alpha = 0);
+    
+    void scale_channel(int channel, float scale);
     
     template <typename T>
     T* ptr(int index);
@@ -149,6 +157,11 @@ void divideMat(void *src1, void *src2, void *dst, int total_elements);
 
 TernaryFunc getdivideMatFunc(MatType srcType, MatType dstType);
 
+template <typename srcType, typename dstType>
+void multiplyMat(void *src1, void *src2, void *dst, int total_elements);
+
+TernaryFunc getmultiplyMatFunc(MatType srcType, MatType dstType);
+
 
 template <typename T>
 class Vec3 {
@@ -166,7 +179,7 @@ private:
 class ConvTool {
 public:
     ConvTool(MatType srcType_, MatType dstType_, Mat &kernel_) : srcType(srcType_), dstType(dstType_), kernel(kernel_) {}
-    void start(Mat &src, Mat &dst);
+    void start(Mat &src, Mat &dst, int channel = -1);
 private:
     MatType srcType;
     MatType dstType;
@@ -177,9 +190,10 @@ template <typename srcType, typename dstType>
 class ConvEngine {
 public:
     ConvEngine(int dst_channel_, int dst_width_, int dst_height_, int src_channel_,  int src_width_, int kernel_size_) : dst_channel(dst_channel_), dst_width(dst_width_), dst_height(dst_height_), src_channel(src_channel_), src_width(src_width_), kernel_size(kernel_size_) {}
-    void process(void *src, void *dst, void *kernel);
+    void process(void *src, void *dst, void *kernel, int channel = -1);
 private:
     void convSize1(void *src, void *dst, void *kernel);
+    void convSize1_c(void *src, void *dst, void *kernel, int channel);
     void convDefinition(void *src, void *dst, void *kernel);
     int dst_channel;
     int dst_width;
@@ -263,13 +277,26 @@ void divideMat(void *src1, void *src2, void *dst, int total_elements) {
     }
 }
 
+template <typename srcType, typename dstType>
+void multiplyMat(void *src1, void *src2, void *dst, int total_elements) {
+    srcType *src1_ptr = (srcType*)src1;
+    dstType *src2_ptr = (dstType*)src2;
+    dstType *dst_ptr = (dstType*)dst;
+    for (int i = total_elements; i--; ) {
+        *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) * *(src2_ptr++));
+    }
+}
+
 // End Mat
 
 // ConvEngine
 template <typename srcType, typename dstType>
-void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel) {
+void ConvEngine<srcType, dstType>::process(void *src, void *dst, void *kernel, int channel) {
     if (kernel_size == 1) {
-        convSize1(src, dst, kernel);
+        if (channel == -1)
+            convSize1(src, dst, kernel);
+        else
+            convSize1_c(src, dst, kernel, channel);
     } else {
         convDefinition(src, dst, kernel);
     }
@@ -320,6 +347,20 @@ void ConvEngine<srcType, dstType>::convSize1(void *src, void *dst, void *kernel)
     float kernel_value = *(float *)kernel;
     for (int i = dst_width * dst_height * dst_channel; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src_ptr++) * kernel_value);
+    }
+}
+
+template <typename srcType, typename dstType>
+void ConvEngine<srcType, dstType>::convSize1_c(void *src, void *dst, void *kernel, int channel) {
+    srcType *src_ptr = (srcType*)src;
+    dstType *dst_ptr = (dstType*)dst;
+    float kernel_value = *(float *)kernel;
+    int counter = dst_channel - channel;
+    for (int i = dst_width * dst_height * dst_channel; i--; ) {
+        if ((counter++) % dst_channel == 0)
+            *(dst_ptr++) = saturate_cast<dstType>(*(src_ptr++) * kernel_value);
+        else
+            *(dst_ptr++) = saturate_cast<dstType>(*(src_ptr++));
     }
 }
 

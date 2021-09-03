@@ -653,9 +653,9 @@ int Model_Layer::getWorkspaceSize() {
 Train_Args BaseLayer::getTrainArgs() {
     switch(type) {
         case LayerType::Convolution:
-            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension, info.output_dimension, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
+            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
         case LayerType::Fullyconnected:
-            return Train_Args(kernel, biases, info.input_number, info.output_dimension, info.output_dimension, vfloat{0, 1});
+            return Train_Args(kernel, biases, info.input_number * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
         case LayerType::PRelu:
             return Train_Args(kernel, kernel, info.input_number, 1, 0, vfloat{0, 0});
         case LayerType::BatchNormalization:
@@ -673,10 +673,6 @@ BaseLayer::~BaseLayer() {
         delete [] kernel;
     if (biases)
         delete biases;
-    if (output_index)
-        delete [] output_index;
-    if (input_index)
-        delete [] input_index;
 }
 
 BaseLayer::BaseLayer() {
@@ -684,8 +680,6 @@ BaseLayer::BaseLayer() {
     output_tensor = nullptr;
     kernel = nullptr;
     biases = nullptr;
-    output_index = nullptr;
-    input_index = nullptr;
 }
 
 BaseLayer::BaseLayer(BaseLayer *L) {
@@ -715,18 +709,6 @@ BaseLayer::BaseLayer(BaseLayer *L) {
             biases = new Tensor(L->biases);
         } else {
             biases = nullptr;
-        }
-        if (L->output_index) {
-            output_index = new int [info.output_index_size];
-            memcpy(output_index, L->output_index, sizeof(int) * info.output_index_size);
-        } else {
-            output_index = nullptr;
-        }
-        if (L->input_index) {
-            input_index = new int [info.input_index_size];
-            memcpy(input_index, L->input_index, sizeof(int) * info.input_index_size);
-        } else {
-            input_index = nullptr;
         }
     }
 }
@@ -759,18 +741,6 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
         } else {
             biases = nullptr;
         }
-        if (L.output_index) {
-            output_index = new int [info.output_index_size];
-            memcpy(output_index, L.output_index, sizeof(int) * info.output_index_size);
-        } else {
-            output_index = nullptr;
-        }
-        if (L.input_index) {
-            input_index = new int [info.input_index_size];
-            memcpy(input_index, L.input_index, sizeof(int) * info.input_index_size);
-        } else {
-            input_index = nullptr;
-        }
     }
 }
 
@@ -788,10 +758,6 @@ BaseLayer::BaseLayer(BaseLayer &&L) {
     L.kernel = nullptr;
     biases = L.biases;
     L.biases = nullptr;
-    output_index = L.output_index;
-    L.output_index = nullptr;
-    input_index = L.input_index;
-    L.input_index = nullptr;
 }
 
 BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
@@ -821,18 +787,6 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
             biases = new Tensor(L.biases);
         } else {
             biases = nullptr;
-        }
-        if (L.output_index) {
-            output_index = new int [info.output_index_size];
-            memcpy(output_index, L.output_index, sizeof(int) * info.output_index_size);
-        } else {
-            output_index = nullptr;
-        }
-        if (L.input_index) {
-            input_index = new int [info.input_index_size];
-            memcpy(input_index, L.input_index, sizeof(int) * info.input_index_size);
-        } else {
-            input_index = nullptr;
         }
     }
     return *this;
@@ -913,6 +867,8 @@ void BaseLayer::ClearDeltaWeight() {
 }
 
 bool BaseLayer::save(FILE *f) {
+    int y = 1, n = 0;
+    
     int len = (int)strlen(name.c_str());
     char *name_ = new char [len];
     fwrite(&len, sizeof(int), 1, f);
@@ -932,38 +888,38 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.output_height, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
     } else if (type == LayerType::Fullyconnected) {
-        fwrite(&info.input_number, sizeof(int), 1, f);
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i].save(f);
-        }
+        fwrite((info.batchnorm) ? &y : &n, sizeof(int), 1, f);
+        kernel[0].save(f);
         biases->save(f);
     } else if (type == LayerType::Softmax) {
         int input_number = info.input_number / info.output_dimension;
         fwrite(&input_number, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
     } else if (type == LayerType::Convolution) {
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        fwrite(&info.kernel_width, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.output_dimension, sizeof(int), 1, f);
+        fwrite(&info.kernel_width, sizeof(int), 1, f);
         fwrite(&info.kernel_height, sizeof(int), 1, f);
         fwrite(&info.stride, sizeof(int), 1, f);
         fwrite(&info.padding, sizeof(int), 1, f);
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i].save(f);
-        }
+        fwrite((info.batchnorm) ? &y : &n, sizeof(int), 1, f);
+        kernel[0].save(f);
         biases->save(f);
     } else if (type == LayerType::Relu) {
         fwrite(&info.output_width, sizeof(int), 1, f);
         fwrite(&info.output_height, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
     } else if (type == LayerType::Pooling) {
-        fwrite(&info.kernel_width, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.kernel_width, sizeof(int), 1, f);
         fwrite(&info.kernel_height, sizeof(int), 1, f);
         fwrite(&info.stride, sizeof(int), 1, f);
         fwrite(&info.padding, sizeof(int), 1, f);
@@ -980,6 +936,9 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.output_width, sizeof(int), 1, f);
         fwrite(&info.output_height, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
+        fwrite(&info.shortcut_width, sizeof(int), 1, f);
+        fwrite(&info.shortcut_height, sizeof(int), 1, f);
+        fwrite(&info.shortcut_dimension, sizeof(int), 1, f);
         int len = (int)strlen(opt["shortcut"].c_str());
         fwrite(&len, sizeof(int), 1, f);
         char *output = new char [len];
@@ -1001,6 +960,36 @@ bool BaseLayer::save(FILE *f) {
         kernel[3].save(f);
         kernel[4].save(f);
         biases->save(f);
+    } else if (type == LayerType::UpSample) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.stride, sizeof(int), 1, f);
+        fwrite((info.reverse) ? &y : &n, sizeof(int), 1, f);
+    } else if (type == LayerType::Concat) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.concat_dimension, sizeof(int), 1, f);
+        int len = (int)strlen(opt["concat"].c_str());
+        fwrite(&len, sizeof(int), 1, f);
+        char *output = new char [len];
+        strcpy(output, opt["concat"].c_str());
+        fwrite(output, sizeof(char), len, f);
+    } else if (type == LayerType::YOLOv3) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.total_anchor_num, sizeof(int), 1, f);
+        fwrite(&info.anchor_num, sizeof(int), 1, f);
+        fwrite(&info.classes, sizeof(int), 1, f);
+        fwrite(&info.max_boxes, sizeof(int), 1, f);
+        fwrite(&info.net_width, sizeof(int), 1, f);
+        fwrite(&info.net_height, sizeof(int), 1, f);
+        kernel[0].save(f);
+        biases->save(f);
     }
     
     return true;
@@ -1008,9 +997,7 @@ bool BaseLayer::save(FILE *f) {
 
 bool BaseLayer::load(FILE *f) {
     if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i].load(f);
-        }
+        kernel[0].load(f);
         biases->load(f);
     } else if (type == LayerType::PRelu) {
         kernel->load(f);
@@ -1019,18 +1006,20 @@ bool BaseLayer::load(FILE *f) {
         kernel[3].load(f);
         kernel[4].load(f);
         biases->load(f);
+    } else if (type == LayerType::YOLOv3) {
+        kernel[0].load(f);
+        biases->load(f);
     }
     return true;
 }
 
 bool BaseLayer::load_raw(FILE *f) {
     if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
-        for (int i = 0; i < info.output_dimension; ++i) {
-            kernel[i].load_raw(f);
-        }
+        
         if (info.batchnorm == false) {
             biases->load_raw(f);
         }
+        kernel[0].load_raw(f);
     } else if (type == LayerType::PRelu) {
         kernel->load_raw(f);
     } else if (type == LayerType::BatchNormalization) {
@@ -1066,12 +1055,10 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
     info.kernel_width = atoi(opt["kernel_width"].c_str());
-    info.input_dimension = atoi(opt["input_dimension"].c_str());
     info.input_width = atoi(opt["input_width"].c_str());
     info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
     info.input_number = info.input_width * info.input_height * info.input_dimension;
-    info.batch_size = atoi(opt["batch_size"].c_str());
-    
     info.kernel_height = (opt.find("kernel_height") == opt.end()) ? info.kernel_width : atoi(opt["kernel_height"].c_str());
     info.stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
     info.padding = (opt.find("padding") == opt.end()) ? 0 : ((opt["padding"] == "same") ? ((info.kernel_width - 1) / 2) : atoi(opt["padding"].c_str()));
@@ -1080,64 +1067,27 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.output_height = (info.input_height + info.padding * 2 - info.kernel_height) / info.stride + 1;
     info.output_dimension = atoi(opt["number_kernel"].c_str());
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    
+    info.batch_size = atoi(opt["batch_size"].c_str());
     info.batchnorm = (opt.find("batchnorm") != opt.end());
     
     
     float bias = (opt.find("bias") == opt.end()) ? 0 : atof(opt["bias"].c_str());
     
-    kernel = new Tensor [info.output_dimension];
-    for (int i = 0; i < info.output_dimension; ++i) {
-        Tensor new_kernel(info.kernel_width, info.kernel_height, info.input_dimension);
-        kernel[i] = new_kernel;
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(1, 1, info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension, 0);
+    float *kernel_weight = kernel->weight;
+    float scale = sqrt(2.0 / (info.kernel_width * info.kernel_height * info.input_dimension));
+    for (int i = 0; i < info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension; ++i) {
+        *(kernel_weight++) = randn(0.0, scale);
     }
-    info.kernel_num = info.output_dimension;
+    info.kernel_num = 1;
     
     biases = new Tensor(1, 1, info.output_dimension, bias);
     
-    int input_width = info.input_width;
-    int input_height = info.input_height;
-    int stride = info.stride;
-    int neg_padding = -info.padding;
-    int out_height, out_width;
-    int x, y;
-    int kernel_w, kernel_h, kernel_dim;
-    int output_height = info.output_height;
-    int output_width = info.output_width;
-    int coordinate_x, coordinate_y;
-    int kernel_width = info.kernel_width;
-    int kernel_height = info.kernel_height;
-    int input_dimension = info.input_dimension;
-    
-    int kernel_n = kernel_width * kernel_height * input_dimension;
-    int out_size = output_width * output_height;
+    int kernel_n = info.kernel_width * info.kernel_height * info.input_dimension;
+    int out_size = info.output_width * info.output_height;
     int workspace_size = out_size * kernel_n;
-    int count;
-    
     info.workspace_size = workspace_size;
-    info.input_index_size = workspace_size;
-    
-    input_index = new int [workspace_size];
-    fill(input_index, input_index + workspace_size, -1);
-    
-    count = -1;
-    y = neg_padding;
-    for (out_height = 0; out_height < output_height; y += stride, ++out_height) {
-        x = neg_padding;
-        for (out_width = 0; out_width < output_width; x += stride, ++out_width)
-        for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-            coordinate_y = y + kernel_h;
-            for (kernel_dim = 0; kernel_dim < input_dimension; ++kernel_dim) {
-                for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                    coordinate_x = x + kernel_w;
-                    if (coordinate_y >= 0 && coordinate_y < input_height && coordinate_x >= 0 && coordinate_x < input_width)
-                        input_index[++count] = ((input_width * coordinate_y) + coordinate_x) + (input_width * input_height) * kernel_dim;
-                    else
-                        count++;
-                }
-            }
-        }
-    }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
@@ -1145,87 +1095,116 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
 Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
     
-    int kernel_n = info.kernel_width * info.kernel_height * info.input_dimension;
-    int out_size = info.output_width * info.output_height;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
+    float *weights = kernel->weight;
+    float *bias = biases->weight;
+    workspace = args->workspace;
     
-    int one_batch_input_size = info.input_number;
+    int batch_size = info.batch_size;
+    int input_number = info.input_number;
+    int output_number = info.output_number;
+    int output_size = info.output_width * info.output_height;
+    int kernel_number = info.kernel_width * info.kernel_height * info.input_dimension;
+    int kernel_size = info.kernel_width;
     
-    float *input_weight = input_tensor->weight;
-    float *output_weight = output_tensor->weight;
-    float *workspace = args->workspace;
+    int input_width = info.input_width;
+    int input_height = info.input_height;
+    int input_dimension = info.input_dimension;
     
-    for (int b = info.batch_size; b--; ) {
-        float *bias_ptr = biases->weight;
-        
-        int count;
-        int index;
-        for (count = info.workspace_size; count--; ) {
-            workspace[count] = ((index = input_index[count]) == -1) ? 0 : input_weight[index];
+    int stride = info.stride;
+    int padding = info.padding;
+    
+    fill_cpu(output_number * batch_size, output, 0);
+    
+    int m = info.output_dimension;
+    int k = kernel_number;
+    int n = output_size;
+    for(int i = 0; i < batch_size; ++i){
+        float *a = weights;
+        float *b = workspace;
+        float *c = output + i * n * m;
+        float *im = input + i * input_number;
+
+        if (kernel_size == 1) {
+            // Doesn't need to rearrange
+            b = im;
+        } else {
+            // Rearrange input tensor and put it into workspace
+            im2col_cpu(im, input_dimension, input_height, input_width, kernel_size, stride, padding, b);
         }
-        
-        float conv, bias;
-        float *kernel_weight, *kernel_weight_ptr;
-        
-        float *src;
-        Tensor *kernel_ptr = kernel;
-        for (int out_dim = info.output_dimension; out_dim--; ) {
-            src = workspace;
-            kernel_weight = (kernel_ptr++)->weight;
-            bias = *(bias_ptr++);
-            for (index = out_size; index--; ) {
-                conv = 0.0f;
-                kernel_weight_ptr = kernel_weight;
-                for (count = kernel_n; count--; )
-                conv += *(kernel_weight_ptr++) * *(src++);
-                *(output_weight++) = conv + bias;
-            }
-        }
-        input_weight += one_batch_input_size;
+        // Matrix multiplication (input with kernel) (Both not transpose)
+        // Calculate output
+        gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
     }
+
+    if(!info.batchnorm){
+        // If not batchnorm, add bias
+        add_bias(output, bias, batch_size, info.output_dimension, output_size);
+    }
+    
     return output_tensor;
 }
 
 void ConvolutionLayer::Backward() {
-    float *kernel_weight, *kernel_grad;
-    int kernel_n = info.kernel_width * info.kernel_height * info.input_dimension;
+    float *input = input_tensor->weight;
+    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *bias_delta = biases->delta_weight;
+    float *weights = kernel->weight;
+    float *weights_delta = kernel->delta_weight;
     
-    int *input_index_ptr;
+    int batch_size = info.batch_size;
+    int kernel_size = info.kernel_width;
+    int stride = info.stride;
+    int padding = info.padding;
     
-    float chain_grad;
-    int out_size = info.output_width * info.output_height;
+    int input_width = info.input_width;
+    int input_height = info.input_height;
+    int input_dimension = info.input_dimension;
+    int input_number = info.input_number;
     
-    int index;
-    int out_index;
-    int kernel_index;
     
-    int one_batch_input_size = info.input_number;
-    
-    float *input_weight = input_tensor->weight;
-    float *input_grad = input_tensor->delta_weight;
-    float *output_grad = output_tensor->delta_weight;
-    
-    for (int b = info.batch_size; b--; ) {
-        float *bias_grad = biases->delta_weight;
-        
-        for (int out_dim = 0; out_dim < info.output_dimension; ++out_dim) {
-            Tensor *kernel_act = kernel + out_dim;
-            kernel_weight = kernel_act->weight;
-            kernel_grad = kernel_act->delta_weight;
-            input_index_ptr = input_index;
-            
-            for (out_index = out_size; out_index; --out_index) {
-                chain_grad = *(output_grad++);
-                for (kernel_index = 0; kernel_index < kernel_n; ++kernel_index) {
-                    if ((index = *(input_index_ptr++)) != -1) {
-                        kernel_grad[kernel_index] += input_weight[index] * chain_grad;
-                        input_grad[index] += kernel_weight[kernel_index] * chain_grad;
-                    }
-                }
-                bias_grad[out_dim] += chain_grad;
-            }
+    int m = info.output_dimension;
+    int n = info.kernel_width * info.kernel_height * info.input_dimension;
+    int k = info.output_width * info.output_height;
+
+    if(!info.batchnorm){
+        // If not batchnorm, backpropagate bias
+        backward_bias(bias_delta, output_delta, batch_size, info.output_dimension, k);
+    }
+
+    for(int i = 0; i < batch_size; ++i){
+        float *a = output_delta + i * m * k;
+        float *b = workspace;
+        float *c = weights_delta;
+
+        float *im  = input + i * input_number;
+        float *imd = input_delta + i * input_number;
+
+        if(kernel_size == 1){
+            // Doesn't need to rearrange
+            b = im;
+        } else {
+            // Rearrange input tensor and put it into workspace
+            im2col_cpu(im, input_dimension, input_height, input_width, kernel_size, stride, padding, b);
         }
-        input_weight += one_batch_input_size;
-        input_grad += one_batch_input_size;
+        // Matrix multiplication (input with output_delta) (input transpose)
+        // Calculate weight_delta
+        gemm(0, 1, m, n, k, 1, a, k, b, k, 1, c, n);
+        a = weights;
+        b = output_delta + i*m*k;
+        c = workspace;
+        if (kernel_size == 1) {
+            c = imd;
+        }
+        // Matrix multiplication (weight with output_delta) (weight transpose)
+        // Calculate input_delta
+        gemm(1, 0, n, k, m, 1, a, n, b, k, 0, c, k);
+        if (kernel_size != 1) {
+            // Restore arrangement
+            col2im_cpu(workspace, input_dimension, input_height, input_width, kernel_size, stride, padding, imd);
+        }
     }
 }
 
@@ -1251,120 +1230,71 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     info.output_height = (info.input_height + info.padding - info.kernel_height) / info.stride + 1;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    choosex.assign(info.output_number * info.batch_size, 0);
-    choosey.assign(info.output_number * info.batch_size, 0);
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(1, 1, info.output_number * info.batch_size, 0);
+    info.kernel_num = 1;
     
-    int output_dimension = info.output_dimension;
-    int output_width = info.output_width;
-    int output_height = info.output_height;
-    int kernel_width = info.kernel_width;
-    int kernel_height = info.kernel_height;
-    int input_width = info.input_width;
-    int input_height = info.input_height;
-    int input_channel_size = input_width * input_height;
-    int stride = info.stride;
-    int neg_padding = -info.padding / 2;
-    
-    input_index = new int [info.output_number * kernel_width * kernel_height];
-    fill(input_index, input_index + info.output_number * kernel_width * kernel_height, -1);
-    
-    int input_counter = 0;
-    
-    info.input_index_size = info.output_number * kernel_width * kernel_height;
-    
-    for (int output_d = 0; output_d < output_dimension; ++output_d) {
-        int offset_h = neg_padding;
-        for (int output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
-            int offset_w = neg_padding;
-            for (int output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
-                for (int kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                    int act_h = offset_h + kernel_h;
-                    for (int kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                        int act_w = offset_w + kernel_w;
-                        if (act_w >= 0 && act_w < input_width && act_h >= 0 && act_h < input_height) {
-                            input_index[input_counter] = ((act_h * input_width) + act_w) + (input_channel_size) * output_d;
-                        }
-                        ++input_counter;
-                    }
-                }
-            }
-        }
-    }
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
 Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    int output_width = info.output_width;
-    int output_height = info.output_height;
-    int output_dimension = info.output_dimension;
-    int output_w, output_h;
-    int offset_w, offset_h;
-    float maximum;
-    int win_x = -1, win_y = -1;
-    int kernel_w, kernel_h;
-    float value = 0.0;
-    int neg_padding = -info.padding / 2;
     int stride = info.stride;
-    int kernel_width = info.kernel_width;
-    int kernel_height = info.kernel_height;
+
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     
-    int counter = 0;
+    int input_width = info.input_width;
+    int input_height = info.input_height;
+    int input_dimension = info.input_dimension;
+    int kernel_size = info.kernel_width;
+
+    int w_offset = -info.padding / 2;
+    int h_offset = -info.padding / 2;
+
+    int h = info.output_height;
+    int w = info.output_width;
+    int c = info.output_dimension;
     
-    int one_batch_input_size = info.input_number;
-    
-    float *input_weight = input_tensor->weight;
-    float *output_weight = output_tensor->weight;
-    
-    for (int b = info.batch_size; b--; ) {
-        int *input_index_ptr = input_index;
-        int index;
-        for (int output_d = 0; output_d < output_dimension; ++output_d) {
-            offset_h = neg_padding;
-            for (output_h = 0; output_h < output_height; ++output_h, offset_h += stride) {
-                offset_w = neg_padding;
-                for (output_w = 0; output_w < output_width; ++output_w, offset_w += stride) {
-                    maximum = -100000000;
-                    for (kernel_h = 0; kernel_h < kernel_height; ++kernel_h) {
-                        for (kernel_w = 0; kernel_w < kernel_width; ++kernel_w) {
-                            if ((index = *(input_index_ptr++)) != -1) {
-                                value = input_weight[index];
-                                if (value > maximum) {
-                                    maximum = value;
-                                    win_x = offset_w + kernel_w;
-                                    win_y = offset_h + kernel_h;
-                                }
-                            }
+    float *indexes = kernel->weight;
+
+    for(int b = 0; b < info.batch_size; ++b){
+        for(int k = 0; k < c; ++k){
+            for(int i = 0; i < h; ++i){
+                for(int j = 0; j < w; ++j){
+                    int out_index = j + w * (i + h * (k + c * b));
+                    float max = -10000000;
+                    int max_i = -1;
+                    for(int n = 0; n < kernel_size; ++n){
+                        for(int m = 0; m < kernel_size; ++m){
+                            int cur_h = h_offset + i*stride + n;
+                            int cur_w = w_offset + j*stride + m;
+                            int index = cur_w + input_width * (cur_h + input_height * (k + b * input_dimension));
+                            bool valid = (cur_h >= 0 && cur_h < input_height && cur_w >= 0 && cur_w < input_width);
+                            float val = (valid != false) ? input[index] : -10000000;
+                            max_i = (val > max) ? index : max_i;
+                            max   = (val > max) ? val   : max;
                         }
                     }
-                    choosex[counter] = win_x;
-                    choosey[counter++] = win_y;
-                    *(output_weight++) = maximum;
+                    output[out_index] = max;
+                    indexes[out_index] = max_i;
                 }
             }
         }
-        input_weight += one_batch_input_size;
     }
+    
     return output_tensor;
 }
 
 void PoolingLayer::Backward() {
-    Tensor *input = input_tensor;
+    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor->delta_weight;
+    float *indexes = kernel->weight;
     
-    int counter = 0;
-    float chain_grad;
-    int out_size = info.output_width * info.output_height;
-    
-    float *output_grad = output_tensor->delta_weight;
-    
-    for (int b = 0; b < info.batch_size; ++b) {
-        for (int cal_d = 0; cal_d < info.output_dimension; ++cal_d) {
-            for (int out_counter = 0; out_counter < out_size; ++out_counter) {
-                chain_grad = *(output_grad++);
-                input->addGrad(choosex[counter], choosey[counter], cal_d, chain_grad, b * info.input_number);
-                ++counter;
-            }
-        }
+    int total_size = info.output_width * info.output_height * info.output_dimension * info.batch_size;
+    for(int i = 0; i < total_size; ++i){
+        int index = indexes[i];
+        input_delta[index] += output_delta[i];
     }
 }
 
@@ -1374,87 +1304,71 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     name = (opt.find("name") == opt.end()) ? "fc" : opt["name"];
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
-    info.output_dimension = atoi(opt["number_neurons"].c_str());
-    
-    info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * atoi(opt["input_dimension"].c_str());
+    info.input_width = atoi(opt["input_width"].c_str());
+    info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = 1;
     info.output_height = 1;
+    info.output_dimension = atoi(opt["number_neurons"].c_str());
+    info.output_number = info.output_dimension;
     info.batch_size = atoi(opt["batch_size"].c_str());
+    info.batchnorm = (opt.find("batchnorm") != opt.end());
     
-    kernel = new Tensor [info.output_dimension];
-    for (int i = 0; i < info.output_dimension; ++i) {
-        Tensor new_kernel(1, 1, info.input_number);
-        kernel[i] = new_kernel;
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(info.input_number, 1, info.output_dimension, 0);
+    float *kernel_weight = kernel->weight;
+    float scale = sqrt(2.0 / (info.input_number));
+    for (int i = 0; i < info.input_number * info.output_dimension; ++i) {
+        *(kernel_weight++) = randn(0.0, scale);
     }
-    info.kernel_num = info.output_dimension;
+    info.kernel_num = 1;
     
-    float bias = atof(opt["bias"].c_str());
+    float bias = (opt.find("bias") == opt.end()) ? 0 : atof(opt["bias"].c_str());
     biases = new Tensor(1, 1, info.output_dimension, bias);
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
 }
 
 Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
+
+    memset(output_tensor->weight, 0, sizeof(float) * info.output_dimension * info.batch_size);
     
-    int one_batch_input_size = info.input_number;
-    int one_batch_output_size = info.output_dimension;
-    
-    float *input = input_tensor_->weight;
-    float *pos = output_tensor->weight;
-    
-    float sum;
-    float *weight;
-    
-    int i, j;
-    float *input_ptr;
-    
-    for (int b = info.batch_size; b--; ) {
-        float *bias = biases->weight;
-        // get output
-        for (i = info.output_dimension; i--; ) {
-            sum = 0.0;
-            weight = kernel[i].weight;
-            input_ptr = input;
-            for (j = info.input_number; j; --j) {
-                sum += *(input_ptr++) * *(weight++);
-            }
-            pos[i] = sum + bias[i];
-        }
-        input += one_batch_input_size;
-        pos += one_batch_output_size;
+    int m = info.batch_size;
+    int k = info.input_number;
+    int n = info.output_number;
+    float *a = input_tensor->weight;
+    float *b = kernel->weight;
+    float *c = output_tensor->weight;
+    gemm(0, 1, m, n, k, 1, a, k, b, k, 1, c, n);
+    if(!info.batchnorm){
+        add_bias(output_tensor->weight, biases->weight, info.batch_size, info.output_dimension, 1);
     }
     return output_tensor;
 }
 
 void FullyConnectedLayer::Backward() {
-    int one_batch_input_size = info.input_number;
-    int one_batch_output_size = info.output_dimension;
-    
-    float *cal_w = input_tensor->weight;
-    float *cal_dw = input_tensor->delta_weight;
-    float *output_grad = output_tensor->delta_weight;
-    
-    float *act_weight, *act_grad;
-    float chain_grad;
-    
-    for (int b = info.batch_size; b--; ) {
-        float *act_biases_grad = biases->delta_weight;
-        
-        for (int i = 0; i < info.output_dimension; ++i) {
-            Tensor *kernel_act = kernel + i;
-            act_weight = kernel_act->weight;
-            act_grad = kernel_act->delta_weight;
-            chain_grad = output_grad[i];
-            for (int j = 0; j < info.input_number; ++j) {
-                cal_dw[j] += act_weight[j] * chain_grad;
-                act_grad[j] += cal_w[j] * chain_grad;
-            }
-            act_biases_grad[i] += chain_grad;
-        }
-        cal_w += one_batch_input_size;
-        cal_dw += one_batch_input_size;
-        output_grad += one_batch_output_size;
+    if(!info.batchnorm){
+        backward_bias(biases->delta_weight, output_tensor->delta_weight, info.batch_size, info.output_dimension, 1);
     }
+
+    int m = info.output_dimension;
+    int k = info.batch_size;
+    int n = info.input_number;
+    float *a = output_tensor->delta_weight;
+    float *b = input_tensor->weight;
+    float *c = kernel->delta_weight;
+    gemm(1, 0, m, n, k, 1, a, m, b, n, 1, c, n);
+
+    m = info.batch_size;
+    k = info.output_dimension;
+    n = info.input_number;
+
+    a = output_tensor->delta_weight;
+    b = kernel->weight;
+    c = input_tensor->delta_weight;
+
+    gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
 }
 
 ReluLayer::ReluLayer(LayerOption opt_) {
@@ -1696,6 +1610,8 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     info.output_dimension = atoi(opt["input_dimension"].c_str());
     info.input_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = atoi(opt["batch_size"].c_str());
+    info.shortcut_width = atoi(opt["shortcut_width"].c_str());
+    info.shortcut_height = atoi(opt["shortcut_height"].c_str());
     info.shortcut_dimension = atoi(opt["shortcut_dimension"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
@@ -1709,23 +1625,32 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
     float *output = output_tensor->weight;
     float *shortcut = shortcut_tensor->weight;
     
+    int shortcut_width = info.shortcut_width;
+    int shortcut_height = info.shortcut_height;
+    int shortcut_dimension = info.shortcut_dimension;
+    
     copy_cpu(info.input_number * info.batch_size, input, output);
-    shortcut_cpu(info.batch_size, shortcut_tensor->width, shortcut_tensor->height, shortcut_tensor->dimension / info.batch_size, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
+    shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
     
     return output_tensor;
 }
 
 void ShortCutLayer::Backward() {
+    
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
         *(input_delta++) += *(output_delta++);
     }
     
+    int shortcut_width = info.shortcut_width;
+    int shortcut_height = info.shortcut_height;
+    int shortcut_dimension = info.shortcut_dimension;
+    
     float *shortcut_delta = shortcut_tensor->delta_weight;
     output_delta = output_tensor->delta_weight;
     
-    shortcut_cpu(info.batch_size, info.output_width, info.output_height, info.output_dimension, output_delta, shortcut_tensor->width, shortcut_tensor->height, shortcut_tensor->dimension / info.batch_size, 1, 1, shortcut_delta);
+    shortcut_cpu(info.batch_size, info.output_width, info.output_height, info.output_dimension, output_delta, shortcut_width, shortcut_height, shortcut_dimension, 1, 1, shortcut_delta);
 }
 
 void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out) {
@@ -1774,7 +1699,7 @@ Tensor* LReluLayer::Forward(Tensor *input_tensor_) {
     float value;
     for (int i = info.input_number * info.batch_size; i--; ++val) {
         value = *val;
-        *(out++) = (value < 0) ? value * 0.01 : value;
+        *(out++) = (value > 0) ? value : value * 0.1;
     }
     return output_tensor;
 }
@@ -1790,7 +1715,7 @@ void LReluLayer::Backward() {
         for (int i = 0; i < info.input_number; ++i) {
             chain_grad = act_grad[i];
             if (act_weight[i] < 0) {
-                pos_grad[i] += chain_grad * 0.01;
+                pos_grad[i] += chain_grad * 0.1;
             }
             else {
                 pos_grad[i] += chain_grad;
@@ -1897,23 +1822,14 @@ Tensor* BatchNormalizationlayer::Forward(Tensor *input_tensor_, Forward_Args *ar
         scal_cpu(output_dimension, 0.99, running_variance);
         axpy_cpu(output_dimension, 0.01, variance, running_variance);
 
-        normalize_cpu(output, mean, variance, batch_size, output_dimension, channel_size);
+        normalize(output, mean, variance, batch_size, output_dimension, channel_size);
         copy_cpu(total_size, output, x_norm);
     } else {
-        normalize_cpu(output, running_mean, running_variance, batch_size, output_dimension, channel_size);
+        normalize(output, running_mean, running_variance, batch_size, output_dimension, channel_size);
     }
     
-    float scale_value, bias_value;
-    for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < output_dimension; ++d) {
-            scale_value = scale[d];
-            bias_value = bias[d];
-            for (int i = 0; i < channel_size; ++i) {
-                *output = *output * scale_value + bias_value;
-                ++output;
-            }
-        }
-    }
+    scale_bias(output, scale, batch_size, output_dimension, channel_size);
+    add_bias(output, bias, batch_size, output_dimension, channel_size);
     
     return output_tensor;
 }
@@ -1931,88 +1847,70 @@ void BatchNormalizationlayer::Backward() {
     float *variance = kernel[2].weight;
     float *x = kernel[5].weight;
     float *x_norm = kernel[6].weight;
-    
+
     int batch_size = info.batch_size;
     int output_dimension = info.output_dimension;
     int one_batch_size = info.input_number;
     int channel_size = info.output_width * info.output_height;
     
-    backward_bias(bias_delta, output_delta, batch_size, output_dimension, channel_size);
-    backward_scale_cpu(x_norm, output_delta, batch_size, output_dimension, channel_size, scale_delta);
-
-    scale_bias(output_delta, scale, batch_size, output_dimension, channel_size);
-
-    mean_delta_cpu(output_delta, variance, batch_size, output_dimension, channel_size, mean_delta);
-    variance_delta_cpu(x, output_delta, mean, variance, batch_size, output_dimension, channel_size, variance_delta);
-    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, batch_size, output_dimension, channel_size, output_delta);
-    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
- 
-//    float chain_grad, scale_value, mean_value;
-    
-//    for (int b = 0; b < batch_size; ++b) {
-//        for (int d = 0; d < output_dimension; ++d) {
-//            float &bias_delta_value = bias_delta[d];
-//            float &scale_delta_value = scale_delta[d];
-//            float &mean_delta_value = mean_delta[d];
-//            float &variance_delta_value = variance_delta[d];
-//            scale_value = scale[d];
-//            mean_value = mean[d];
-//            for (int i = 0; i < channel_size; ++i) {
-//                chain_grad = *output_delta;
-//                bias_delta_value += chain_grad;
-//                scale_delta_value += chain_grad * *(x_norm++);
-//                chain_grad = *(output_delta++) *= scale_value;
-//                mean_delta_value += chain_grad;
-//                variance_delta_value += chain_grad * (*(x++) - mean_value);
-//            }
-//        }
-//    }
-//    
-//    for (int d = 0; d < output_dimension; ++d) {
-//        mean_delta[d] *= (-1.0 / sqrt(variance[d] + .00001f));
-//        variance_delta[d] *= (-0.5 * pow(variance[d] + 0.00001f, (float)(-1.5)));
-//    }
-//    
-//    output_delta = output_tensor->delta_weight;
-//    x = kernel[5].weight;
-//    
-//    float variance_scale;
-//    float variance_delta_value;
-//    float mean_delta_value;
-//    
-//    for (int b = 0; b < batch_size; ++b) {
-//        for (int d = 0; d < output_dimension; ++d) {
-//            mean_value = mean[d];
-//            mean_delta_value = mean_delta[d] / (channel_size * batch_size);
-//            variance_scale = 1.0 / (sqrt(variance[d] + .00001f));
-//            variance_delta_value = variance_delta[d];
-//            for (int i = 0; i < channel_size; ++i) {
-//                *output_delta = *output_delta * variance_scale + variance_delta_value * 2.0 * (*(x++) - mean_value) / (channel_size * batch_size) + mean_delta_value;
-//                ++output_delta;
-//            }
-//        }
-//    }
-//    
-//    output_delta = output_tensor->delta_weight;
-//    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
-}
-
-void BatchNormalizationlayer::scale_bias(float *output, float *scales, int batch, int n, int size) {
-    for(int b = 0; b < batch; ++b){
-        for(int i = 0; i < n; ++i){
-            for(int j = 0; j < size; ++j){
-                output[(b * n + i) * size + j] *= scales[i];
+    float chain_grad, scale_value, mean_value;
+        
+    for (int b = 0; b < batch_size; ++b) {
+        for (int d = 0; d < output_dimension; ++d) {
+            float &bias_delta_value = bias_delta[d];
+            float &scale_delta_value = scale_delta[d];
+            float &mean_delta_value = mean_delta[d];
+            float &variance_delta_value = variance_delta[d];
+            scale_value = scale[d];
+            mean_value = mean[d];
+            for (int i = 0; i < channel_size; ++i) {
+                chain_grad = *output_delta;
+                bias_delta_value += chain_grad;
+                scale_delta_value += chain_grad * *(x_norm++);
+                chain_grad = *(output_delta++) *= scale_value;
+                mean_delta_value += chain_grad;
+                variance_delta_value += chain_grad * (*(x++) - mean_value);
             }
         }
     }
-}
-
-void BatchNormalizationlayer::backward_bias(float *bias_updates, float *delta, int batch, int n, int size) {
-    for(int b = 0; b < batch; ++b){
-        for(int i = 0; i < n; ++i){
-            bias_updates[i] += sum_array(delta + size * (i + b * n), size);
+    
+    for (int d = 0; d < output_dimension; ++d) {
+        mean_delta[d] *= (-1.0 / sqrt(variance[d] + .00001f));
+        variance_delta[d] *= (-0.5 * pow(variance[d] + 0.00001f, (float)(-1.5)));
+    }
+    
+    output_delta = output_tensor->delta_weight;
+    x = kernel[5].weight;
+    
+    float variance_scale;
+    float variance_delta_value;
+    float mean_delta_value;
+    
+    for (int b = 0; b < batch_size; ++b) {
+        for (int d = 0; d < output_dimension; ++d) {
+            mean_value = mean[d];
+            mean_delta_value = mean_delta[d] / (channel_size * batch_size);
+            variance_scale = 1.0 / (sqrt(variance[d] + .00001f));
+            variance_delta_value = variance_delta[d];
+            for (int i = 0; i < channel_size; ++i) {
+                *output_delta = *output_delta * variance_scale + variance_delta_value * 2.0 * (*(x++) - mean_value) / (channel_size * batch_size) + mean_delta_value;
+                ++output_delta;
+            }
         }
     }
+    
+    output_delta = output_tensor->delta_weight;
+    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
+
+//    backward_bias(bias_delta, output_delta, batch_size, output_dimension, channel_size);
+//    backward_scale_cpu(x_norm, output_delta, batch_size, output_dimension, channel_size, scale_delta);
+//
+//    scale_bias(output_delta, scale, batch_size, output_dimension, channel_size);
+//
+//    mean_delta_cpu(output_delta, variance, batch_size, output_dimension, channel_size, mean_delta);
+//    variance_delta_cpu(x, output_delta, mean, variance, batch_size, output_dimension, channel_size, variance_delta);
+//    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, batch_size, output_dimension, channel_size, output_delta);
+//    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
 }
 
 void BatchNormalizationlayer::backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates) {
@@ -2094,40 +1992,45 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
 
 Tensor* UpSampleLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     
     if (info.reverse) {
         
     } else {
-        upsample(input_tensor->weight, output_tensor->weight, info.batch_size, info.input_width, info.input_height, info.input_dimension, info.stride, true);
+        upsample(input, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, true, 1, output);
     }
     
     return output_tensor;
 }
 
 void UpSampleLayer::Backward() {
+    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor->delta_weight;
+    
     if (info.reverse) {
         
     } else {
-        upsample(input_tensor->delta_weight, output_tensor->delta_weight, info.batch_size, info.input_width, info.input_height, info.input_dimension, info.stride, false);
+        upsample(input_delta, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, false, 1, output_delta);
     }
 }
 
-void UpSampleLayer::upsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward) {
-    int one_batch_input_size = info.input_number;
-    int input_channel_size = width * height;
-    int one_batch_output_size = info.output_number;
-    int output_channel_size = input_channel_size * stride * stride;
+void UpSampleLayer::upsample(float *in, int w, int h, int c, int batch, int stride, bool forward, float scale, float *out) {
+    int input_size = info.input_number;
+    int input_channel_size = info.input_width * info.input_height;
+    int output_size = info.output_number;
+    int output_channel_size = info.output_width * info.output_height;
     
-    for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < dimension; ++d) {
-            for (int h = 0; h < height * stride; ++h) {
-                for (int w = 0; w < width * stride; ++w) {
-                    int input_index = b * one_batch_input_size + ((h / stride * width) + w / stride) + input_channel_size * d;
-                    int output_index = b * one_batch_output_size + ((h * width) + w) + output_channel_size * d;
-                    if (forward)
-                        dst[output_index] = src[input_index];
+    for(int b = 0; b < batch; ++b){
+        for(int k = 0; k < c; ++k){
+            for(int j = 0; j < h * stride; ++j){
+                for(int i = 0; i < w * stride; ++i){
+                    int in_index = b * input_size + k * input_channel_size + (j / stride) * w + i / stride;
+                    int out_index = b * output_size + k * output_channel_size + j * w * stride + i;
+                    if(forward)
+                        out[out_index] = scale * in[in_index];
                     else
-                        src[input_index] += dst[output_index];
+                        in[in_index] += scale * out[out_index];
                 }
             }
         }
@@ -2237,7 +2140,7 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     }
     info.kernel_num = 1;
     
-    biases = new Tensor(1, 1, 2 * info.total_anchor_num, 0); // Anchor
+    biases = new Tensor(2, 1, info.total_anchor_num, 0); // Anchor
     stringstream ss;
     ss << opt["anchor"];
     int w, h;
@@ -2269,7 +2172,6 @@ Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
     }
     input_tensor->clearDeltaWeight();
     
-    
     if (!args->train) {
         vector<Detection> dets = yolo_get_detection_without_correction();
         detection = Tensor(1, (info.classes + 5), (int)dets.size(), 0);
@@ -2285,7 +2187,6 @@ Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
             }
         }
     }
-    
     return &detection;
 }
 
@@ -2472,7 +2373,7 @@ vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
     int channel_size = width * height;
     
     vector<Detection> dets;
-    
+
     for (int i = 0; i < channel_size; ++i){
         int row = i / width;
         int col = i % width;
@@ -2505,4 +2406,32 @@ Box YOLOv3Layer::get_yolo_box(float *x, float *biases, int n, int index, int i, 
     b.w = exp(x[index + 2 * stride]) * biases[2 * n + 0] / w;
     b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
     return b;
+}
+
+void add_bias(float *output, float *biases, int batch, int n, int size) {
+    for(int b = 0; b < batch; ++b){
+        for(int i = 0; i < n; ++i){
+            for(int j = 0; j < size; ++j){
+                output[(b * n + i) * size + j] += biases[i];
+            }
+        }
+    }
+}
+
+void scale_bias(float *output, float *scales, int batch, int n, int size) {
+    for(int b = 0; b < batch; ++b){
+        for(int i = 0; i < n; ++i){
+            for(int j = 0; j < size; ++j){
+                output[(b * n + i) * size + j] *= scales[i];
+            }
+        }
+    }
+}
+
+void backward_bias(float *bias_updates, float *delta, int batch, int n, int size) {
+    for(int b = 0; b < batch; ++b){
+        for(int i = 0; i < n; ++i){
+            bias_updates[i] += sum_array(delta + size * (i + b * n), size);
+        }
+    }
 }

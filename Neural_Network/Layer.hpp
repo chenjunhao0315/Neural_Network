@@ -155,14 +155,14 @@ public:
         int input_height;
         int input_dimension;
         int concat_dimension;
+        int shortcut_width;
+        int shortcut_height;
         int shortcut_dimension;
         int kernel_width;
         int kernel_height;
         int stride;
         int padding;
         int workspace_size;
-        int input_index_size;
-        int output_index_size;
         int batch_size;
         int kernel_num;
         int total_anchor_num;
@@ -179,8 +179,6 @@ public:
     Tensor* output_tensor;
     Tensor* kernel;
     Tensor* biases;
-    int *input_index;
-    int *output_index;
 };
 
 // Input layer
@@ -199,6 +197,7 @@ public:
     Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
     void Backward();
 private:
+    float *workspace;
 };
 
 // Pooling layer
@@ -207,9 +206,6 @@ public:
     PoolingLayer(LayerOption opt_);
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
-private:
-    vector<int> choosex;
-    vector<int> choosey;
 };
 
 // FullyConnected layer
@@ -288,8 +284,6 @@ public:
     Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
     void Backward();
 private:
-    void scale_bias(float *output, float *scales, int batch, int n, int size);
-    void backward_bias(float *bias_updates, float *delta, int batch, int n, int size);
     void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
     void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
     void variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta);
@@ -302,7 +296,7 @@ public:
     Tensor* Forward(Tensor *input_tensor_);
     void Backward();
 private:
-    void upsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
+    void upsample(float *in, int w, int h, int c, int batch, int stride, bool forward, float scale, float *out);
     void downsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
 };
 
@@ -331,5 +325,9 @@ private:
     
     Tensor detection;
 };
+
+void scale_bias(float *output, float *scales, int batch, int n, int size);
+void add_bias(float *output, float *biases, int batch, int n, int size);
+void backward_bias(float *bias_updates, float *delta, int batch, int n, int size);
 
 #endif /* Layer_hpp */

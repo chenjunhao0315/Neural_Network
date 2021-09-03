@@ -56,6 +56,26 @@ float activate(float src, ACTIVATE_METHOD method);
 
 float constrain(float min, float max, float a);
 
+void gemm(int TA, int TB, int M, int N, int K, float ALPHA,
+                    float *A, int lda,
+                    float *B, int ldb,
+                    float BETA,
+                    float *C, int ldc);
+
+void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA,
+        float *A, int lda,
+        float *B, int ldb,
+        float BETA,
+        float *C, int ldc);
+
+void im2col_cpu(float* data_im,
+        int channels, int height, int width,
+        int ksize, int stride, int pad, float* data_col);
+
+void col2im_cpu(float* data_col,
+        int channels, int height, int width,
+        int ksize, int stride, int pad, float* data_im);
+
 struct Box {
     float x, y, w, h;
 };

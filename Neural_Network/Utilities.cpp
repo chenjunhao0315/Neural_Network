@@ -75,8 +75,6 @@ void cal_mean(float *src, int batch_size, int dimension, int size, float *mean) 
             for (i = 0; i < size; ++i) {
                 mean_value += *(src++);
             }
-            if (isnan(mean_value) || isinf(mean_value))
-                printf("strange\n");
         }
     }
     scal_cpu(dimension, scale, mean);
@@ -95,8 +93,6 @@ void cal_variance(float *src, float *mean, int batch_size, int dimension, int si
             for (i = 0; i < size; ++i) {
                 variance_value += pow((*(src++) - mean[d]), 2);
             }
-            if (variance_value == 0)
-                printf("strange\n");
         }
     }
     scal_cpu(dimension, scale, variance);
@@ -110,15 +106,8 @@ void normalize(float *src, float *mean, float *variance, int batch_size, int dim
         for (int d = 0; d < dimension; ++d) {
             mean_value = mean[d];
             variance_scale = 1.0 / (sqrt(variance[d]) + 0.000001f);
-            if (isnan(variance_scale) || isinf(variance_scale))
-                printf("error\n");
-            for (int i = size; i--; ) {
-                if (isnan(*src) || isinf(*src))
-                    printf("error\n");
+            for (int i = size; i--; ++src) {
                 *src = (*(src) - mean_value) * variance_scale;
-                if (isnan(*src) || isinf(*src))
-                    printf("error\n");
-                ++src;
             }
         }
     }
@@ -196,8 +185,6 @@ void activate_array(float *src, int length, ACTIVATE_METHOD method) {
 }
 
 float activate(float src, ACTIVATE_METHOD method) {
-    if (isnan(src))
-        printf("error\n");
     switch (method) {
         case SIGMOID:
             return 1.0 / (1.0 + exp(-src));
@@ -262,4 +249,132 @@ float constrain(float min, float max, float a) {
     if (a < min) return min;
     if (a > max) return max;
     return a;
+}
+
+void gemm(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float BETA, float *C, int ldc) {
+    gemm_cpu(TA, TB, M, N, K, ALPHA, A, lda, B, ldb, BETA, C, ldc);
+}
+
+void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    for(int i = 0; i < M; ++i){
+        for(int k = 0; k < K; ++k){
+            float A_PART = ALPHA * A[i * lda + k];
+            for(int j = 0; j < N; ++j){
+                C[i * ldc + j] += A_PART * B[k * ldb + j];
+            }
+        }
+    }
+}
+
+void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    for(int i = 0; i < M; ++i){
+        for(int j = 0; j < N; ++j){
+            float sum = 0;
+            for(int k = 0; k < K; ++k){
+                sum += ALPHA * A[i * lda + k] * B[j * ldb + k];
+            }
+            C[i * ldc + j] += sum;
+        }
+    }
+}
+
+void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    for(int i = 0; i < M; ++i){
+        for(int k = 0; k < K; ++k){
+            float A_PART = ALPHA * A[k * lda + i];
+            for(int j = 0; j < N; ++j){
+                C[i * ldc + j] += A_PART * B[k * ldb + j];
+            }
+        }
+    }
+}
+
+void gemm_tt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    for(int i = 0; i < M; ++i){
+        for(int j = 0; j < N; ++j){
+            float sum = 0;
+            for(int k = 0; k < K; ++k){
+                sum += ALPHA * A[i + k * lda] * B[k + j * ldb];
+            }
+            C[i * ldc + j] += sum;
+        }
+    }
+}
+
+
+void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float BETA, float *C, int ldc) {
+    for(int i = 0; i < M; ++i){
+        for(int j = 0; j < N; ++j){
+            C[i * ldc + j] *= BETA;
+        }
+    }
+    if(!TA && !TB)      // A, B not transpose
+        gemm_nn(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+    else if (TA && !TB) // A transpose, B not
+        gemm_tn(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+    else if (!TA && TB) // B transpose, A not
+        gemm_nt(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+    else                // A, B transpose
+        gemm_tt(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+}
+
+float im2col_get_pixel(float *im, int height, int width, int channels, int row, int col, int channel, int pad) {
+    row -= pad;
+    col -= pad;
+
+    if (row < 0 || col < 0 || row >= height || col >= width)
+        return 0;
+    return im[col + width * (row + height * channel)];
+}
+
+//From Berkeley Vision's Caffe!
+//https://github.com/BVLC/caffe/blob/master/LICENSE
+void im2col_cpu(float* data_im, int channels, int height, int width, int ksize,  int stride, int pad, float* data_col) {
+    int height_col = (height + 2 * pad - ksize) / stride + 1;
+    int width_col = (width + 2 * pad - ksize) / stride + 1;
+
+    int channels_col = channels * ksize * ksize;
+    for (int c = 0; c < channels_col; ++c) {
+        int w_offset = c % ksize;
+        int h_offset = (c / ksize) % ksize;
+        int c_im = c / ksize / ksize;
+        for (int h = 0; h < height_col; ++h) {
+            for (int w = 0; w < width_col; ++w) {
+                int im_row = h_offset + h * stride;
+                int im_col = w_offset + w * stride;
+                int col_index = (c * height_col + h) * width_col + w;
+                data_col[col_index] = im2col_get_pixel(data_im, height, width, channels, im_row, im_col, c_im, pad);
+            }
+        }
+    }
+}
+
+void col2im_add_pixel(float *im, int height, int width, int channels, int row, int col, int channel, int pad, float val) {
+    row -= pad;
+    col -= pad;
+
+    if (row < 0 || col < 0 ||
+        row >= height || col >= width) return;
+    im[col + width * (row + height * channel)] += val;
+}
+
+void col2im_cpu(float* data_col, int channels,  int height,  int width, int ksize,  int stride, int pad, float* data_im) {
+    int height_col = (height + 2 * pad - ksize) / stride + 1;
+    int width_col = (width + 2 * pad - ksize) / stride + 1;
+
+    int channels_col = channels * ksize * ksize;
+    for (int c = 0; c < channels_col; ++c) {
+        int w_offset = c % ksize;
+        int h_offset = (c / ksize) % ksize;
+        int c_im = c / ksize / ksize;
+        for (int h = 0; h < height_col; ++h) {
+            for (int w = 0; w < width_col; ++w) {
+                int im_row = h_offset + h * stride;
+                int im_col = w_offset + w * stride;
+                int col_index = (c * height_col + h) * width_col + w;
+                float val = data_col[col_index];
+                col2im_add_pixel(data_im, height, width, channels, im_row, im_col, c_im, pad, val);
+            }
+        }
+    }
 }

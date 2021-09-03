@@ -93,7 +93,7 @@ public:
     IMG& operator=(const IMG &I);
     unsigned char * toPixelArray();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1, int method = 0);
-    IMG crop(Rect rect);
+    IMG crop(Rect rect, Scalar color = Scalar(0, 0, 0));
     IMG convert(ConvertMethod method);
     IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
     IMG median_blur(int radius);

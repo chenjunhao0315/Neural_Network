@@ -75,7 +75,7 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     delta_weight = new float [size]();
     
     // assign random value
-    float scale = sqrt(2.0 / size);
+    float scale = sqrt(1.0 / size);
     for (int i = size; --i; ) {
         weight[i] = randn(0.0, scale);
     }

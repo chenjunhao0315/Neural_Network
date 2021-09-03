@@ -14,21 +14,23 @@
 
 class YOLOv3 {
 public:
-    YOLOv3(const char *model_name);
+    YOLOv3(const char *model_name, int num_class_ = 80);
     YOLOv3(int num_class_ = 80);
     vector<Detection> detect(IMG &input);
 //private:
     IMG yolo_pre_process_img(IMG& img, int net_w, int net_h);
     vector<Detection> yolo_correct_box(Tensor *box_list, int img_w, int img_h, int net_w, int net_h, bool relative);
     void yolo_nms(vector<Detection> &list, int classes ,float threshold);
+    vector<string> get_yolo_label(const char *labelstr, int classes);
     
     Neural_Network network;
     int classes;
     float threshold;
     int net_width, net_height;
+    vector<string> label;
 };
 
-void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold);
+void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold, vector<string> label = vector<string>());
 
 struct Box_label {
     int id;

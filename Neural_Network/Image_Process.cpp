@@ -289,12 +289,12 @@ void IMG::nearestResize(Mat &src, Mat &dst, float factor_w, float factor_h) {
     }
 }
 
-IMG IMG::crop(Rect rect) {
+IMG IMG::crop(Rect rect, Scalar color) {
     int x1 = rect.x1, x2 = rect.x2;
     int y1 = rect.y1, y2 = rect.y2;
     int w = x2 - x1 + 1;
     int h = y2 - y1 + 1;
-    IMG result(w, h, type);
+    IMG result(w, h, type, color);
     
     Mat &dst = result.getMat();
     int dst_elemsize = dst.elemSize();

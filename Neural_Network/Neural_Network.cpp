@@ -12,6 +12,21 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
     FILE *f = fopen(model_name, "rb");
     if (!f)
         return false;
+    
+    int check_major, check_minor;
+    fread(&check_major, sizeof(int), 1, f);
+    fread(&check_minor, sizeof(int), 1, f);
+    if (check_major != version_major) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are significant change in weight arrangement, model can not be used!\n");
+        return false;
+    } else if (check_major == version_major && check_minor != version_minor) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are maybe existed unsupport layer!\n");
+    }
+    
     int type_len;
     fread(&type_len, sizeof(int), 1, f);
     char *type = new char [type_len + 1];
@@ -52,11 +67,16 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         } else if (type[0] == 'f' && type[1] == 'c') {
             opt["type"] = "Fullyconnected";
             fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["number_neurons"] = to_string(temp);
-            opt["input_width"] = "1";
-            opt["input_height"] = "1";
+            fread(&temp, sizeof(int), 1, f);
+            if (temp)
+                opt["batchnorm"] = "true";
         } else if (type[0] == 'r' && type[1] == 'e') {
             opt["type"] = "Relu";
             fread(&temp, sizeof(int), 1, f);
@@ -75,31 +95,34 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         } else if (type[0] == 'c' && type[1] == 'n') {
             opt["type"] = "Convolution";
             fread(&temp, sizeof(int), 1, f);
-            opt["number_kernel"] = to_string(temp);
-            fread(&temp, sizeof(int), 1, f);
-            opt["kernel_width"] = to_string(temp);
-            fread(&temp, sizeof(int), 1, f);
-            opt["input_dimension"] = to_string(temp);
-            fread(&temp, sizeof(int), 1, f);
             opt["input_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["number_kernel"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["kernel_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["kernel_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["stride"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["padding"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            if (temp)
+                opt["batchnorm"] = "true";
         } else if (type[0] == 'p' && type[1] == 'o') {
             opt["type"] = "Pooling";
-            fread(&temp, sizeof(int), 1, f);
-            opt["kernel_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["kernel_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["kernel_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
@@ -130,6 +153,12 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["shortcut_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["shortcut_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["shortcut_dimension"] = to_string(temp);
             int len;
             fread(&len, sizeof(int), 1, f);
             char *sc = new char [len + 1];
@@ -160,6 +189,61 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
+        }else if (type[0] == 'u' && type[1] == 'p') {
+            opt["type"] = "UpSample";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            int stride = temp;
+            fread(&temp, sizeof(int), 1, f);
+            if (temp)
+                stride = -stride;
+            opt["stride"] = to_string(stride);
+        } else if (type[0] == 'c' && type[1] == 'c') {
+            opt["type"] = "Concat";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["concat_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["concat_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["concat_dimension"] = to_string(temp);
+            int len;
+            fread(&len, sizeof(int), 1, f);
+            char *cc = new char [len + 1];
+            fread(cc, sizeof(char), len, f);
+            cc[len] = '\0';
+            opt["concat"] = string(cc);
+            opt["shortcut"] = opt["concat"];
+        } else if (type[0] == 'y' && type[1] == '3') {
+            opt["type"] = "YOLOv3";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["total_anchor_num"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["anchor_num"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["classes"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["max_boxes"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["net_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["net_height"] = to_string(temp);
         }
         opt_layer.push_back(opt);
         layer[i] = Model_Layer(opt);
@@ -195,6 +279,10 @@ bool Neural_Network::save(const char *model_name) {
     FILE *f = fopen(model_name, "wb");
     if (!f)
         return false;
+    
+    fwrite(&version_major, sizeof(int), 1, f);
+    fwrite(&version_minor, sizeof(int), 1, f);
+    
     int type_len = (int)strlen(model.c_str());
     fwrite(&type_len, sizeof(int), 1, f);
     char *type = new char [type_len];
@@ -229,6 +317,12 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("si", 2, 1, f);
         } else if (type == LayerType::BatchNormalization) {
             fwrite("bn", 2, 1, f);
+        } else if (type == LayerType::UpSample) {
+            fwrite("up", 2, 1, f);
+        } else if (type == LayerType::Concat) {
+            fwrite("cc", 2, 1, f);
+        } else if (type == LayerType::YOLOv3) {
+            fwrite("y3", 2, 1, f);
         }
         layer[i].save(f);
     }
@@ -277,6 +371,8 @@ bool Neural_Network::load_darknet(const char *weights_name) {
             layer[i].load_raw(f);
         }
     }
+    size_t end = ftell(f);
+    printf("%zu %zu\n", check, end);
     return true;
 }
 
@@ -373,6 +469,8 @@ void Neural_Network::compile(int batch_size_) {
             opt["net_width"] = to_string(layer[0].getParameter(0));
             opt["net_height"] = to_string(layer[0].getParameter(1));
         } else if (opt["type"] == "ShortCut") {
+            opt["shortcut_width"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(0));
+            opt["shortcut_height"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(1));
             opt["shortcut_dimension"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(2));
         }
         layer[i] = Model_Layer(opt);
@@ -555,6 +653,8 @@ void Neural_Network::alloc_workspace() {
             max = size;
     }
     workspace = new float [max];
+    printf("workspace: %d at ", max);
+    cout << workspace << endl;
     args = Forward_Args(false, workspace);
 }
 

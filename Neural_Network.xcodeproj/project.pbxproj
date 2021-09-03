@@ -15,6 +15,7 @@
 		76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E832666B46F00FFA5EC /* Tensor.cpp */; };
 		76390E892666B78800FFA5EC /* Utilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E872666B78800FFA5EC /* Utilities.cpp */; };
 		76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76A40ED026A4CF4700A01830 /* Mtcnn.cpp */; };
+		76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */; };
 		76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */; };
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
@@ -51,6 +52,8 @@
 		76390E882666B78800FFA5EC /* Utilities.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Utilities.hpp; sourceTree = "<group>"; };
 		76A40ED026A4CF4700A01830 /* Mtcnn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mtcnn.cpp; sourceTree = "<group>"; };
 		76A40ED126A4CF4700A01830 /* Mtcnn.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mtcnn.hpp; sourceTree = "<group>"; };
+		76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Test_All_Layer.cpp; sourceTree = "<group>"; };
+		76AD0BB726E22DFD006B3028 /* Test_All_Layer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Test_All_Layer.hpp; sourceTree = "<group>"; };
 		76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = YOLOv3.cpp; sourceTree = "<group>"; };
 		76BDC04B26D4440100E6EF7D /* YOLOv3.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = YOLOv3.hpp; sourceTree = "<group>"; };
 		76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Image_Process.cpp; sourceTree = "<group>"; };
@@ -120,6 +123,8 @@
 				7605471F26BDE05A00909C8B /* Cast.hpp */,
 				76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */,
 				76BDC04B26D4440100E6EF7D /* YOLOv3.hpp */,
+				76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */,
+				76AD0BB726E22DFD006B3028 /* Test_All_Layer.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -191,6 +196,7 @@
 				76390E892666B78800FFA5EC /* Utilities.cpp in Sources */,
 				76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */,
 				76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */,
+				76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -237,7 +243,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -295,7 +301,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;

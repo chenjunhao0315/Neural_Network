@@ -56,7 +56,8 @@ private:
     int batch_size;
     float *workspace;
     Forward_Args args;
-    bool train;
+    int version_major = 3;
+    int version_minor = 0;
 };
 
 class Trainer {

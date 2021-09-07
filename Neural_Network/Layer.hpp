@@ -90,7 +90,8 @@ public:
     Model_Layer(Model_Layer &&L);
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
-    Tensor* Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
+    void Forward(Tensor* input_tensor_, Forward_Args *args = &default_forward_args);
     float Backward(vfloat& target);
     void Backward();
     void ClearGrad();
@@ -133,9 +134,9 @@ public:
     BaseLayer& operator=(const BaseLayer &L);
     void shape();
     string type_to_string();
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
     int getParameter(int type);
     void ClearGrad();
-    void ClearDeltaWeight();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
     bool load(FILE *f);
@@ -184,9 +185,8 @@ public:
 // Input layer
 class InputLayer : public BaseLayer {
 public:
-    ~InputLayer() {output_tensor = nullptr;}
     InputLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward(Tensor *input_tensor_);
     void Backward() {}
 };
 
@@ -194,7 +194,8 @@ public:
 class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args);
+    void Forward();
     void Backward();
 private:
     float *workspace;
@@ -204,7 +205,7 @@ private:
 class PoolingLayer : public BaseLayer {
 public:
     PoolingLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
@@ -212,7 +213,7 @@ public:
 class FullyConnectedLayer : public BaseLayer {
 public:
     FullyConnectedLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
@@ -220,7 +221,7 @@ public:
 class ReluLayer : public BaseLayer {
 public:
     ReluLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
@@ -228,7 +229,7 @@ public:
 class PReluLayer : public BaseLayer {
 public:
     PReluLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
@@ -236,7 +237,7 @@ public:
 class SoftmaxLayer : public BaseLayer {
 public:
     SoftmaxLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     float Backward(vfloat& target);
 private:
 };
@@ -244,9 +245,8 @@ private:
 // Euclidean loss layer
 class EuclideanLossLayer : public BaseLayer {
 public:
-    ~EuclideanLossLayer() {output_tensor = nullptr;}
     EuclideanLossLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     float Backward(vfloat& target);
 private:
 };
@@ -255,7 +255,8 @@ private:
 class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args);
+    void Forward();
     void Backward();
 private:
     void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
@@ -266,7 +267,7 @@ private:
 class LReluLayer : public BaseLayer {
 public:
     LReluLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
@@ -274,14 +275,14 @@ public:
 class SigmoidLayer : public BaseLayer {
 public:
     SigmoidLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 };
 
 class BatchNormalizationlayer : public BaseLayer {
 public:
     BatchNormalizationlayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
+    void Forward(Forward_Args *args = &default_forward_args);
     void Backward();
 private:
     void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
@@ -293,7 +294,7 @@ private:
 class UpSampleLayer : public BaseLayer {
 public:
     UpSampleLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_);
+    void Forward();
     void Backward();
 private:
     void upsample(float *in, int w, int h, int c, int batch, int stride, bool forward, float scale, float *out);
@@ -303,7 +304,8 @@ private:
 class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_, Tensor *concat_tensor_);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, Forward_Args *args);
+    void Forward();
     void Backward();
 private:
     Tensor *concat_tensor;
@@ -312,7 +314,8 @@ private:
 class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
-    Tensor* Forward(Tensor *input_tensor_, Forward_Args *args = &default_forward_args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, Forward_Args *args);
+    void Forward(Forward_Args *args = &default_forward_args);
     float Backward(vfloat& target);
 private:
     int entry_index(int batch, int location, int entry);

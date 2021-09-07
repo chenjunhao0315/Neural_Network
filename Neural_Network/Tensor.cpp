@@ -64,6 +64,17 @@ Tensor& Tensor::operator=(const Tensor &T) {
     return *this;
 }
 
+Tensor& Tensor::operator=(std::initializer_list<float> list) {
+    if (list.size() > size) {
+        fprintf(stderr, "[Tensor] Initialize out of range!\n");
+        return *this;
+    }
+    float *ptr = weight;
+    for (float element : list)
+        *(ptr++) = element;
+    return *this;
+}
+
 Tensor::Tensor(int width_, int height_, int dimension_) {
     width = width_;
     height = height_;
@@ -93,6 +104,21 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     fill(weight, weight + size, parameter);
 }
 
+void Tensor::resize(int width_, int height_, int dimension_) {
+    width = width_;
+    height = height_;
+    dimension = dimension_;
+    int new_size = width * height * dimension;
+    
+    float *new_weight = new float [size]();
+    copy_cpu(std::min(size, new_size), weight, new_weight);
+    delete [] weight;
+    delete [] delta_weight;
+    weight = new_weight;
+    size = new_size;
+    delta_weight = new float [size]();
+}
+
 Tensor::Tensor(Tensor *T) {
     if (T) {
         width = T->width;
@@ -103,15 +129,9 @@ Tensor::Tensor(Tensor *T) {
         // initialize
         weight = new float [size]();
         delta_weight = new float [size]();
-        //fill(weight, weight + size, 0);
-//        fill(delta_weight, delta_weight + size, 0);
         
-        //float *weight_src = T->weight;
-        //float *weight_dst = weight;
-        memcpy(weight, T->weight, sizeof(float) * size);
-        /*for (int i = 0; i < size; ++i) {
-            *weight_dst++ = *weight_src++;
-        }*/
+        copy_cpu(size, weight, T->weight);
+//        memcpy(weight, T->weight, sizeof(float) * size);
     }
 }
 
@@ -124,7 +144,6 @@ Tensor::Tensor(vfloat &V) {
     // initialize
     weight = new float [size];
     delta_weight = new float [size]();
-    //fill(delta_weight, delta_weight + n, 0);
     for (int i = 0; i < size; ++i) {
         weight[i] = V[i];
     }
@@ -158,13 +177,9 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
     
     // initialize
     weight = new float [n];
-    delta_weight = new float [n];
-    fill(weight, weight + n, 0);
-    fill(delta_weight, delta_weight + n, 0);
+    delta_weight = new float [n]();
     
-    for (int i = 0; i < n; ++i) {
-        weight[i] = pixelArray[i];
-    }
+    copy_cpu(n, pixelArray, weight);
 }
 
 float* Tensor::getWeight() {
@@ -253,7 +268,7 @@ vfloat Tensor::toVector() {
     vfloat result;
     result.reserve(size);
     float *weight_ptr = weight;
-    for (int i = size; i; --i) {
+    for (int i = size; i--; ) {
         result.push_back(*(weight_ptr++));
     }
     return result;
@@ -263,8 +278,10 @@ void Tensor::toIMG(const char *filename) {
     FILE *f = fopen(filename, "wb");
     fprintf(f, "P6\n%d %d\n255\n", width, height);
     unsigned char *pixel = new unsigned char [3 * width * height];
-    for (int i = 0; i < 3 * width * height; ++i) {
-        pixel[i] = (unsigned char)(weight[i] * 255);
+    for (int i = 0; i < width * height; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            pixel[i + j] = (unsigned char)(weight[i + j * width * height] * 255);
+        }
     }
     fwrite(pixel, sizeof(unsigned char), 3 * width * height, f);
     fclose(f);

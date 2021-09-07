@@ -13,6 +13,7 @@
 #include <vector>
 #include <cstring>
 #include <iomanip>
+#include <initializer_list>
 
 #include "Utilities.hpp"
 
@@ -29,6 +30,7 @@ public:
     Tensor(const Tensor &T);
     Tensor(Tensor &&T);
     Tensor& operator=(const Tensor &T);
+    Tensor& operator=(std::initializer_list<float> list);
     Tensor(Tensor *T);
     Tensor(vfloat &V);
     Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_);
@@ -54,6 +56,7 @@ public:
     vfloat toVector();
     void toIMG(const char *filename);
     void shape();
+    void resize(int width_, int height_, int dimension_);
     friend ostream& operator<<(ostream& os, Tensor& t);
 //private:
     int width;

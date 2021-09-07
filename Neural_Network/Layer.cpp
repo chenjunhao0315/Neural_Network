@@ -325,38 +325,75 @@ LayerType Model_Layer::string_to_type(string type) {
     return LayerType::Error;
 }
 
-Tensor* Model_Layer::Forward(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
+void Model_Layer::Forward(Tensor* input_tensor_, Forward_Args *args) {
     switch (type) {
         case LayerType::Convolution:
-            return convolution_layer->Forward(input_tensor_, args);
+            return convolution_layer->Forward();
         case LayerType::Pooling:
-            return pooling_layer->Forward(input_tensor_);
+            return pooling_layer->Forward();
         case LayerType::PRelu:
-            return prelu_layer->Forward(input_tensor_);
+            return prelu_layer->Forward();
         case LayerType::Fullyconnected:
-            return fullyconnected_layer->Forward(input_tensor_);
+            return fullyconnected_layer->Forward();
         case LayerType::Relu:
-            return relu_layer->Forward(input_tensor_);
+            return relu_layer->Forward();
         case LayerType::ShortCut:
-            return shortcut_layer->Forward(input_tensor_, shortcut_tensor_);
+            return shortcut_layer->Forward();
         case LayerType::Softmax:
-            return softmax_layer->Forward(input_tensor_);
+            return softmax_layer->Forward();
         case LayerType::EuclideanLoss:
-            return euclideanloss_layer->Forward(input_tensor_);
+            return euclideanloss_layer->Forward();
         case LayerType::Input:
             return input_layer->Forward(input_tensor_);
         case LayerType::LRelu:
-            return lrelu_layer->Forward(input_tensor_);
+            return lrelu_layer->Forward();
         case LayerType::Sigmoid:
-            return sigmoid_layer->Forward(input_tensor_);
+            return sigmoid_layer->Forward();
         case LayerType::BatchNormalization:
-            return batchnorm_layer->Forward(input_tensor_, args);
+            return batchnorm_layer->Forward(args);
         case LayerType::UpSample:
-            return upsample_layer->Forward(input_tensor_);
+            return upsample_layer->Forward();
         case LayerType::Concat:
-            return concat_layer->Forward(input_tensor_, shortcut_tensor_);
+            return concat_layer->Forward();
         case LayerType::YOLOv3:
-            return yolov3_layer->Forward(input_tensor_, args);
+            return yolov3_layer->Forward(args);
+        default:
+            break;
+    }
+}
+
+Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Pooling:
+            return pooling_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::PRelu:
+            return prelu_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Relu:
+            return relu_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::ShortCut:
+            return shortcut_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Softmax:
+            return softmax_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Input:
+            return input_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::LRelu:
+            return lrelu_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::UpSample:
+            return upsample_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::Concat:
+            return concat_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
+        case LayerType::YOLOv3:
+            return yolov3_layer->connectGraph(input_tensor_, shortcut_tensor_, args);
         default:
             break;
     }
@@ -814,6 +851,11 @@ string BaseLayer::type_to_string() {
     return "Unknown";
 }
 
+Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
+    input_tensor = input_tensor_;
+    return output_tensor;
+}
+
 void BaseLayer::shape() {
     printf("%-17s%-13s %-13s  ", type_to_string().c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
@@ -849,21 +891,7 @@ int BaseLayer::getParameter(int type) {
 }
 
 void BaseLayer::ClearGrad() {
-    //    input_tensor->clearDeltaWeight();
-    //    output_tensor->clearDeltaWeight();
-    //    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
-    //        for (int i = 0; i < info.output_dimension; ++i) {
-    //            kernel[i].clearDeltaWeight();
-    //        }
-    //        biases->clearDeltaWeight();
-    //    } else if (type == LayerType::PRelu) {
-    //        kernel[0].clearDeltaWeight();
-    //    }
     output_tensor->clearDeltaWeight();
-}
-
-void BaseLayer::ClearDeltaWeight() {
-    input_tensor->clearDeltaWeight();
 }
 
 bool BaseLayer::save(FILE *f) {
@@ -1006,6 +1034,9 @@ bool BaseLayer::load(FILE *f) {
         kernel[3].load(f);
         kernel[4].load(f);
         biases->load(f);
+        // Test
+        kernel[1] = kernel[3];
+        kernel[2] = kernel[4];
     } else if (type == LayerType::YOLOv3) {
         kernel[0].load(f);
         biases->load(f);
@@ -1015,8 +1046,7 @@ bool BaseLayer::load(FILE *f) {
 
 bool BaseLayer::load_raw(FILE *f) {
     if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
-        
-        if (info.batchnorm == false) {
+        if (!info.batchnorm) {
             biases->load_raw(f);
         }
         kernel[0].load_raw(f);
@@ -1027,6 +1057,9 @@ bool BaseLayer::load_raw(FILE *f) {
         kernel[0].load_raw(f);
         kernel[3].load_raw(f);
         kernel[4].load_raw(f);
+        // Test
+        kernel[1] = kernel[3];
+        kernel[2] = kernel[4];
     }
     return true;
 }
@@ -1040,12 +1073,15 @@ InputLayer::InputLayer(LayerOption opt_) {
     info.output_dimension = (opt.find("input_dimension") == opt.end()) ? atoi(opt["output_dimension"].c_str()) : atoi(opt["input_dimension"].c_str());
     info.output_width = (opt.find("input_width") == opt.end()) ? atoi(opt["output_width"].c_str()) : atoi(opt["input_width"].c_str());
     info.output_height = (opt.find("input_height") == opt.end()) ? atoi(opt["output_height"].c_str()) : atoi(opt["input_height"].c_str());
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* InputLayer::Forward(Tensor *input_tensor_) {
+void InputLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
-    output_tensor = input_tensor;
-    return output_tensor;
+    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
 }
 
 ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
@@ -1092,14 +1128,17 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
+Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
-    
+    workspace = args->workspace;
+    return output_tensor;
+}
+
+void ConvolutionLayer::Forward() {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float *weights = kernel->weight;
     float *bias = biases->weight;
-    workspace = args->workspace;
     
     int batch_size = info.batch_size;
     int input_number = info.input_number;
@@ -1142,8 +1181,6 @@ Tensor* ConvolutionLayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
         // If not batchnorm, add bias
         add_bias(output, bias, batch_size, info.output_dimension, output_size);
     }
-    
-    return output_tensor;
 }
 
 void ConvolutionLayer::Backward() {
@@ -1237,8 +1274,7 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
+void PoolingLayer::Forward() {
     int stride = info.stride;
 
     float *input = input_tensor->weight;
@@ -1282,8 +1318,6 @@ Tensor* PoolingLayer::Forward(Tensor *input_tensor_) {
             }
         }
     }
-    
-    return output_tensor;
 }
 
 void PoolingLayer::Backward() {
@@ -1318,7 +1352,7 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     kernel = new Tensor [1];
     kernel[0] = Tensor(info.input_number, 1, info.output_dimension, 0);
     float *kernel_weight = kernel->weight;
-    float scale = sqrt(2.0 / (info.input_number));
+    float scale = sqrt(1.0 / (info.input_number));
     for (int i = 0; i < info.input_number * info.output_dimension; ++i) {
         *(kernel_weight++) = randn(0.0, scale);
     }
@@ -1329,10 +1363,8 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-
-    memset(output_tensor->weight, 0, sizeof(float) * info.output_dimension * info.batch_size);
+void FullyConnectedLayer::Forward() {
+    fill_cpu(info.output_dimension * info.batch_size, output_tensor->weight, 0);
     
     int m = info.batch_size;
     int k = info.input_number;
@@ -1344,7 +1376,6 @@ Tensor* FullyConnectedLayer::Forward(Tensor *input_tensor_) {
     if(!info.batchnorm){
         add_bias(output_tensor->weight, biases->weight, info.batch_size, info.output_dimension, 1);
     }
-    return output_tensor;
 }
 
 void FullyConnectedLayer::Backward() {
@@ -1386,8 +1417,7 @@ ReluLayer::ReluLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
+void ReluLayer::Forward() {
     float *val = input_tensor->weight;
     float *out = output_tensor->weight;
     float value;
@@ -1396,7 +1426,6 @@ Tensor* ReluLayer::Forward(Tensor *input_tensor_) {
         value = *(val++);
         *(out++) = (value < 0) ? 0 : value;
     }
-    return output_tensor;
 }
 
 void ReluLayer::Backward() {
@@ -1437,9 +1466,7 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-    
+void PReluLayer::Forward() {
     float *val = input_tensor->weight;
     float *out = output_tensor->weight;
     
@@ -1451,8 +1478,6 @@ Tensor* PReluLayer::Forward(Tensor *input_tensor_) {
             *(out++) = (value < 0) ? value * *alpha : value;
         }
     }
-    
-    return output_tensor;
 }
 
 void PReluLayer::Backward() {
@@ -1502,13 +1527,11 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-    
+void SoftmaxLayer::Forward() {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
-    float *act = input_tensor_->weight;
+    float *act = input_tensor->weight;
     float *expo_sum_ptr = kernel->weight;
     float *cal_weight = output_tensor->weight;
     
@@ -1530,7 +1553,6 @@ Tensor* SoftmaxLayer::Forward(Tensor *input_tensor_) {
         expo_sum_ptr += one_batch_output_size;
         cal_weight += one_batch_output_size;
     }
-    return output_tensor;
 }
 
 float SoftmaxLayer::Backward(vfloat& target) {
@@ -1566,16 +1588,17 @@ EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
     name = (opt.find("name") == opt.end()) ? "el" : opt["name"];
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
-    info.output_dimension = atoi(opt["input_dimension"].c_str()) * atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str());
-    info.output_width = 1;
-    info.output_height = 1;
+    info.output_width = atoi(opt["input_width"].c_str());
+    info.output_height = atoi(opt["input_height"].c_str());
+    info.output_dimension = atoi(opt["input_dimension"].c_str());
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* EuclideanLossLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-    output_tensor = input_tensor;
-    return output_tensor;
+void EuclideanLossLayer::Forward() {
+    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
 }
 
 float EuclideanLossLayer::Backward(vfloat& target) {
@@ -1617,10 +1640,13 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) {
+Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
     shortcut_tensor = shortcut_tensor_;
-    
+    return output_tensor;
+}
+
+void ShortCutLayer::Forward() {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float *shortcut = shortcut_tensor->weight;
@@ -1631,8 +1657,6 @@ Tensor* ShortCutLayer::Forward(Tensor *input_tensor_, Tensor *shortcut_tensor_) 
     
     copy_cpu(info.input_number * info.batch_size, input, output);
     shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
-    
-    return output_tensor;
 }
 
 void ShortCutLayer::Backward() {
@@ -1692,8 +1716,7 @@ LReluLayer::LReluLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* LReluLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
+void LReluLayer::Forward() {
     float *val = input_tensor->weight;
     float *out = output_tensor->weight;
     float value;
@@ -1701,7 +1724,6 @@ Tensor* LReluLayer::Forward(Tensor *input_tensor_) {
         value = *val;
         *(out++) = (value > 0) ? value : value * 0.1;
     }
-    return output_tensor;
 }
 
 void LReluLayer::Backward() {
@@ -1742,14 +1764,12 @@ SigmoidLayer::SigmoidLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* SigmoidLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
+void SigmoidLayer::Forward() {
     float *val = input_tensor->weight;
     float *out = output_tensor->weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
         *(out++) = 1.0 / (1.0 + exp(-(*(val++))));
     }
-    return output_tensor;
 }
 
 void SigmoidLayer::Backward() {
@@ -1791,9 +1811,7 @@ BatchNormalizationlayer::BatchNormalizationlayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* BatchNormalizationlayer::Forward(Tensor *input_tensor_, Forward_Args *args) {
-    input_tensor = input_tensor_;
-    
+void BatchNormalizationlayer::Forward(Forward_Args *args) {
     float *src = input_tensor->weight;
     float *output = output_tensor->weight;
     float *bias = biases->weight;
@@ -1830,8 +1848,6 @@ Tensor* BatchNormalizationlayer::Forward(Tensor *input_tensor_, Forward_Args *ar
     
     scale_bias(output, scale, batch_size, output_dimension, channel_size);
     add_bias(output, bias, batch_size, output_dimension, channel_size);
-    
-    return output_tensor;
 }
 
 void BatchNormalizationlayer::Backward() {
@@ -1990,8 +2006,7 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* UpSampleLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
+void UpSampleLayer::Forward() {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
@@ -2000,8 +2015,6 @@ Tensor* UpSampleLayer::Forward(Tensor *input_tensor_) {
     } else {
         upsample(input, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, true, 1, output);
     }
-    
-    return output_tensor;
 }
 
 void UpSampleLayer::Backward() {
@@ -2063,10 +2076,13 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* ConcatLayer::Forward(Tensor *input_tensor_, Tensor *concat_tensor_) {
+Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
-    concat_tensor = concat_tensor_;
-    
+    concat_tensor = shortcut_tensor_;
+    return output_tensor;
+}
+
+void ConcatLayer::Forward() {
     float *src = input_tensor->weight;
     float *concat = concat_tensor->weight;
     float *output = output_tensor->weight;
@@ -2079,8 +2095,6 @@ Tensor* ConcatLayer::Forward(Tensor *input_tensor_, Tensor *concat_tensor_) {
         for (int i = concat_size; i--; )
             *(output++) = *(concat++);
     }
-    
-    return output_tensor;
 }
 
 void ConcatLayer::Backward() {
@@ -2152,10 +2166,15 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    detection = Tensor(1, 1, 1, 0);
 }
 
-Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
+Tensor* YOLOv3Layer::connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, Forward_Args *args) {
     input_tensor = input_tensor_;
+    return &detection;
+}
+
+void YOLOv3Layer::Forward(Forward_Args *args) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     int channel_size = info.output_width * info.output_height;
@@ -2163,7 +2182,7 @@ Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
     memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
 
     for (int b = 0; b < info.batch_size; ++b){
-        for(int n = 0; n < info.anchor_num; ++n){
+        for(int n = 0; n < info.anchor_num; ++n) {
             int index = entry_index(b, n * channel_size, 0);
             activate_array(output + index, 2 * channel_size, SIGMOID);
             index = entry_index(b, n * channel_size, 4);
@@ -2187,7 +2206,6 @@ Tensor* YOLOv3Layer::Forward(Tensor *input_tensor_, Forward_Args *args) {
             }
         }
     }
-    return &detection;
 }
 
 float YOLOv3Layer::Backward(vfloat& target) {

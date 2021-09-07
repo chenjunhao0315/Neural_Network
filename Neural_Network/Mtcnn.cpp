@@ -546,8 +546,13 @@ void Mtcnn::mark(IMG &img, vector<Bbox> &bbox_list, bool confidence) {
         img.drawCircle(Point(bbox_list[i].leftmouth_x, bbox_list[i].leftmouth_y), RED, radius, radius);
         img.drawCircle(Point(bbox_list[i].rightmouth_x, bbox_list[i].rightmouth_y), RED, radius, radius);
         if (confidence) {
-            string score = to_string(bbox_list[i].score);
-            img.putText(score.c_str(), Point(bbox_list[i].x1, bbox_list[i].y1 - (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10), GREEN, (bbox_list[i].y2 - bbox_list[i].y1 + 1) / 10);
+            string score = to_string(bbox_list[i].score).substr(0, 4);
+            int h = img.height * 0.02;
+            if (h > (bbox_list[i].y2 - bbox_list[i].y1 + 1) * 0.3)
+                h = (bbox_list[i].y2 - bbox_list[i].y1 + 1) * 0.3;
+            if (h < 22)
+                h = 22;
+            img.putText(score.c_str(), Point(bbox_list[i].x1, bbox_list[i].y1 - h), GREEN, h);
         }
     }
 }

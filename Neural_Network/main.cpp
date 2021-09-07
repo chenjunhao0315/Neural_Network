@@ -23,25 +23,24 @@ int main(int argc, const char * argv[]) {
     
 //    test_all_layer();
 
-    class YOLOv3 nn("yolov3.bin");
-    IMG img("5D4A6413.JPG");
-    nn.detect(img);
-    img.save("detected.jpg");
-//    IMG img2("kite.jpg");
-//    nn.detect(img2);
-//    img2.save("test2.jpg");
-//    IMG img3("person.jpg");
-//    nn.detect(img3);
-//    img3.save("test3.jpg");
-//    IMG img4("horses.jpg");
-//    nn.detect(img4);
-//    img4.save("test4.jpg");
-//    IMG img5("5D4A0550_baseline.jpg");
-//    nn.detect(img5);
-//    img5.save("test5.jpg");
-    
+//    class YOLOv3 nn(80);
+//    YOLOv3_DataLoader loader("train.txt");
+//
+//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.0001}});
+//
+//    for (int i = 0; i < 3; ++i) {
+//        yolo_train_args arg = loader.get_train_arg(i);
+//        float loss = trainer.train(arg.data, arg.label)[0];
+//        printf("loss: %f\n", loss);
+//    }
 
-//    Mtcnn mtcnn("1630017229_149_212958.062500.bin", "1630045057_23_52704.917969.bin", "1630045562_6_10078.381836.bin");
+    
+    class YOLOv3 yolo("yolov3.bin");
+    IMG img("IMG_2204.jpg");
+    yolo.detect(img);
+    img.save("detected.jpg", 100);
+
+//    Mtcnn mtcnn("1630961845_149_222280.687500.bin", "1630899594_119_16779.394531.bin", "1630914915_41_3235.218994.bin");
 //    mtcnn.min_face_size = 0;
 //    IMG img("target.jpg");
 //    Clock c;
@@ -50,6 +49,5 @@ int main(int argc, const char * argv[]) {
 //    mtcnn.mark(img, result, true);
 //    img.save("result.jpg", 80);
 //    mtcnn.layout(result);
-    
     return 0;
 }

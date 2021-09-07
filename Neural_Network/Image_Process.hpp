@@ -94,7 +94,9 @@ public:
     unsigned char * toPixelArray();
     IMG resize(Size size, float factor_x = 1, float factor_y = 1, int method = 0);
     IMG crop(Rect rect, Scalar color = Scalar(0, 0, 0));
-    IMG convert(ConvertMethod method);
+    IMG concat(IMG &src);
+    IMG border(int border_width, Color color = WHITE);
+    IMG convertColor(ConvertMethod method);
     IMG gaussian_blur(float radius, float sigma_x = 0, float sigma_y = 0);
     IMG median_blur(int radius);
     IMG filter(Mat kernel, MatType dstType = MAT_UNDEFINED);
@@ -126,7 +128,7 @@ public:
     void drawPixel(Point p, Color color);
     void drawCircle(Point center_point, Color color, int radius = 0, int width = 1);
     void fillRect(Rect rect, Color color);
-    void putText(const char *str, Point p, Color color, int size = 18);
+    void putText(const char *str, Point p, Color color, int text_height = 24);
     bool save(const char *filename = "out.jpg", float quality = 80);
     bool empty();
     
@@ -147,6 +149,7 @@ private:
     IMG convert_hsv_to_rgb();
 };
 
+IMG textLabel(const char *str, int text_height = 24, Color text_color = BLACK, Color background = WHITE, int border = 0);
 int clip(int value, int min, int max);
 vector<int> normalize(vector<int> &src, int min, int max);
 
@@ -188,11 +191,12 @@ private:
 
 class Font {
 public:
-    Font(int pixel_ = 18);
-    Mat get(char c);
+    Font(int pixel_ = 24);
+    Mat getBitmap(char c);
+    IMG getIMG(char c);
 private:
-    IMG ascii;
     int pixel;
+    int size;
 };
 
 

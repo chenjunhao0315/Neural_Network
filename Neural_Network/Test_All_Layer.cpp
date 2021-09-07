@@ -9,17 +9,17 @@
 
 void test_all_layer() {
     Neural_Network nn;
-//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}, {"name", "input"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_1"}});
-//    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
-//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_1"}, {"name", "shortcut_1"}});
-//    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_1"}});
-//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_1"}, {"name", "shortcut_2"}});
-//    nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample"}});
-//    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_2"}, {"name", "concat"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
-//    nn.compile(8);
-    nn.load("test.bin");
+    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}, {"name", "input"}});
+    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_1"}});
+    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "PRelu"}, {"name", "conv_2"}});
+    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_1"}, {"name", "shortcut_1"}});
+    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_1"}});
+    nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample"}});
+    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "pr_conv_2"}, {"name", "concat"}});
+    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"name", "conv_3"}});
+    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
+    nn.compile(8);
+//    nn.load("test.bin");
     nn.shape();
     
     Data bee("bee.npy", 28, 28);
@@ -55,14 +55,14 @@ void test_all_layer() {
     }
     
     
-    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
-    
-//    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.001}});
-//
-//    Clock c;
-//    trainer.train_batch(data_train, data_label, 10);
-//    c.stop_and_show();
-//
 //    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
+    
+    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.001}});
+
+    Clock c;
+    trainer.train_batch(data_train, data_label, 10);
+    c.stop_and_show();
+
+    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
 //    nn.save("test.bin");
 }

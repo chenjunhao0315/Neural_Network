@@ -32,24 +32,25 @@ public:
     void addOutput(string name);
     void compile(int batch_size_ = 1);
     void shape();
-    int getBatchSize() {return batch_size;}
     nn_status status();
     vtensorptr Forward(Tensor *input_tensor_, bool train = false);
     float Backward(vfloat &target);
-    vfloat predict(Tensor *input);
-    float evaluate(vtensor &data_set, vector<vfloat> &target);
     void ClearGrad();
     bool save(const char *model_name);
     bool load(const char *model_name, int batch_size_ = 1);
     bool load_darknet(const char *weights_name);
-    vector<Train_Args> getTrainArgs();
     void alloc_workspace();
+    void createGraph();
+    int getBatchSize() {return batch_size;}
+    vector<Train_Args> getTrainArgs();
+    vfloat predict(Tensor *input);
+    float evaluate(vtensor &data_set, vector<vfloat> &target);
 private:
     string model;
     int layer_number;
     vector<LayerOption> opt_layer;
-//    vector<Model_Layer> layer;
     Model_Layer *layer;
+    vtensorptr output;
     vector<string> output_layer;
     unordered_map<string, Tensor*> terminal;
     vector<vector<int>> path;

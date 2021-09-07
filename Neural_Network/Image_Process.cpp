@@ -36,9 +36,9 @@ IMG::IMG(const char *filename) {
         class JPEG img(filename);
         if (img.status() != Jpeg_Status::OK) {
             if (img.status() == Jpeg_Status::UNSUPPORT) {
-                printf("[JPEG] Unsupport format!\n");
+                fprintf(stderr, "[JPEG] Unsupport format!\n");
             } else {
-                printf("[JPEG] Decode file fail!\n");
+                fprintf(stderr, "[JPEG] Decode file fail!\n");
             }
             return;
         }
@@ -72,9 +72,9 @@ IMG::IMG(const char *filename) {
         delete [] pixel_array;
         fclose(f);
     } else if (image_type == ImageType::UNSUPPORT) {
-        printf("[IMG] Unsupport file type!\n");
+        fprintf(stderr, "[IMG] Unsupport file type!\n");
     } else if (image_type == ImageType::OPEN_FAIL) {
-        printf("[IMG] Open file fail!\n");
+        fprintf(stderr, "[IMG] Open file fail!\n");
     }
 }
 
@@ -166,7 +166,7 @@ bool IMG::save(const char *filename, float quality) {
     IMG::ImageType store_type = phraseType(filename);
     if (store_type == IMG::ImageType::PPM) {
         if (type != MAT_8UC3) {
-            printf("Channel size not correct!\n");
+            fprintf(stderr, "Channel size not correct!\n");
             return false;
         }
         FILE *f = fopen(filename, "wb");
@@ -176,7 +176,7 @@ bool IMG::save(const char *filename, float quality) {
         return true;
     } else if (store_type == IMG::ImageType::PGM) {
         if (type != MAT_8UC1) {
-            printf("Channel size not correct!\n");
+            fprintf(stderr, "Channel size not correct!\n");
             return false;
         }
         FILE *f = fopen(filename, "wb");
@@ -186,13 +186,13 @@ bool IMG::save(const char *filename, float quality) {
         return true;
     } else if (store_type == IMG::ImageType::JPEG) {
         if (type != MAT_8UC3 && type != MAT_8UC1) {
-            printf("[IMG] Unsupport data format!\n");
+            fprintf(stderr, "[IMG] Unsupport data format!\n");
             return false;
         }
         class JPEG img(mat.ptr(), width, height, mat.depth());
         return img.save(filename, quality, (mat.depth() == 1) ? false : true);
     } else {
-        printf("Format unsupport!\n");
+        fprintf(stderr, "Format unsupport!\n");
     }
     return false;
 }
@@ -206,12 +206,20 @@ IMG IMG::resize(Size size, float factor_w, float factor_h, int method) {
     if (size.width == 0 && size.height == 0) {
         dst_width = round(width * factor_w);
         dst_height = round(height * factor_h);
+    } else if (size.width == 0 && size.height != 0) {
+        factor_h = (float)size.height / height;
+        factor_w = factor_h;
+        dst_width = width * factor_w;
+    } else if (size.width != 0 && size.height == 0) {
+        factor_w = (float)size.width / width;
+        factor_h = factor_w;
+        dst_height = height * factor_h;
     } else {
         factor_w = (float)size.width / width;
         factor_h = (float)size.height / height;
     }
     if (type != MAT_8UC1 && type != MAT_8UC3) {
-        printf("[IMG][Resize] Unsupport format\n");
+        fprintf(stderr, "[IMG][Resize] Unsupport format\n");
         return IMG();
     }
     
@@ -320,7 +328,30 @@ IMG IMG::crop(Rect rect, Scalar color) {
     return result;
 }
 
-IMG IMG::convert(ConvertMethod method) {
+IMG IMG::concat(IMG &src) {
+    if (type != MAT_8UC3 || src.type != MAT_8UC3) {
+        fprintf(stderr, "[IMG][Concat] Unsupport type or unmatched type!\n");
+        return IMG();
+    }
+    int dst_width = width + src.width;
+    int dst_height = max(height, src.height);
+    IMG dst(dst_width, dst_height, MAT_8UC3);
+    dst.paste(*this, Point(0, dst_height - height));
+    dst.paste(src, Point(width, dst_height - src.height));
+    return dst;
+}
+
+IMG IMG::border(int border_width, Color color) {
+    if (type != MAT_8UC3) {
+        fprintf(stderr, "[IMG][Border] Unsupport type or unmatched type!\n");
+        return IMG();
+    }
+    IMG dst(width + 2 * border_width, height + 2 * border_width, MAT_8UC3, Scalar(color.R, color.G, color.B));
+    dst.paste(*this, Point(border_width, border_width));
+    return dst;
+}
+
+IMG IMG::convertColor(ConvertMethod method) {
     switch (method) {
         case RGB_TO_GRAY:
             return convert_rgb_to_gray();
@@ -336,7 +367,7 @@ IMG IMG::convert(ConvertMethod method) {
 
 IMG IMG::convert_rgb_to_gray() {
     if (type != MAT_8UC3) {
-        printf("[IMG][RGB->GRAY] Unsupport!\n");
+        fprintf(stderr, "[IMG][RGB->GRAY] Unsupport!\n");
         return IMG();
     }
     IMG result(width, height, MAT_8UC1);
@@ -355,7 +386,7 @@ IMG IMG::convert_rgb_to_gray() {
 
 IMG IMG::convert_rgb_to_hsv() {
     if (type != MAT_8UC3) {
-        printf("[IMG][RGB->HSV] Unsupport!\n");
+        fprintf(stderr, "[IMG][RGB->HSV] Unsupport!\n");
         return IMG();
     }
     
@@ -407,7 +438,7 @@ IMG IMG::convert_rgb_to_hsv() {
 
 IMG IMG::convert_hsv_to_rgb() {
     if (type != MAT_32FC3) {
-        printf("[IMG][HSV->RGB] Unsupport!\n");
+        fprintf(stderr, "[IMG][HSV->RGB] Unsupport!\n");
         return IMG();
     }
     
@@ -460,15 +491,15 @@ IMG IMG::convert_hsv_to_rgb() {
 
 IMG IMG::filter(Mat kernel, MatType dstType) {
     if (kernel.width != kernel.height) {
-        printf("Unsupport!\n");
+        fprintf(stderr, "[IMG][Filter] Unsupport kernel!\n");
         return IMG();
     }
     if (kernel.width % 2 == 0) {
-        printf("Unsupport!\n");
+        fprintf(stderr, "[IMG][Filter] Unsupport kernel!\n");
         return IMG();
     }
     if (mat.depth() != getDepth(dstType)) {
-        printf("[IMG][Filter] Channel unmatched!\n");
+        fprintf(stderr, "[IMG][Filter] Channel unmatched!\n");
         return IMG();
     }
     
@@ -484,11 +515,11 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
 
 IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
     if (radius_ == 0 && sigma_x_ == 0) {
-        printf("[IMG][Gaussian_blur] Parameter error!\n");
+        fprintf(stderr, "[IMG][Gaussian_blur] Parameter error!\n");
         return IMG();
     }
     if (type != MAT_8UC1 && type != MAT_8UC3) {
-        printf("[IMG][Gaussian_blur] Unsupport type!\n");
+        fprintf(stderr, "[IMG][Gaussian_blur] Unsupport type!\n");
         return IMG();
     }
     
@@ -580,7 +611,7 @@ IMG IMG::gaussian_blur(float radius_, float sigma_x_, float sigma_y_) {
 
 IMG IMG::median_blur(int radius) {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
-        printf("[IMG][Median_blur] Unsupport type!\n");
+        fprintf(stderr, "[IMG][Median_blur] Unsupport type!\n");
         return IMG();
     }
     IMG dst(width, height, type);
@@ -632,7 +663,7 @@ IMG IMG::median_blur(int radius) {
 
 IMG IMG::sobel() {
     if (type != MAT_8UC1) {
-        printf("[IMG][Sobel] Only accept grayscale!\n");
+        fprintf(stderr, "[IMG][Sobel] Only accept grayscale!\n");
         return IMG();
     }
     int sobel_x[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
@@ -683,7 +714,7 @@ IMG IMG::laplacian(float gain_) {
 
 IMG IMG::canny(float threshold1, float threshold2) {
     if (mat.depth() != 1) {
-        printf("[IMG][Canny] Only accept grayscale!\n");
+        fprintf(stderr, "[IMG][Canny] Only accept grayscale!\n");
         return IMG();
     }
     Canny CannyTool(threshold1, threshold2);
@@ -692,7 +723,7 @@ IMG IMG::canny(float threshold1, float threshold2) {
 
 IMG IMG::threshold(unsigned char threshold, unsigned char max) {
     if (type != MAT_8UC1) {
-        printf("[IMG][Threshold] Only accept grayscale!\n");
+        fprintf(stderr, "[IMG][Threshold] Only accept grayscale!\n");
         return IMG();
     }
     IMG result(width, height, MAT_8UC1);
@@ -709,11 +740,11 @@ IMG IMG::threshold(unsigned char threshold, unsigned char max) {
 
 IMG IMG::dilate(Kernel kernel) {
     if (type != MAT_8UC1) {
-        printf("[IMG][Dilate] Only accept binary graph!\n");
+        fprintf(stderr, "[IMG][Dilate] Only accept binary graph!\n");
         return IMG();
     }
     if (kernel.width % 2 == 0) {
-        printf("[IMG][Dilate] Kernel unsupport!\n");
+        fprintf(stderr, "[IMG][Dilate] Unsupported kernel!\n");
         return IMG();
     }
     IMG result(width, height, MAT_8UC1);
@@ -751,11 +782,11 @@ IMG IMG::dilate(Kernel kernel) {
 
 IMG IMG::erode(Kernel kernel) {
     if (type != MAT_8UC1) {
-        printf("[IMG][Erode] Only accept binary graph!\n");
+        fprintf(stderr, "[IMG][Erode] Only accept binary graph!\n");
         return IMG();
     }
     if (kernel.width % 2 == 0) {
-        printf("[IMG][Erode] Kernel unsupport!\n");
+        fprintf(stderr, "[IMG][Erode] Unsupported kernel!\n");
         return IMG();
     }
     IMG result(width, height, MAT_8UC1);
@@ -793,11 +824,11 @@ IMG IMG::erode(Kernel kernel) {
 
 IMG IMG::opening(Kernel kernel) {
     if (type != MAT_8UC1) {
-        printf("[IMG][Opening] Only accept binary graph!\n");
+        fprintf(stderr, "[IMG][Opening] Only accept binary graph!\n");
         return IMG();
     }
     if (kernel.width % 2 == 0) {
-        printf("[IMG][Opening] Kernel unsupport!\n");
+        fprintf(stderr, "[IMG][Opening] Unsupported kernel!\n");
         return IMG();
     }
     IMG result(width, height);
@@ -808,11 +839,11 @@ IMG IMG::opening(Kernel kernel) {
 
 IMG IMG::closing(Kernel kernel) {
     if (type != MAT_8UC1) {
-        printf("Only accept binary graph!\n");
+        fprintf(stderr, "[IMG][Closing] Only accept binary graph!\n");
         return IMG();
     }
     if (kernel.width % 2 == 0) {
-        printf("Unsupport!\n");
+        fprintf(stderr, "[IMG][Closing] Unsupported kernel!\n");
         return IMG();
     }
     IMG result(width, height);
@@ -823,11 +854,11 @@ IMG IMG::closing(Kernel kernel) {
 
 IMG IMG::add(IMG &addend, MatType dstType) {
     if (mat.depth() != addend.mat.depth()) {
-        printf("[IMG][Add] Channel unmatched!\n");
+        fprintf(stderr, "[IMG][Add] Channel unmatched!\n");
         return IMG();
     }
     if (!(width == addend.width && height == addend.height)) {
-        printf("[IMG][Add] Size unmatched!\n");
+        fprintf(stderr, "[IMG][Add] Size unmatched!\n");
         return IMG();
     }
     
@@ -842,11 +873,11 @@ IMG IMG::add(IMG &addend, MatType dstType) {
 
 IMG IMG::subtract(IMG &minuend, MatType dstType) {
     if (mat.depth() != minuend.mat.depth()) {
-        printf("[IMG][Subtract] Channel unmatched!\n");
+        fprintf(stderr, "[IMG][Subtract] Channel unmatched!\n");
         return IMG();
     }
     if (!(width == minuend.width && height == minuend.height)) {
-        printf("[IMG][Subtract] Size unmatched!\n");
+        fprintf(stderr, "[IMG][Subtract] Size unmatched!\n");
         return IMG();
     }
     
@@ -870,11 +901,11 @@ IMG IMG::scale(float scale, MatType dstType) {
 
 IMG IMG::addWeighted(float alpha, IMG &addend, float beta, float gamma, MatType dstType_) {
     if (mat.depth() != addend.mat.depth()) {
-        printf("[IMG][AddWeighted] Channel unmatched!\n");
+        fprintf(stderr, "[IMG][AddWeighted] Channel unmatched!\n");
         return IMG();
     }
     if (!(width == addend.width && height == addend.height)) {
-        printf("[IMG][AddWeighted] Size unmatched!\n");
+        fprintf(stderr, "[IMG][AddWeighted] Size unmatched!\n");
         return IMG();
     }
     MatType dstType = (dstType_ == MAT_UNDEFINED) ? type : dstType_;
@@ -899,7 +930,11 @@ IMG IMG::convertScaleAbs(float scale, float alpha) {
 }
 
 IMG IMG::hsv_distort(float hue, float sat, float expo) {
-    IMG result = this->convert(RGB_TO_HSV);
+    if (type != MAT_8UC3) {
+        fprintf(stderr, "[IMG][HSV distort] Unsupport type!\n");
+        return IMG();
+    }
+    IMG result = this->convertColor(RGB_TO_HSV);
     result.scale_channel(1, sat);
     result.scale_channel(2, expo);
     float *ptr = (float*)result.getMat().ptr();
@@ -912,12 +947,12 @@ IMG IMG::hsv_distort(float hue, float sat, float expo) {
             *(ptr) += 1;
         ptr += 3;
     }
-    return result.convert(HSV_TO_RGB);
+    return result.convertColor(HSV_TO_RGB);
 }
 
 IMG IMG::local_color_correction(float radius) {
     if (type != MAT_8UC3) {
-        printf("[IMG][Local Color Correction] Unsupport!\n");
+        fprintf(stderr, "[IMG][Local Color Correction] Unsupport!\n");
         return IMG();
     }
     
@@ -953,13 +988,13 @@ IMG IMG::local_color_correction(float radius) {
 
 void IMG::paste(IMG &img, Point p) {
     if (type != MAT_8UC3) {
-        printf("[IMG][Paste] Unsupport data type!\n");
+        fprintf(stderr, "[IMG][Paste] Unsupport data type!\n");
         return;
     }
     
     for (int o_h = p.y, p_h = 0; p_h < img.height; ++o_h, ++p_h) {
         for (int o_w = p.x, p_w = 0; p_w < img.width; ++o_w, ++p_w) {
-            if (o_h < height && o_w < width) {
+            if (o_h < height && o_w < width && o_h >= 0 && o_w >= 0) {
                 Vec3b &dst = mat.at<Vec3b>(o_w, o_h);
                 Vec3b &src = img.mat.at<Vec3b>(p_w, p_h);
                 dst[0] = src[0];
@@ -972,7 +1007,7 @@ void IMG::paste(IMG &img, Point p) {
 
 void IMG::flip() {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
-        printf("[IMG][Flip] Unsupport type!\n");
+        fprintf(stderr, "[IMG][Flip] Unsupport type!\n");
         return;
     }
     
@@ -990,7 +1025,7 @@ void IMG::flip() {
 
 void IMG::histogram(Size size, int resolution, const char *histogram_name) {
     if (type != MAT_8UC1 && type != MAT_8UC3) {
-        printf("[IMG][Histogram] Unsupport data type!\n");
+        fprintf(stderr, "[IMG][Histogram] Unsupport data type!\n");
         return;
     }
     int interval = 255 / resolution;
@@ -1138,14 +1173,14 @@ void IMG::fillRect(Rect rect, Color color) {
     }
 }
 
-void IMG::putText(const char *str, Point p, Color color, int size) {
-    Font font(size);
+void IMG::putText(const char *str, Point p, Color color, int text_height) {
+    Font font(text_height);
     size_t str_len = strlen(str);
     for (int i = 0; i < str_len; ++i) {
-        Mat bitmap = font.get(str[i]);
+        Mat bitmap = font.getBitmap(str[i]);
         for (int h = p.y, y = 0; h < p.y + bitmap.height; ++h, ++y) {
             for (int w = p.x, x = 0; w < p.x + bitmap.width; ++w, ++x) {
-                if (bitmap.at<unsigned char>(x, y) == 255) {
+                if (bitmap.at<unsigned char>(x, y) < 30) {
                     Vec3b &dst = mat.at<Vec3b>(w, h);
                     dst[0] = color.R;
                     dst[1] = color.G;
@@ -1155,6 +1190,34 @@ void IMG::putText(const char *str, Point p, Color color, int size) {
         }
         p.x += bitmap.width;
     }
+}
+
+IMG textLabel(const char *str, int text_height, Color text_color, Color background, int border) {
+    Font font(text_height);
+    size_t str_len = strlen(str);
+    IMG label(0, 0, MAT_8UC3);
+    for (int i = 0; i < str_len; ++i) {
+        IMG c = font.getIMG(str[i]);
+        label = label.concat(c);
+    }
+    int label_width = label.width;
+    int label_height = label.height;
+    int label_size = label_width * label_height;
+    unsigned char *ptr = label.toPixelArray();
+    for (int i = label_size; i--; ) {
+        if (*ptr > 128) {
+            *(ptr++) = background.R;
+            *(ptr++) = background.G;
+            *(ptr++) = background.B;
+        } else {
+            *(ptr++) = text_color.R;
+            *(ptr++) = text_color.G;
+            *(ptr++) = text_color.B;
+        }
+    }
+    if (border)
+        label = label.border(border, background);
+    return label;
 }
 
 int clip(int value, int min, int max) {
@@ -1396,16 +1459,26 @@ void Kernel::show() {
 }
 
 Font::Font(int pixel_) {
-    ascii = IMG("ascii.pgm");
+    int size_table[] = {12, 24, 36, 48, 60, 72, 84, 96};
+    int i;
+    for (i = 0; size_table[i] < pixel_; ++i);
+    size = i;
     pixel = pixel_;
 }
 
-Mat Font::get(char c) {
-    c -= 32;
-    int w = c % 18;
-    int h = c / 18;
-    IMG crop = ascii.crop(Rect(w * 14, h * 18, (w + 1) * 14, (h + 1) * 18));
-    crop = crop.resize(Size(0, 0), pixel / 18.0, pixel / 18.0, NEAREST);
-    return crop.getMat();
+Mat Font::getBitmap(char c) {
+    char font_id[32];
+    sprintf(font_id, "./font/%d_%d.jpg", c, size);
+    IMG font(font_id);
+    font = font.resize(Size(0, pixel), NEAREST);
+    return font.getMat();
+}
+
+IMG Font::getIMG(char c) {
+    char font_id[32];
+    sprintf(font_id, "./font/%d_%d.jpg", c, size);
+    IMG font(font_id);
+    font = font.resize(Size(0, pixel), NEAREST);
+    return font;
 }
 

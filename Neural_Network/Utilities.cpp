@@ -353,8 +353,7 @@ void col2im_add_pixel(float *im, int height, int width, int channels, int row, i
     row -= pad;
     col -= pad;
 
-    if (row < 0 || col < 0 ||
-        row >= height || col >= width) return;
+    if (row < 0 || col < 0 || row >= height || col >= width) return;
     im[col + width * (row + height * channel)] += val;
 }
 

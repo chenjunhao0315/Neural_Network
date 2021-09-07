@@ -249,7 +249,6 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         layer[i] = Model_Layer(opt);
         layer[i].load(f);
     }
-    alloc_workspace();
     int output_number;
     fread(&output_number, sizeof(int), 1, f);
     for (int i = 0; i < output_number; ++i) {
@@ -261,6 +260,8 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         output_layer.push_back(string(output));
     }
     fclose(f);
+    alloc_workspace();
+    createGraph();
     for (int i = 0; i < output_layer.size(); ++i) {
         vector<int> route;
         string target_name = output_layer[i];
@@ -370,6 +371,8 @@ bool Neural_Network::load_darknet(const char *weights_name) {
             }
             layer[i].load_raw(f);
         }
+//        size_t check_f = ftell(f);
+//        printf("%s: %zu / %zu\n", opt["name"].c_str(), check_f, check);
     }
     size_t end = ftell(f);
     printf("%zu %zu\n", check, end);
@@ -443,7 +446,6 @@ void Neural_Network::addLayer(LayerOption opt_) {
 void Neural_Network::compile(int batch_size_) {
     unordered_map<string, int> id_table;
     batch_size = batch_size_;
-//    layer.reserve(opt_layer.size());
     layer = new Model_Layer [opt_layer.size()];
     printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
@@ -476,10 +478,12 @@ void Neural_Network::compile(int batch_size_) {
         layer[i] = Model_Layer(opt);
         layer_number++;
     }
-    alloc_workspace();
     printf("*****************************\n");
     if (output_layer.empty())
         output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
+    alloc_workspace();
+    createGraph();
+    
     for (int i = 0; i < output_layer.size(); ++i) {
         vector<int> route;
         string target_name = output_layer[i];
@@ -495,42 +499,38 @@ void Neural_Network::compile(int batch_size_) {
 
 void Neural_Network::shape() {
     printf("Model type: \"%s\"\n", model.c_str());
-    printf("------------------------------------------------------\n");
-    printf("Layer(type)      Name       Input       Output Shape\n");
-    printf("======================================================\n");
+    printf("-------------------------------------------------------------\n");
+    printf("Layer(type)      Name          Input          Output Shape\n");
+    printf("=============================================================\n");
     for (int i = 0; i < layer_number; ++i) {
         layer[i].shape();
     }
-    printf("======================================================\n");
+    printf("=============================================================\n");
 }
 
 Neural_Network::nn_status Neural_Network::status() {
     return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
-vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
-//    Forward_Args forward_args(train, workspace);
-    args.train = train;
-    Tensor *act = layer[0].Forward(input_tensor_);
-    terminal[opt_layer[0]["name"]] = act;
-//    act->showWeight();
-    for (int i = 1; i < layer_number; ++i) {
+void Neural_Network::createGraph() {
+    for (int i = 0; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
-        act = layer[i].Forward(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), &args);
+        Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), &args);
         terminal[opt["name"]] = act;
-//        cout << opt["name"] << ": ";
-//        act->showWeight();
     }
     
     int output_size = (int)output_layer.size();
-    vtensorptr output; output.reserve(output_size);
-    
+    output.reserve(output_size);
     output.push_back(terminal[output_layer[0]]);
-    
     for (int i = 1; i < output_size; ++i) {
         output.push_back(terminal[output_layer[i]]);
-//        vfloat temp = terminal[output_layer[i]]->toVector();
-//        output.insert(output.end(), temp.begin(), temp.end());
+    }
+}
+
+vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
+    args.train = train;
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i].Forward(input_tensor_, &args);
     }
     return output;
 }
@@ -653,8 +653,8 @@ void Neural_Network::alloc_workspace() {
             max = size;
     }
     workspace = new float [max];
-    printf("workspace: %d at ", max);
-    cout << workspace << endl;
+//    printf("workspace: %d at ", max);
+//    cout << workspace << endl;
     args = Forward_Args(false, workspace);
 }
 

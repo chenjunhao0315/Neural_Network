@@ -31,12 +31,18 @@ public:
     Tensor(Tensor &&T);
     Tensor& operator=(const Tensor &T);
     Tensor& operator=(std::initializer_list<float> list);
+    bool operator==(const Tensor &T) const;
+    Tensor& operator+=(const Tensor &T);
+    Tensor& operator-=(const Tensor &T);
+    float& operator[](int index);
+    const float& operator[](int index) const;
     Tensor(Tensor *T);
     Tensor(vfloat &V);
     Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_);
     Tensor(float* RGB, int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_, float parameter);
+    Tensor concate(const Tensor &T);
     void set(int width_, int height_, int dimension_, float value);
     float get(int width_, int height_, int dimension_);
     float getGrad(int width_, int height_, int dimension_);
@@ -51,12 +57,12 @@ public:
     int getDimension();
     int length() {return size;}
     void save(FILE *f);
+    void save_raw(FILE *f);
     void load(FILE *f);
     void load_raw(FILE *f);
     vfloat toVector();
     void toIMG(const char *filename);
     void shape();
-    void resize(int width_, int height_, int dimension_);
     friend ostream& operator<<(ostream& os, Tensor& t);
 //private:
     int width;
@@ -66,5 +72,11 @@ public:
     float* weight;
     float* delta_weight;
 };
+
+bool same_plane(const Tensor &a, const Tensor &b);
+bool same_structure(const Tensor &a, const Tensor &b);
+
+Tensor operator+(const Tensor &a, const Tensor &b);
+Tensor operator-(const Tensor &a, const Tensor &b);
 
 #endif /* Tensor_hpp */

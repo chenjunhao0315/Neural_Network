@@ -392,7 +392,7 @@ bool ONet::ready() {
     return (onet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
-void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vector<vfloat> &label_set, int width, int size) {
+void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vtensor &label_set, int width, int size) {
     FILE *img = fopen(data_path, "rb");
     FILE *label = fopen(label_path, "rb");
     
@@ -403,13 +403,14 @@ void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &d
         fread(&cls, sizeof(int), 1, label);
         fread(bbox, sizeof(float), 4, label);
         fread(landmark, sizeof(float), 10, label);
-        vfloat label_data;
-        label_data.push_back((float)cls);
+        Tensor label_data;
+        float *label_data_ptr = label_data.weight;
+        *(label_data_ptr++) = ((float)cls);
         for (int i = 0; i < 4; ++i) {
-            label_data.push_back(bbox[i]);
+            *(label_data_ptr++) = (bbox[i]);
         }
         for (int i = 0; i < 10; ++i) {
-            label_data.push_back(landmark[i]);
+            *(label_data_ptr++) = (landmark[i]);
         }
         label_set.push_back(label_data);
         
@@ -481,7 +482,7 @@ Mtcnn::Mtcnn(const char *model_pnet, const char *model_rnet, const char *model_o
     pnet = new PNet(model_pnet);
     rnet = new RNet(model_rnet);
     onet = new ONet(model_onet);
-    pnet->threshold[0] = 0.96;
+    pnet->threshold[0] = 0.9;
     rnet->threshold[0] = 0.7;
     onet->threshold[0] = 0.8;
     min_face_size = 0;
@@ -663,7 +664,7 @@ int MtcnnLoader::getSize() {
     return len;
 }
 
-vfloat MtcnnLoader::getLabel(int index) {
+Tensor MtcnnLoader::getLabel(int index) {
     fseek(label_ptr, index * label_step, SEEK_SET);
     int cls;
     float bbox[4];
@@ -671,13 +672,14 @@ vfloat MtcnnLoader::getLabel(int index) {
     fread(&cls, sizeof(int), 1, label_ptr);
     fread(bbox, sizeof(float), 4, label_ptr);
     fread(landmark, sizeof(float), 10, label_ptr);
-    vfloat label_data;
-    label_data.push_back((float)cls);
+    Tensor label_data(1, 1, 15, 0);
+    float *label_ptr = label_data.weight;
+    *(label_ptr++) = ((float)cls);
     for (int i = 0; i < 4; ++i) {
-        label_data.push_back(bbox[i]);
+        *(label_ptr++) = (bbox[i]);
     }
     for (int i = 0; i < 10; ++i) {
-        label_data.push_back(landmark[i]);
+        *(label_ptr++) = (landmark[i]);
     }
     return label_data;
 }
@@ -698,7 +700,7 @@ void MtcnnTrainer::train(int epoch, int decade_interval, float decade_rate) {
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j < data_set_size; ++j) {
             Tensor img = loader->getImg(index[j]);
-            vfloat label = loader->getLabel(index[j]);
+            Tensor label = loader->getLabel(index[j]);
             loss += trainer->train(img, label)[0];
             if (j % interval == 0) {
                 printf("[%.2f%%] loss: %f\n", 100.0 * j / data_set_size, loss);
@@ -720,15 +722,16 @@ void MtcnnTrainer::evaluate(Neural_Network &nn) {
     int interval = data_set_size / 100;
     for (int i = 0; i < data_set_size; ++i) {
         Tensor img = loader->getImg(i);
-        vfloat label = loader->getLabel(i);
+        Tensor label = loader->getLabel(i);
         vfloat out = nn.Forward(&img)[0]->toVector();
-        if (label[0] == 1) {
+        float *label_ptr = label.weight;
+        if (label_ptr[0] == 1) {
             if (out[1] > out[0]) {
                 correct++;
                 pos++;
             }
             count++;
-        } else if (label[0] == 0) {
+        } else if (label_ptr[0] == 0) {
             if (out[0] > out[1]) {
                 correct++;
                 neg++;

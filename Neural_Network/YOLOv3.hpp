@@ -14,8 +14,8 @@
 
 class YOLOv3 {
 public:
-    YOLOv3(const char *model_name, int num_class_ = 80);
-    YOLOv3(int num_class_ = 80);
+    YOLOv3(const char *model_name, int num_class_ = 80, int batch_size = 1);
+    YOLOv3(int num_class_ = 80, int batch_size = 1);
     vector<Detection> detect(IMG &input);
 //private:
     IMG yolo_pre_process_img(IMG& img, int net_w, int net_h);
@@ -46,15 +46,16 @@ struct yolo_label {
 };
 
 struct yolo_train_args {
-    yolo_train_args(Tensor &data_, vfloat label_) : data(data_), label(label_) {}
+    yolo_train_args(Tensor &data_, Tensor &label_) : data(data_), label(label_) {}
     Tensor data;
-    vfloat label;
+    Tensor label;
 };
 
 class YOLOv3_DataLoader {
 public:
     ~YOLOv3_DataLoader();
     YOLOv3_DataLoader(const char *filename);
+    void clean_data(const char *in, const char *out);
     yolo_train_args get_train_arg(int index);
     void mark_truth(int index);
     int size() {return (int)dataset.size() - 1;}

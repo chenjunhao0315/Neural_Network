@@ -186,8 +186,8 @@ void activate_array(float *src, int length, ACTIVATE_METHOD method) {
 
 float activate(float src, ACTIVATE_METHOD method) {
     switch (method) {
-        case SIGMOID:
-            return 1.0 / (1.0 + exp(-src));
+        case LOGISTIC:
+            return logistic_activate(src);
         default:
             break;
     }
@@ -234,6 +234,16 @@ float box_union(Box &a, Box &b) {
 
 float box_iou(Box &a, Box &b) {
     return box_intersection(a, b) / box_union(a, b);
+}
+
+Box float_to_box(float *f, int stride)
+{
+    Box b = {0};
+    b.x = f[0];
+    b.y = f[1 * stride];
+    b.w = f[2 * stride];
+    b.h = f[3 * stride];
+    return b;
 }
 
 Box vfloat_to_box(vfloat &src, int index) {

@@ -738,7 +738,7 @@ IMG IMG::threshold(unsigned char threshold, unsigned char max) {
     return result;
 }
 
-IMG IMG::dilate(Kernel kernel) {
+IMG IMG::dilate(Strel kernel) {
     if (type != MAT_8UC1) {
         fprintf(stderr, "[IMG][Dilate] Only accept binary graph!\n");
         return IMG();
@@ -780,22 +780,22 @@ IMG IMG::dilate(Kernel kernel) {
     return result;
 }
 
-IMG IMG::erode(Kernel kernel) {
+IMG IMG::erode(Strel strel) {
     if (type != MAT_8UC1) {
         fprintf(stderr, "[IMG][Erode] Only accept binary graph!\n");
         return IMG();
     }
-    if (kernel.width % 2 == 0) {
-        fprintf(stderr, "[IMG][Erode] Unsupported kernel!\n");
+    if (strel.width % 2 == 0) {
+        fprintf(stderr, "[IMG][Erode] Unsupported strel!\n");
         return IMG();
     }
     IMG result(width, height, MAT_8UC1);
     
     int x, y;
     int coordinate_w, coordinate_h;
-    int padding = (kernel.width - 1) / 2;
-    int kernel_size = kernel.width;
-    int kernel_index;
+    int padding = (strel.width - 1) / 2;
+    int strel_size = strel.width;
+    int strel_index;
     bool flag;
     
     unsigned char *src_ptr = mat.ptr();
@@ -805,13 +805,13 @@ IMG IMG::erode(Kernel kernel) {
     for (int h = 0; h < height; ++h, ++y) {
         x = -padding;
         for (int w = 0; w < width; ++w, ++x) {
-            kernel_index = 0; flag = false;
-            for (int kernel_h = 0; !flag && kernel_h < kernel_size; ++kernel_h) {
-                coordinate_h = y + kernel_h;
-                for (int kernel_w = 0; !flag && kernel_w < kernel_size; ++kernel_w) {
-                    coordinate_w = x + kernel_w;
+            strel_index = 0; flag = false;
+            for (int strel_h = 0; !flag && strel_h < strel_size; ++strel_h) {
+                coordinate_h = y + strel_h;
+                for (int strel_w = 0; !flag && strel_w < strel_size; ++strel_w) {
+                    coordinate_w = x + strel_w;
                     if (coordinate_w >= 0 && coordinate_w < width && coordinate_h >= 0 && coordinate_h < height) {
-                        if (kernel[kernel_index] == 1 && *(src_ptr + coordinate_h * width + coordinate_w) == 0)
+                        if (strel[strel_index] == 1 && *(src_ptr + coordinate_h * width + coordinate_w) == 0)
                             flag = true;
                     }
                 }
@@ -822,33 +822,33 @@ IMG IMG::erode(Kernel kernel) {
     return result;
 }
 
-IMG IMG::opening(Kernel kernel) {
+IMG IMG::opening(Strel strel) {
     if (type != MAT_8UC1) {
         fprintf(stderr, "[IMG][Opening] Only accept binary graph!\n");
         return IMG();
     }
-    if (kernel.width % 2 == 0) {
-        fprintf(stderr, "[IMG][Opening] Unsupported kernel!\n");
+    if (strel.width % 2 == 0) {
+        fprintf(stderr, "[IMG][Opening] Unsupported strel!\n");
         return IMG();
     }
     IMG result(width, height);
-    result = this->erode(kernel);
-    result = result.dilate(kernel);
+    result = this->erode(strel);
+    result = result.dilate(strel);
     return result;
 }
 
-IMG IMG::closing(Kernel kernel) {
+IMG IMG::closing(Strel strel) {
     if (type != MAT_8UC1) {
         fprintf(stderr, "[IMG][Closing] Only accept binary graph!\n");
         return IMG();
     }
-    if (kernel.width % 2 == 0) {
-        fprintf(stderr, "[IMG][Closing] Unsupported kernel!\n");
+    if (strel.width % 2 == 0) {
+        fprintf(stderr, "[IMG][Closing] Unsupported strel!\n");
         return IMG();
     }
     IMG result(width, height);
-    result = this->dilate(kernel);
-    result = result.erode(kernel);
+    result = this->dilate(strel);
+    result = result.erode(strel);
     return result;
 }
 
@@ -1390,71 +1390,84 @@ void Canny::hysteresis(Mat &upper, Mat &lower, Mat &dir) {
     }
 }
 
-Kernel::~Kernel() {
+Strel::~Strel() {
     delete [] data;
 }
 
-Kernel::Kernel(int width_, int height_, int dimension_, float parameter) {
+Strel::Strel(Strel::Shape shape, int radius) {
+    width = height = radius;
+    data = new int [width * height]();
+    switch (shape) {
+        case Shape::SQUARE:
+            fill(data, data + width * height, 1);
+            break;
+        case Shape::CROSS:
+            for (int h = 0; h < height; ++h) {
+                int index = h * width + width / 2;
+                data[index] = 1;
+            }
+            for (int w = 0; w < width; ++w) {
+                int index = height / 2 * width + w;
+                data[index] = 1;
+            }
+            break;
+    }
+}
+
+Strel::Strel(int width_, int height_, int parameter) {
     width = width_;
     height = height_;
-    dimension = dimension_;
-    data = new float [width * height * dimension];
-    fill(data, data + width * height * dimension, parameter);
+    data = new int [width * height];
+    fill(data, data + width * height, parameter);
 }
 
-Kernel::Kernel(const Kernel &K) {
+Strel::Strel(const Strel &K) {
     width = K.width;
     height = K.height;
-    dimension = K.dimension;
-    data = new float [width * height * dimension];
-    memcpy(data, K.data, sizeof(float) * width * height * dimension);
+    data = new int [width * height];
+    memcpy(data, K.data, sizeof(float) * width * height);
 }
 
-Kernel::Kernel(Kernel &&K) {
+Strel::Strel(Strel &&K) {
     width = K.width;
     height = K.height;
-    dimension = K.dimension;
     data = K.data;
     K.data = nullptr;
 }
 
-float& Kernel::operator[](int index) {
+int& Strel::operator[](int index) {
     return data[index];
 }
 
-const float& Kernel::operator[](int index) const {
+const int& Strel::operator[](int index) const {
     return data[index];
 }
 
-Kernel& Kernel::operator=(const Kernel &K) {
+Strel& Strel::operator=(const Strel &K) {
     width = K.width;
     height = K.height;
-    dimension = K.dimension;
     delete [] data;
-    data = new float [width * height * dimension];
-    memcpy(data, K.data, sizeof(float) * width * height * dimension);
+    data = new int [width * height];
+    memcpy(data, K.data, sizeof(float) * width * height);
     return *this;
 }
 
-Kernel& Kernel::operator=(initializer_list<float> list) {
+Strel& Strel::operator=(initializer_list<int> list) {
     int n = 0;
-    for (float element : list) {
+    for (int element : list) {
         data[n++] = element;
     }
     return *this;
 }
 
-void Kernel::show() {
-    printf("Width: %d Height: %d Dimension: %d\n", width, height, dimension);
+void Strel::show() {
+    printf("Width: %d Height: %d\n", width, height);
     int idx = -1;
-    for (int i = 0; i < dimension; ++i) {
-        printf("Dimension %d:\n", i + 1);
-        for (int j = 0; j < height; ++j) {
-            for (int k = 0; k < width; ++k) {
-                printf("%.2f ", data[++idx]);
-            }
-            printf("\n");
+    for (int j = 0; j < height; ++j) {
+        for (int k = 0; k < width; ++k) {
+            printf("%d ", data[++idx]);
         }
+        printf("\n");
     }
 }
 

@@ -34,9 +34,10 @@ public:
     void shape();
     nn_status status();
     vtensorptr Forward(Tensor *input_tensor_, bool train = false);
-    float Backward(vfloat &target);
+    float Backward(Tensor *target);
     void ClearGrad();
     bool save(const char *model_name);
+    bool save_darknet(const char *weights_name, int cut_off = -1);
     bool load(const char *model_name, int batch_size_ = 1);
     bool load_darknet(const char *weights_name);
     void alloc_workspace();
@@ -44,7 +45,7 @@ public:
     int getBatchSize() {return batch_size;}
     vector<Train_Args> getTrainArgs();
     vfloat predict(Tensor *input);
-    float evaluate(vtensor &data_set, vector<vfloat> &target);
+    float evaluate(vtensor &data_set, vtensor &target);
 private:
     string model;
     int layer_number;
@@ -56,7 +57,6 @@ private:
     vector<vector<int>> path;
     int batch_size;
     float *workspace;
-    Forward_Args args;
     int version_major = 3;
     int version_minor = 0;
 };
@@ -64,30 +64,61 @@ private:
 class Trainer {
 public:
     Trainer(Neural_Network *net, TrainerOption opt);
-    vfloat train(Tensor &data, vfloat &target);
-    vfloat train(vtensor &data_set, vector<vfloat> &target_set, int epoch);
-    vfloat train_batch(Tensor &data, vfloat &target);
-    vfloat train_batch(vtensor &data_set, vector<vfloat> &target_set, int epoch);
+    vfloat train(Tensor &data, Tensor &target);
+    vfloat train(vtensor &data_set, vtensor &target_set, int epoch);
+    vfloat train_batch(Tensor &data, Tensor &target);
+    vfloat train_batch(vtensor &data_set, vtensor &target_set, int epoch);
     void decade(float rate);
     enum Method {
         SGD,
         ADADELTA,
         ADAM
     };
+    
+    enum Policy {
+        CONSTANT,
+        STEP,
+        STEPS,
+        EXP,
+        POLY,
+        RANDOM,
+        SIG
+    };
 private:
+    float get_learning_rate();
+    
     Neural_Network *network;
     TrainerOption option;
     float learning_rate;
     float l1_decay;
     float l2_decay;
+    int seen;
+    int batch_num;
     int batch_size;
+    int sub_division;
+    int max_batches;
     Method method;
+    Policy policy;
     float momentum;
+    
+    int warmup;
+    float power;
+    
     float ro;
+    
     float eps;
-    int iter;
     float beta_1;
     float beta_2;
+    
+    int step;
+    float scale;
+    
+    int steps_num;
+    Tensor steps;
+    Tensor scales;
+    
+    float gamma;
+    
     vector<float*> gsum;
     vector<float*> xsum;
     int args_num;

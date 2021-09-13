@@ -38,14 +38,6 @@ struct Train_Args {
     vfloat ln_decay_list;
 };
 
-struct Forward_Args {
-    Forward_Args(bool train_ = false, float *workspace_ = nullptr) : train(train_), workspace(workspace_) {}
-    bool train;
-    float *workspace;
-};
-
-static Forward_Args default_forward_args;
-
 enum LayerType {
     Input,
     Fullyconnected,
@@ -61,7 +53,8 @@ enum LayerType {
     BatchNormalization,
     UpSample,
     Concat,
-    YOLOv3,
+    Yolov3,
+    Mish,
     Error
 };
 
@@ -80,6 +73,7 @@ class BatchNormalizationlayer;
 class UpSampleLayer;
 class ConcatLayer;
 class YOLOv3Layer;
+class MishLayer;
 
 // Top layer
 class Model_Layer {
@@ -90,16 +84,16 @@ public:
     Model_Layer(Model_Layer &&L);
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
-    void Forward(Tensor* input_tensor_, Forward_Args *args = &default_forward_args);
-    float Backward(vfloat& target);
-    void Backward();
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, float *workspace = nullptr);
+    void Forward(Tensor* input_tensor_, bool train = false);
+    float Backward(Tensor *target);
     void ClearGrad();
     void shape();
     int getParameter(int type_);
     LayerType getType() {return type;}
     LayerType string_to_type(string type);
     bool save(FILE *f);
+    bool save_raw(FILE *f);
     bool load(FILE *f);
     bool load_raw(FILE *f);
     Train_Args getTrainArgs();
@@ -121,6 +115,7 @@ private:
     UpSampleLayer *upsample_layer;
     ConcatLayer *concat_layer;
     YOLOv3Layer *yolov3_layer;
+    MishLayer *mish_layer;
 };
 
 // Base layer
@@ -134,11 +129,12 @@ public:
     BaseLayer& operator=(const BaseLayer &L);
     void shape();
     string type_to_string();
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, Forward_Args *args = &default_forward_args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
+    bool save_raw(FILE *f);
     bool load(FILE *f);
     bool load_raw(FILE *f);
     Train_Args getTrainArgs();
@@ -194,7 +190,7 @@ public:
 class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace_);
     void Forward();
     void Backward();
 private:
@@ -238,7 +234,7 @@ class SoftmaxLayer : public BaseLayer {
 public:
     SoftmaxLayer(LayerOption opt_);
     void Forward();
-    float Backward(vfloat& target);
+    float Backward(Tensor *target);
 private:
 };
 
@@ -247,7 +243,7 @@ class EuclideanLossLayer : public BaseLayer {
 public:
     EuclideanLossLayer(LayerOption opt_);
     void Forward();
-    float Backward(vfloat& target);
+    float Backward(Tensor *target);
 private:
 };
 
@@ -255,7 +251,7 @@ private:
 class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, Forward_Args *args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace);
     void Forward();
     void Backward();
 private:
@@ -282,7 +278,7 @@ public:
 class BatchNormalizationlayer : public BaseLayer {
 public:
     BatchNormalizationlayer(LayerOption opt_);
-    void Forward(Forward_Args *args = &default_forward_args);
+    void Forward(bool train = false);
     void Backward();
 private:
     void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
@@ -304,7 +300,7 @@ private:
 class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, Forward_Args *args);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, float *workspace);
     void Forward();
     void Backward();
 private:
@@ -314,9 +310,9 @@ private:
 class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, Forward_Args *args);
-    void Forward(Forward_Args *args = &default_forward_args);
-    float Backward(vfloat& target);
+    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace);
+    void Forward(bool train = false);
+    float Backward(Tensor *target);
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
@@ -327,6 +323,13 @@ private:
     float mag_array(float *a, int n);
     
     Tensor detection;
+};
+
+class MishLayer : public BaseLayer {
+public:
+    MishLayer(LayerOption opt_);
+    void Forward();
+    void Backward();
 };
 
 void scale_bias(float *output, float *scales, int batch, int n, int size);

@@ -94,7 +94,7 @@ public:
     ~MtcnnLoader() {fclose(img_ptr); fclose(label_ptr);}
     MtcnnLoader(const char *img, const char *label, string net_name);
     Tensor getImg(int index);
-    vfloat getLabel(int index);
+    Tensor getLabel(int index);
     int getSize();
 private:
     int net_size;
@@ -121,7 +121,7 @@ vector<Bbox> convert_to_square(vector<Bbox> &Bbox_list);
 vector<Bbox> crop_coordinate(vector<Bbox> &Bbox_list, int width, int height);
 float iou(Bbox box1, Bbox box2, int mode);
 
-void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vector<vfloat> &label_set, int width, int size);
+void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vtensor &label_set, int width, int size);
 void mtcnn_evaluate(Neural_Network *nn, vtensor &data_set, vector<vfloat> &label_set);
 
 #endif /* Mtcnn_hpp */

@@ -45,14 +45,24 @@ void axpy_cpu(int size, float scale, float *src, float *dst);
 
 void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);
 
+// ACTIVATION
 enum ACTIVATE_METHOD {
-    SIGMOID
+    LOGISTIC
 };
 
 float sum_array(float *a, int n);
 void activate_array(float *src, int length, ACTIVATE_METHOD method);
 
 float activate(float src, ACTIVATE_METHOD method);
+static inline float logistic_activate(float x) {return 1.f / (1.f + expf(-x));}
+static inline float tanh_activate(float x) {return (2 / (1 + expf(-2 * x)) - 1); }
+static inline float softplus_activate(float x, float threshold) {
+    if (x > threshold) return x;
+    else if (x < -threshold) return expf(x);
+    return logf(expf(x) + 1);
+}
+
+// END ACTIVATION
 
 float constrain(float min, float max, float a);
 
@@ -93,6 +103,7 @@ float box_intersection(Box &a, Box &b);
 float box_union(Box &a, Box &b);
 float box_iou(Box &a, Box &b);
 
+Box float_to_box(float *f, int stride);
 Box vfloat_to_box(vfloat &src, int index);
 
 class Clock {

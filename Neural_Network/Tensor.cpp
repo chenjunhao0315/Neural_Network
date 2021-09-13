@@ -75,6 +75,43 @@ Tensor& Tensor::operator=(std::initializer_list<float> list) {
     return *this;
 }
 
+float& Tensor::operator[](int index) {
+    return weight[index];
+}
+
+const float& Tensor::operator[](int index) const {
+    return weight[index];
+}
+
+bool Tensor::operator==(const Tensor &T) const {
+    if (!same_structure(*this, T))
+        return false;
+    float *src_1 = weight;
+    float *src_2 = T.weight;
+    for (int i = size; i--; ) {
+        if (*(src_1++) != *(src_2++))
+            return false;
+    }
+    return true;
+}
+
+Tensor& Tensor::operator+=(const Tensor &T) {
+    assert(same_structure(*this, T));
+    float *src = T.weight;
+    float *dst = weight;
+    for (int i = size; i--; )
+        *(dst++) += *(src++);
+    return *this;
+}
+Tensor& Tensor::operator-=(const Tensor &T) {
+    assert(same_structure(*this, T));
+    float *src = T.weight;
+    float *dst = weight;
+    for (int i = size; i--; )
+        *(dst++) -= *(src++);
+    return *this;
+}
+
 Tensor::Tensor(int width_, int height_, int dimension_) {
     width = width_;
     height = height_;
@@ -87,7 +124,7 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     
     // assign random value
     float scale = sqrt(1.0 / size);
-    for (int i = size; --i; ) {
+    for (int i = size; i--; ) {
         weight[i] = randn(0.0, scale);
     }
 }
@@ -104,21 +141,6 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     fill(weight, weight + size, parameter);
 }
 
-void Tensor::resize(int width_, int height_, int dimension_) {
-    width = width_;
-    height = height_;
-    dimension = dimension_;
-    int new_size = width * height * dimension;
-    
-    float *new_weight = new float [size]();
-    copy_cpu(std::min(size, new_size), weight, new_weight);
-    delete [] weight;
-    delete [] delta_weight;
-    weight = new_weight;
-    size = new_size;
-    delta_weight = new float [size]();
-}
-
 Tensor::Tensor(Tensor *T) {
     if (T) {
         width = T->width;
@@ -130,8 +152,7 @@ Tensor::Tensor(Tensor *T) {
         weight = new float [size]();
         delta_weight = new float [size]();
         
-        copy_cpu(size, weight, T->weight);
-//        memcpy(weight, T->weight, sizeof(float) * size);
+        memcpy(weight, T->weight, sizeof(float) * size);
     }
 }
 
@@ -180,6 +201,19 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
     delta_weight = new float [n]();
     
     copy_cpu(n, pixelArray, weight);
+}
+
+Tensor Tensor::concate(const Tensor &T) {
+    assert(same_plane(*this, T));
+    Tensor result(width, height, dimension + T.dimension);
+    float *src_1 = weight;
+    float *src_2 = T.weight;
+    float *dst = result.weight;
+    for (int i = size; i--; )
+        *(dst++) = *(src_1++);
+    for (int i = T.size; i--; )
+        *(dst++) = *(src_2++);
+    return result;
 }
 
 float* Tensor::getWeight() {
@@ -250,6 +284,10 @@ void Tensor::save(FILE *f) {
     fwrite(weight, sizeof(float), size, f);
 }
 
+void Tensor::save_raw(FILE *f) {
+    fwrite(weight, sizeof(float), size, f);
+}
+
 void Tensor::load(FILE *f) {
     fread(&width, sizeof(int), 1, f);
     fread(&height, sizeof(int), 1, f);
@@ -298,4 +336,36 @@ ostream& operator<<(ostream& os, Tensor& t) {
         }
     }
     return os;
+}
+
+bool same_plane(const Tensor &a, const Tensor &b) {
+    return a.width == b.width && a.height == b.height;
+}
+
+bool same_structure(const Tensor &a, const Tensor &b) {
+    return same_plane(a, b) && a.dimension == b.dimension;
+}
+
+Tensor operator+(const Tensor &a, const Tensor &b) {
+    assert(same_plane(a, b));
+    Tensor c(a.width, a.height, a.dimension, 0);
+    float *src_1 = a.weight;
+    float *src_2 = b.weight;
+    float *dst = c.weight;
+    for (int i = a.size; i--; )
+        *(dst++) = *(src_1++) + *(src_2++);
+    
+    return c;
+}
+
+Tensor operator-(const Tensor &a, const Tensor &b) {
+    assert(same_plane(a, b));
+    Tensor c(a.width, a.height, a.dimension, 0);
+    float *src_1 = a.weight;
+    float *src_2 = b.weight;
+    float *dst = c.weight;
+    for (int i = a.size; i--; )
+        *(dst++) = *(src_1++) - *(src_2++);
+    
+    return c;
 }

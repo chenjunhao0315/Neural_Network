@@ -67,7 +67,7 @@ enum ConvertMethod {
     HSV_TO_RGB
 };
 
-class Kernel;
+class Strel;
 
 class IMG {
     enum ImageType {
@@ -104,10 +104,10 @@ public:
     IMG laplacian(float gain = 1);
     IMG canny(float threshold1, float threshold2);
     IMG threshold(unsigned char threshold, unsigned char max);
-    IMG dilate(Kernel kernel);
-    IMG erode(Kernel kernel);
-    IMG opening(Kernel kernel);
-    IMG closing(Kernel kernel);
+    IMG dilate(Strel strel);
+    IMG erode(Strel strel);
+    IMG opening(Strel strel);
+    IMG closing(Strel strel);
     IMG add(IMG &addend, MatType dstType = MAT_UNDEFINED);
     IMG subtract(IMG &minuend, MatType dstType = MAT_UNDEFINED);
     IMG scale(float scale, MatType dstType = MAT_UNDEFINED);
@@ -153,22 +153,27 @@ IMG textLabel(const char *str, int text_height = 24, Color text_color = BLACK, C
 int clip(int value, int min, int max);
 vector<int> normalize(vector<int> &src, int min, int max);
 
-class Kernel {
+class Strel {
 public:
-    ~Kernel();
-    Kernel(int width = 0, int height = 0, int dimension = 0, float parameter = 0);
-    Kernel(const Kernel &K);
-    Kernel(Kernel &&K);
-    Kernel& operator=(const Kernel &K);
-    Kernel& operator=(initializer_list<float> list);
-    float& operator[](int index);
-    const float& operator[](int index) const;
+    enum Shape {
+        SQUARE,
+        CROSS
+    };
+    
+    ~Strel();
+    Strel(int width = 0, int height = 0, int parameter = 0);
+    Strel(Strel::Shape shape, int radius);
+    Strel(const Strel &K);
+    Strel(Strel &&K);
+    Strel& operator=(const Strel &K);
+    Strel& operator=(initializer_list<int> list);
+    int& operator[](int index);
+    const int& operator[](int index) const;
     void show();
     
     int width;
     int height;
-    int dimension;
-    float *data;
+    int *data;
 };
 
 class Canny {

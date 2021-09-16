@@ -212,18 +212,33 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
-            opt["concat_width"] = to_string(temp);
+            opt["concat_num"] = to_string(temp);
+            for (int i = 1; i <= temp; ++i) {
+                int concat_parameter;
+                fread(&concat_parameter, sizeof(int), 1, f);
+                opt["concat_" + to_string(i) + "_width"] = to_string(concat_parameter);
+                fread(&concat_parameter, sizeof(int), 1, f);
+                opt["concat_" + to_string(i) + "_height"] = to_string(concat_parameter);
+                fread(&concat_parameter, sizeof(int), 1, f);
+                opt["concat_" + to_string(i) + "_dimension"] = to_string(concat_parameter);
+            }
             fread(&temp, sizeof(int), 1, f);
-            opt["concat_height"] = to_string(temp);
+            opt["splits"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
-            opt["concat_dimension"] = to_string(temp);
+            opt["split_id"] = to_string(temp);
             int len;
             fread(&len, sizeof(int), 1, f);
             char *cc = new char [len + 1];
             fread(cc, sizeof(char), len, f);
             cc[len] = '\0';
             opt["concat"] = string(cc);
-            opt["shortcut"] = opt["concat"];
+            stringstream concat_list(opt["concat"]);
+            for (int i = 1; i <= atoi(opt["concat_num"].c_str()); ++i) {
+                string concat_name;
+                getline(concat_list, concat_name, ',');
+                concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
+                opt["concat_" + to_string(i) + "_name"] = concat_name;
+            }
         } else if (type[0] == 'y' && type[1] == '3') {
             opt["type"] = "YOLOv3";
             fread(&temp, sizeof(int), 1, f);
@@ -395,7 +410,7 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     fread(&major, sizeof(int), 1, f);
     fread(&minor, sizeof(int), 1, f);
     fread(&revision, sizeof(int), 1, f);
-    if ((major*10 + minor) >= 2 && major < 1000 && minor < 1000){
+    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
         fread(&seen, sizeof(size_t), 1, f);
     } else {
         int iseen = 0;
@@ -425,14 +440,12 @@ void Neural_Network::addOutput(string name) {
 void Neural_Network::addLayer(LayerOption opt_) {
     LayerOption auto_opt;
     string type = opt_["type"];
-    if (opt_["activation"] == "Relu") {
-        opt_["bias"] = "0.1";
+    if (opt_.find("activation") != opt_.end()) {
+        if (opt_["activation"] == "Relu") {
+            opt_["bias"] = "0.1";
+        }
     }
     string bias = opt_["bias"].c_str();
-    
-    if (opt_.find("concat") != opt_.end()) {
-        opt_["shortcut"] = opt_["concat"];
-    }
     
     opt_layer.push_back(opt_);
     
@@ -508,10 +521,21 @@ void Neural_Network::compile(int batch_size_) {
             opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]].getParameter(2));
         }
         string bias = opt["bias"].c_str();
+        
         if (opt["type"] == "Concat") {
-            opt["concat_width"] = to_string(layer[id_table[opt["concat"]]].getParameter(0));
-            opt["concat_height"] = to_string(layer[id_table[opt["concat"]]].getParameter(1));
-            opt["concat_dimension"] = to_string(layer[id_table[opt["concat"]]].getParameter(2));
+            int concat_num = (int)count(opt["concat"].begin(), opt["concat"].end(), ',') + 1;
+            opt["concat_num"] = to_string(concat_num);
+            stringstream concat_list(opt["concat"]);
+            
+            for (int i = 1; i <= concat_num; ++i) {
+                string concat_name;
+                getline(concat_list, concat_name, ',');
+                concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
+                opt["concat_" + to_string(i) + "_name"] = concat_name;
+                opt["concat_" + to_string(i) + "_width"] = to_string(layer[id_table[concat_name]].getParameter(0));
+                opt["concat_" + to_string(i) + "_height"] = to_string(layer[id_table[concat_name]].getParameter(1));
+                opt["concat_" + to_string(i) + "_dimension"] = to_string(layer[id_table[concat_name]].getParameter(2));
+            }
         } else if (opt["type"] == "YOLOv3") {
             opt["net_width"] = to_string(layer[0].getParameter(0));
             opt["net_height"] = to_string(layer[0].getParameter(1));
@@ -556,11 +580,68 @@ Neural_Network::nn_status Neural_Network::status() {
     return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
+bool Neural_Network::to_prototxt(const char *filename) {
+    FILE *f = fopen(filename, "w");
+    if (!f)
+        return false;
+    // Model name
+    fprintf(f, "name: \"%s\"\n", model.c_str());
+    
+    unordered_map<string, int> id_table;
+    for (int i = 0; i < layer_number; ++i) {
+        id_table[opt_layer[i]["name"]] = i;
+    }
+    vector<LayerOption> refine_struct(layer_number);
+    for (int i = 0; i < layer_number; ) {
+        int count = 1;
+        LayerOption &refine = refine_struct[i];
+        LayerOption &opt = opt_layer[i];
+        refine["name"] = (i == 0) ? "data" : opt["name"];
+        if (refine_struct[id_table[opt["input_name"]]].find("name") == refine_struct[id_table[opt["input_name"]]].end()) {
+            cout << opt["input_name"] << endl;
+            cout << "input_id: " << id_table[opt["input_name"]] << endl;
+        }
+        refine["input_name"] = refine_struct[id_table[opt["input_name"]]]["name"];
+        if (opt.find("batchnorm") != opt.end()) {
+            refine_struct[i + 1]["name"] = opt["name"];
+            refine_struct[i + 1]["input_name"] = opt["name"];
+            ++count;
+        }
+        if (opt.find("activation") != opt.end()) {
+            refine_struct[i + count]["name"] = opt["name"];
+            refine_struct[i + count]["input_name"] = opt["name"];
+            ++count;
+        }
+        i += count;
+    }
+    
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i].to_prototxt(f, i, refine_struct, id_table);
+    }
+    
+    fclose(f);
+    return true;
+}
+
 void Neural_Network::createGraph() {
     alloc_workspace();
     for (int i = 0; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
-        Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], ((opt.find("shortcut") == opt.end()) ? nullptr : terminal[opt["shortcut"]]), workspace);
+        vtensorptr extra_tensor;
+        if (opt.find("shortcut") != opt.end()) {
+            extra_tensor.push_back(terminal[opt["shortcut"]]);
+        } else if (opt.find("concat") != opt.end()) {
+            extra_tensor.push_back(terminal[opt["input_name"]]);
+            int concat_num = (int)count(opt["concat"].begin(), opt["concat"].end(), ',') + 1;
+            stringstream concat_list(opt["concat"]);
+            for (int i = 1; i <= concat_num; ++i) {
+                string concat_name;
+                getline(concat_list, concat_name, ',');
+                concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
+                extra_tensor.push_back(terminal[concat_name]);
+            }
+        }
+        Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
         terminal[opt["name"]] = act;
     }
     
@@ -709,7 +790,7 @@ Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
     l1_decay = (opt.find("l1_decay") == opt.end()) ? 0.0 : opt["l1_decay"];
     l2_decay = (opt.find("l2_decay") == opt.end()) ? 0.0 : opt["l2_decay"];
     batch_size = (opt.find("batch_size") == opt.end()) ? network->getBatchSize() : opt["batch_size"];
-    sub_division = (opt.find("division") == opt.end()) ? 1 : opt["division"];
+    sub_division = (opt.find("sub_division") == opt.end()) ? 1 : opt["sub_division"];
 //    batch_size /= sub_division;
     
     max_batches = (opt.find("max_batches") == opt.end()) ? 0 : opt["max_batches"];

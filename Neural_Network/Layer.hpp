@@ -54,6 +54,7 @@ enum LayerType {
     UpSample,
     Concat,
     Yolov3,
+    Yolov4,
     Mish,
     Error
 };
@@ -73,6 +74,7 @@ class BatchNormalizationlayer;
 class UpSampleLayer;
 class ConcatLayer;
 class YOLOv3Layer;
+class YOLOv4Layer;
 class MishLayer;
 
 // Top layer
@@ -84,7 +86,7 @@ public:
     Model_Layer(Model_Layer &&L);
     Model_Layer& operator=(const Model_Layer &L);
     Model_Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, float *workspace = nullptr);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     void Forward(Tensor* input_tensor_, bool train = false);
     float Backward(Tensor *target);
     void ClearGrad();
@@ -96,6 +98,7 @@ public:
     bool save_raw(FILE *f);
     bool load(FILE *f);
     bool load_raw(FILE *f);
+    bool to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table);
     Train_Args getTrainArgs();
     int getWorkspaceSize();
 private:
@@ -129,7 +132,7 @@ public:
     BaseLayer& operator=(const BaseLayer &L);
     void shape();
     string type_to_string();
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_ = nullptr, float *workspace = nullptr);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
@@ -137,6 +140,7 @@ public:
     bool save_raw(FILE *f);
     bool load(FILE *f);
     bool load_raw(FILE *f);
+    bool to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table);
     Train_Args getTrainArgs();
 //protected:
     LayerType type;
@@ -151,7 +155,9 @@ public:
         int input_width;
         int input_height;
         int input_dimension;
-        int concat_dimension;
+        int concat_num;
+        int splits;
+        int split_id;
         int shortcut_width;
         int shortcut_height;
         int shortcut_dimension;
@@ -168,6 +174,16 @@ public:
         int max_boxes;
         int net_width;
         int net_height;
+        float ignore_iou_threshold;
+        float truth_iou_threshold;
+        float scale_x_y;
+        float iou_normalizer;
+        float obj_normalizer;
+        float cls_normalizer;
+        float delta_normalizer;
+        int iou_loss;
+        int nms_kind;
+        float beta_nms;
         bool reverse;
         bool batchnorm;
     } info;
@@ -190,7 +206,7 @@ public:
 class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace_);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_);
     void Forward();
     void Backward();
 private:
@@ -251,7 +267,7 @@ private:
 class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward();
     void Backward();
 private:
@@ -300,19 +316,50 @@ private:
 class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, float *workspace);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward();
     void Backward();
 private:
-    Tensor *concat_tensor;
+    vtensorptr concat_tensor;
 };
 
 class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     float Backward(Tensor *target);
+private:
+    int entry_index(int batch, int location, int entry);
+    vector<Detection> yolo_get_detection_without_correction();
+    Box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride);
+    float delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride);
+    void delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
+    int int_index(float *a, int val, int n);
+    float mag_array(float *a, int n);
+    
+    Tensor detection;
+};
+
+class YOLOv4Layer : public BaseLayer {
+public:
+    YOLOv4Layer(LayerOption opt_);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    void Forward(bool train = false);
+    float Backward(Tensor *target);
+    
+    enum IOU_LOSS {
+        MSE,
+        GIOU,
+        DIOU,
+        CIOU
+    };
+    
+    enum NUM_KIND {
+        DEFAULT_NMS,
+        GREEDY_NMS,
+        DIOU_NMS
+    };
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();

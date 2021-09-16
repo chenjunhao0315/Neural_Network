@@ -21,26 +21,36 @@ using namespace std::chrono;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-    test_all_layer();
+    test_all_layer(false);
 
-//    YOLOv3 nn(80, 4);
+//    YOLOv3 nn(80, 1);
 //
 //    YOLOv3_DataLoader loader("train_clear.txt");
 //
-//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 1000}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}, {"sub_division", 16}});
+//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 100}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}, {"sub_division", 2}});
 //
-//    YOLOv3_Trainer yolo_trainer(&nn.network, &trainer, &loader);
-//    yolo_trainer.train(1);
+////    YOLOv3_Trainer yolo_trainer(&nn.network, &trainer, &loader);
+////    yolo_trainer.train(1);
+//
+//    yolo_train_args test = loader.get_train_arg(0);
+//    for (int i = 0; i < 100; ++i)
+//        trainer.train_batch(test.data, test.label);
+//
+//    IMG img = loader.get_img(0);
+//    nn.detect(img);
+//    img.save("test1.jpg");
+    
+//    nn.network.save("testyolo.bin");
+    
+//    YOLOv3 test(80);
+//    test.network.to_prototxt("test.prototxt");
 //
 //    IMG img("dog.jpg");
-//    nn.detect(img);
+//    test.detect(img);
 //    img.save("test_train.jpg");
-//
-//    nn.network.save("testyolo.bin");
-
     
 //    YOLOv3 yolo("yolov3.bin");
-//    IMG img("IMG_2204.jpg");
+//    IMG img("dog.jpg");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
 
@@ -55,11 +65,16 @@ int main(int argc, const char * argv[]) {
 //    mtcnn.layout(result);
     
 //    Neural_Network nn;
-//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "input"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "Relu"}});
+//    nn.load("1630830419_149_217474.312500.bin");
+//    nn.to_prototxt();
+    
+//    Neural_Network nn;
+//    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
+//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "PRelu"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
 //    nn.compile();
 //    nn.shape();
+//    nn.to_prototxt("test.prototxt");
 //
 //    Tensor a(1, 1, 2, 0);
 //    Tensor b(1, 1, 2, 1);

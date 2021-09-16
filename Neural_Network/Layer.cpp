@@ -382,40 +382,40 @@ void Model_Layer::Forward(Tensor* input_tensor_, bool train) {
     }
 }
 
-Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace) {
+Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     switch (type) {
         case LayerType::Convolution:
-            return convolution_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return convolution_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Pooling:
-            return pooling_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return pooling_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::PRelu:
-            return prelu_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return prelu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Fullyconnected:
-            return fullyconnected_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return fullyconnected_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Relu:
-            return relu_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return relu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::ShortCut:
-            return shortcut_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return shortcut_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Softmax:
-            return softmax_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return softmax_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::EuclideanLoss:
-            return euclideanloss_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return euclideanloss_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Input:
-            return input_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return input_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::LRelu:
-            return lrelu_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return lrelu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Sigmoid:
-            return sigmoid_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return sigmoid_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::BatchNormalization:
-            return batchnorm_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return batchnorm_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::UpSample:
-            return upsample_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return upsample_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Concat:
-            return concat_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return concat_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Yolov3:
-            return yolov3_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return yolov3_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Mish:
-            return mish_layer->connectGraph(input_tensor_, shortcut_tensor_, workspace);
+            return mish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         default:
             break;
     }
@@ -686,6 +686,43 @@ bool Model_Layer::load_raw(FILE *f) {
     return 0;
 }
 
+bool Model_Layer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table) {
+    if (type == LayerType::Input) {
+        return input_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Fullyconnected) {
+        return fullyconnected_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Relu) {
+        return relu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Softmax) {
+        return softmax_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Convolution) {
+        return convolution_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Pooling) {
+        return pooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::EuclideanLoss) {
+        return euclideanloss_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::PRelu) {
+        return prelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::ShortCut) {
+        return shortcut_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::LRelu) {
+        return lrelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Sigmoid) {
+        return sigmoid_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::BatchNormalization) {
+        return batchnorm_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::UpSample) {
+        return upsample_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Concat) {
+        return concat_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Yolov3) {
+        return yolov3_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Mish) {
+        return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    }
+    return 0;
+}
+
 void Model_Layer::ClearGrad() {
     switch (type) {
         case LayerType::Convolution:
@@ -909,7 +946,7 @@ string BaseLayer::type_to_string() {
     return "Unknown";
 }
 
-Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace) {
+Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     return output_tensor;
 }
@@ -1057,12 +1094,18 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.concat_dimension, sizeof(int), 1, f);
+        fwrite(&info.concat_num, sizeof(int), 1, f);
+        for (int i = 1; i <= info.concat_num; ++i) {
+            int concat_dim = kernel[0][i];
+            fwrite(&info.input_width, sizeof(int), 1, f);
+            fwrite(&info.input_height, sizeof(int), 1, f);
+            fwrite(&concat_dim, sizeof(int), 1, f);
+        }
+        fwrite(&info.splits, sizeof(int), 1, f);
+        fwrite(&info.split_id, sizeof(int), 1, f);
         int len = (int)strlen(opt["concat"].c_str());
         fwrite(&len, sizeof(int), 1, f);
-        char *output = new char [len];
+        char output[len];
         strcpy(output, opt["concat"].c_str());
         fwrite(output, sizeof(char), len, f);
     } else if (type == LayerType::Yolov3) {
@@ -1143,6 +1186,74 @@ bool BaseLayer::load_raw(FILE *f) {
     return true;
 }
 
+bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table) {
+    if (type == LayerType::Input) {
+        fprintf(f, "input: \"data\"\n");
+        fprintf(f, "input_dim: %d\n", info.batch_size);
+        fprintf(f, "input_dim: %d\n", info.output_dimension);
+        fprintf(f, "input_dim: %d\n", info.output_width);
+        fprintf(f, "input_dim: %d\n", info.output_height);
+    } else {
+        fprintf(f, "layer {\n");
+        fprintf(f, "  name: \"%s\"\n", name.c_str());
+        fprintf(f, "  type: \"%s\"\n", type_to_string().c_str());
+        fprintf(f, "  bottom: \"%s\"\n", refine_struct[refine_id]["input_name"].c_str());
+        fprintf(f, "  top: \"%s\"\n", refine_struct[refine_id]["name"].c_str());
+        
+        if (type == LayerType::Fullyconnected) {
+            fprintf(f, "  connected_param {\n");
+            fprintf(f, "    num_output: %d\n", info.output_dimension);
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::Softmax) {
+        } else if (type == LayerType::Convolution) {
+            fprintf(f, "  convolution_param {\n");
+            fprintf(f, "    num_output: %d\n", info.output_dimension);
+            fprintf(f, "    kernel_size: %d\n", info.kernel_width);
+            fprintf(f, "    pad: %d\n", info.padding);
+            fprintf(f, "    stride: %d\n", info.stride);
+            if (info.batchnorm) {
+                fprintf(f, "    bias_term: false\n");
+            } else {
+                fprintf(f, "    bias_term: true\n");
+            }
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::Relu) {
+        } else if (type == LayerType::Pooling) {
+            fprintf(f, "  pool_param {\n");
+            fprintf(f, "    pool: MAX\n");
+            fprintf(f, "    kernel_size: %d\n", info.kernel_width);
+            fprintf(f, "    stride: %d\n", info.stride);
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::EuclideanLoss) {
+        } else if (type == LayerType::PRelu) {
+        } else if (type == LayerType::ShortCut) {
+            fprintf(f, "  bottom: \"%s\"\n", refine_struct[id_table[opt["shortcut"]]]["name"].c_str());
+        } else if (type == LayerType::LRelu) {
+            fprintf(f, "  lrelu_param {\n");
+            fprintf(f, "    negative_slope: %g\n", kernel[0][0]);
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::Sigmoid) {
+        } else if (type == LayerType::BatchNormalization) {
+        } else if (type == LayerType::UpSample) {
+        } else if (type == LayerType::Concat) {
+            for (int i = 1; i <= info.concat_num; ++i) {
+                fprintf(f, "  bottom: \"%s\"\n", refine_struct[id_table[opt["concat_" + to_string(i) + "_name"]]]["name"].c_str());
+            }
+        } else if (type == LayerType::Yolov3) {
+            fprintf(f, "  yolov3_param {\n");
+            fprintf(f, "    classes: %d\n", info.classes);
+            fprintf(f, "    total_anchor_num: %d\n", info.total_anchor_num);
+            fprintf(f, "    anchor_num: %d\n", info.anchor_num);
+            fprintf(f, "    anchor: \"%s\"\n", opt["anchor"].c_str());
+            fprintf(f, "    mask: \"%s\"\n", opt["mask"].c_str());
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::Mish) {
+        }
+        fprintf(f, "}\n");
+    }
+    return true;
+}
+
 InputLayer::InputLayer(LayerOption opt_) {
     opt = opt_;
     type = LayerType::Input;
@@ -1207,7 +1318,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace_) {
+Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_) {
     input_tensor = input_tensor_;
     workspace = workspace_;
     return output_tensor;
@@ -1721,9 +1832,9 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
 }
 
-Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace) {
+Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
-    shortcut_tensor = shortcut_tensor_;
+    shortcut_tensor = extra_tensor_[0];
     return output_tensor;
 }
 
@@ -1761,8 +1872,8 @@ void ShortCutLayer::Backward() {
 void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out) {
     int stride = w1 / w2;
     int sample = w2 / w1;
-    assert(stride == h1 / h2);
-    assert(sample == h2 / h1);
+//    assert(stride == h1 / h2);
+//    assert(sample == h2 / h1);
     if(stride < 1) stride = 1;
     if(sample < 1) sample = 1;
     int minw = (w1 < w2) ? w1 : w2;
@@ -2151,50 +2262,76 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
-    int concat_width = atoi(opt["concat_width"].c_str());
-    int concat_height = atoi(opt["concat_height"].c_str());
-    assert(info.output_width == concat_width);
-    assert(info.output_height == concat_height);
-    info.concat_dimension = atoi(opt["concat_dimension"].c_str());
-    info.output_dimension = info.input_dimension + info.concat_dimension;
+    info.output_dimension = info.input_dimension;
+    
+    info.concat_num = atoi(opt["concat_num"].c_str());
+    kernel = new Tensor [1];    // Concat tensor structure
+    kernel[0] = Tensor(1, 1, info.concat_num + 1, 0);
+    kernel[0] = {float(info.input_dimension)};
+    info.kernel_num = 1;
+    
+    for (int i = 1; i <= info.concat_num; ++i) {
+        int width_check = atoi(opt[("concat_" + to_string(i) + "_width")].c_str());
+        int height_check = atoi(opt[("concat_" + to_string(i) + "_height")].c_str());
+        assert(width_check == info.input_width);
+        assert(height_check == info.input_height);
+        int concat_dimension = kernel[0][i] = atoi(opt[("concat_" + to_string(i) + "_dimension")].c_str());
+        info.output_dimension += concat_dimension;
+    }
+    
+    info.splits = (opt.find("splits") == opt.end()) ? 1 : atoi(opt["splits"].c_str());
+    info.split_id = (opt.find("split_id") == opt.end()) ? 0 : atoi(opt["split_id"].c_str());
+    
+    info.output_dimension /= info.splits;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+//    concat_tensor = new Tensor* [info.concat_num + 1];  // Concat tensor store
+    concat_tensor.resize(info.concat_num + 1);
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, Tensor* shortcut_tensor_, float *workspace) {
+Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
-    concat_tensor = shortcut_tensor_;
+    for (int i = 0; i <= info.concat_num; ++i) {
+        concat_tensor[i] = (extra_tensor_[i]);
+    }
     return output_tensor;
 }
 
 void ConcatLayer::Forward() {
-    float *src = input_tensor->weight;
-    float *concat = concat_tensor->weight;
     float *output = output_tensor->weight;
     
-    int concat_size = info.input_width * info.input_height * info.concat_dimension;
+    int channel_size = info.input_width * info.input_height;
     
     for (int b = 0; b < info.batch_size; ++b) {
-        for (int i = info.input_number; i--; )
-            *(output++) = *(src++);
-        for (int i = concat_size; i--; )
-            *(output++) = *(concat++);
+        for (int i = 0; i <= info.concat_num; ++i) {
+            int concat_input_size = channel_size * int(kernel[0][i]);
+            int split_concat_input_size = concat_input_size / info.splits;
+            float *concat = concat_tensor[i]->weight + b * concat_input_size + split_concat_input_size * info.split_id;
+            for (int j = split_concat_input_size; j--; ) {
+                *(output++) = *(concat++);
+            }
+        }
     }
 }
 
 void ConcatLayer::Backward() {
-    float *src_delta = input_tensor->delta_weight;
-    float *concat_delta = concat_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
+    int check = output_tensor->size;
     
-    int concat_size = info.input_width * info.input_height * info.concat_dimension;
+    int channel_size = info.input_width * info.input_height;
     
     for (int b = 0; b < info.batch_size; ++b) {
-        for (int i = info.input_number; i--; )
-            *(src_delta++) += *(output_delta++);
-        for (int i = concat_size; i--; )
-            *(concat_delta++) += *(output_delta++);
+        for (int i = 0; i <= info.concat_num; ++i) {
+            int concat_input_size = channel_size * int(kernel[0][i]);
+            int split_concat_input_size = concat_input_size / info.splits;
+            float *concat_delta = concat_tensor[i]->delta_weight + b * concat_input_size + split_concat_input_size * info.split_id;
+            for (int j = split_concat_input_size; j--; ) {
+                *(concat_delta++) += *(output_delta++);
+                check--;
+            }
+        }
     }
 }
 
@@ -2279,6 +2416,8 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     info.max_boxes = atoi(opt["max_boxes"].c_str());
     info.net_width = atoi(opt["net_width"].c_str());
     info.net_height = atoi(opt["net_height"].c_str());
+    info.ignore_iou_threshold = (opt.find("ignore_iou_threshold") == opt.end()) ? 0.5 : atof(opt["ignore_iou_threshold"].c_str());
+    info.truth_iou_threshold = (opt.find("truth_iou_threshold") == opt.end()) ? 1 : atof(opt["truth_iou_threshold"].c_str());
     
     kernel = new Tensor [1];
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
@@ -2312,7 +2451,7 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     detection = Tensor(1, 1, 1, 0);
 }
 
-Tensor* YOLOv3Layer::connectGraph(Tensor* input_tensor_, Tensor* concat_tensor_, float *workspace) {
+Tensor* YOLOv3Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     return &detection;
 }
@@ -2380,10 +2519,9 @@ float YOLOv3Layer::Backward(Tensor *target) {
     float avg_anyobj = 0;
     int count = 0;
     int class_count = 0;
-    float loss = 0;
-    
     int i,j,b,t,n;
     
+    float loss = 0;
     for (b = 0; b < info.batch_size; ++b) {
         for (j = 0; j < height; ++j) {
             for (i = 0; i < width; ++i) {
@@ -2392,10 +2530,9 @@ float YOLOv3Layer::Backward(Tensor *target) {
                     Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size);
                     float best_iou = 0;
                     int best_t = 0;
-                    for(t = 0; t < info.max_boxes; ++t){
-                        Box truth = float_to_box(target_ptr + t * (4 + 1) + b * target_size, 1);
-                        if(!truth.x)
-                            break;
+                    for(t = 0; t < max_boxes; ++t){
+                        Box truth = float_to_box(target_ptr + t * (4 + 1) + target_size, 1);
+                        if(!truth.x) break;
                         float iou = box_iou(pred, truth);
                         if (iou > best_iou) {
                             best_iou = iou;
@@ -2410,21 +2547,20 @@ float YOLOv3Layer::Backward(Tensor *target) {
                     }
                     if (best_iou > truth_iou_threshold) {
                         delta[obj_index] = output[obj_index] - 1;
-                        
-                        int cls = target_ptr[best_t * (4 + 1) + b * target_size + 4];
+
+                        int cls = target_ptr[best_t*(4 + 1) + b * target_size + 4];
                         int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
-                        delta_yolo_class(output, delta, class_index, cls, classes, channel_size, nullptr);
-                        Box truth = float_to_box(target_ptr + best_t*(4 + 1) + b * target_size, 1);
+                        delta_yolo_class(output, delta, class_index, cls, classes, channel_size, 0);
+                        Box truth = float_to_box(target_ptr + best_t * (4 + 1) + b * target_size, 1);
                         delta_yolo_box(truth, output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
                     }
                 }
             }
         }
-        for(t = 0; t < info.max_boxes; ++t){
+        for(t = 0; t < max_boxes; ++t){
             Box truth = float_to_box(target_ptr + t * (4 + 1) + b * target_size, 1);
-            
-            if(!truth.x)
-                break;
+
+            if(!truth.x) break;
             float best_iou = 0;
             int best_n = 0;
             i = (truth.x * width);
@@ -2432,7 +2568,7 @@ float YOLOv3Layer::Backward(Tensor *target) {
             Box truth_shift = truth;
             truth_shift.x = truth_shift.y = 0;
             for(n = 0; n < total_anchor_num; ++n){
-                Box pred; pred.x = 0; pred.y = 0;
+                Box pred = {0};
                 pred.w = bias[2 * n + 0] / net_width;
                 pred.h = bias[2 * n + 1] / net_height;
                 float iou = box_iou(pred, truth_shift);
@@ -2441,9 +2577,9 @@ float YOLOv3Layer::Backward(Tensor *target) {
                     best_n = n;
                 }
             }
-            
+
             int mask_n = int_index(mask, best_n, anchor_num);
-            if (mask_n >= 0) {
+            if(mask_n >= 0){
                 int box_index = entry_index(b, mask_n * channel_size + j * width + i, 0);
                 float iou = delta_yolo_box(truth, output, bias, best_n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
 
@@ -2563,6 +2699,327 @@ float YOLOv3Layer::mag_array(float *a, int n) {
 }
 
 int YOLOv3Layer::int_index(float *a, int val, int n) {
+    for(int i = 0; i < n; ++i) {
+        if(a[i] == val)
+            return i;
+    }
+    return -1;
+}
+
+YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Yolov4;
+    name = (opt.find("name") == opt.end()) ? "yolov4" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    info.input_width = atoi(opt["input_width"].c_str());
+    info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+    info.total_anchor_num = atoi(opt["total_anchor_num"].c_str());
+    info.anchor_num = atoi(opt["anchor_num"].c_str());
+    info.classes = atoi(opt["classes"].c_str());
+    info.max_boxes = atoi(opt["max_boxes"].c_str());
+    info.net_width = atoi(opt["net_width"].c_str());
+    info.net_height = atoi(opt["net_height"].c_str());
+    info.ignore_iou_threshold = (opt.find("ignore_iou_threshold") == opt.end()) ? 0.5 : atof(opt["ignore_iou_threshold"].c_str());
+    info.truth_iou_threshold = (opt.find("truth_iou_threshold") == opt.end()) ? 1 : atof(opt["truth_iou_threshold"].c_str());
+    
+    info.scale_x_y = (opt.find("scale_x_y") == opt.end()) ? 1 : atof(opt["scale_x_y"].c_str());
+    info.iou_normalizer = (opt.find("iou_normalizer") == opt.end()) ? 0.75 : atof(opt["iou_normalizer"].c_str());
+    info.obj_normalizer = (opt.find("obj_normalizer") == opt.end()) ? 1 : atof(opt["obj_normalizer"].c_str());
+    info.cls_normalizer = (opt.find("cls_normalizer") == opt.end()) ? 1 : atof(opt["cls_normalizer"].c_str());
+    info.delta_normalizer = (opt.find("delta_normalizer") == opt.end()) ? 1 : atof(opt["delta_normalizer"].c_str());
+    info.beta_nms = (opt.find("beta_nms") == opt.end()) ? 0.6 : atof(opt["beta_nms"].c_str());
+    
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
+    if (opt.find("mask") == opt.end()) {
+        for (int i = 0; i < info.anchor_num; ++i)
+        kernel[0].weight[i] = i;
+    } else {
+        stringstream ss;
+        ss << opt["mask"];
+        int n;
+        char c;
+        for (int i = 0; i < info.anchor_num; ++i) {
+            ss >> n >> c;
+            kernel[0].weight[i] = n;
+        }
+    }
+    info.kernel_num = 1;
+    
+    biases = new Tensor(2, 1, info.total_anchor_num, 0); // Anchor
+    stringstream ss;
+    ss << opt["anchor"];
+    int w, h;
+    char c;
+    for (int i = 0; i < info.total_anchor_num; ++i) {
+        ss >> w >> c >> h;
+        biases->weight[i * 2 + 0] = w;
+        biases->weight[i * 2 + 1] = h;
+    }
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    detection = Tensor(1, 1, 1, 0);
+}
+
+Tensor* YOLOv4Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
+    input_tensor = input_tensor_;
+    return &detection;
+}
+
+void YOLOv4Layer::Forward(bool train) {
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
+    int channel_size = info.output_width * info.output_height;
+    
+    memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
+
+    for (int b = 0; b < info.batch_size; ++b){
+        for(int n = 0; n < info.anchor_num; ++n) {
+            int index = entry_index(b, n * channel_size, 0);
+            activate_array(output + index, 2 * channel_size, LOGISTIC);
+            index = entry_index(b, n * channel_size, 4);
+            activate_array(output + index, (1 + info.classes) * channel_size, LOGISTIC);
+        }
+    }
+    input_tensor->clearDeltaWeight();
+    
+    if (!train) {
+        vector<Detection> dets = yolo_get_detection_without_correction();
+        detection = Tensor(1, (info.classes + 5), (int)dets.size(), 0);
+        float *value = detection.weight;
+        for (int i = 0; i < (int)dets.size(); ++i) {
+            *(value++) = dets[i].bbox.x;
+            *(value++) = dets[i].bbox.y;
+            *(value++) = dets[i].bbox.w;
+            *(value++) = dets[i].bbox.h;
+            *(value++) = dets[i].objectness;
+            for (int c = 0; c < info.classes; ++c) {
+                *(value++) = dets[i].prob[c];
+            }
+        }
+    }
+}
+
+float YOLOv4Layer::Backward(Tensor *target) {
+    float ignore_iou_threshold = 0.7; // TODO: should be input
+    float truth_iou_threshold = 1;
+    
+    int width = info.input_width;
+    int height = info.input_height;
+    int net_width = info.net_width;
+    int net_height = info.net_height;
+    int anchor_num = info.anchor_num;
+    int total_anchor_num = info.total_anchor_num;
+    int channel_size = width * height;
+    int max_boxes = info.max_boxes;
+    int target_size = 5 * max_boxes;
+    int classes = info.classes;
+    
+    float *output = output_tensor->weight;
+    float *delta = input_tensor->delta_weight;
+    float *bias = biases->weight;
+    float *mask = kernel[0].weight;
+    float *target_ptr = target->weight;
+    
+    float avg_iou = 0;
+    float recall = 0;
+    float recall75 = 0;
+    float avg_cat = 0;
+    float avg_obj = 0;
+    float avg_anyobj = 0;
+    int count = 0;
+    int class_count = 0;
+    int i,j,b,t,n;
+    
+    float loss = 0;
+    for (b = 0; b < info.batch_size; ++b) {
+        for (j = 0; j < height; ++j) {
+            for (i = 0; i < width; ++i) {
+                for (n = 0; n < anchor_num; ++n) {
+                    int box_index = entry_index(b, n * channel_size + j * width + i, 0);
+                    Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size);
+                    float best_iou = 0;
+                    int best_t = 0;
+                    for(t = 0; t < max_boxes; ++t){
+                        Box truth = float_to_box(target_ptr + t * (4 + 1) + target_size, 1);
+                        if(!truth.x) break;
+                        float iou = box_iou(pred, truth);
+                        if (iou > best_iou) {
+                            best_iou = iou;
+                            best_t = t;
+                        }
+                    }
+                    int obj_index = entry_index(b, n * channel_size + j * width + i, 4);
+                    avg_anyobj += output[obj_index];
+                    delta[obj_index] = output[obj_index];
+                    if (best_iou > ignore_iou_threshold) {
+                        delta[obj_index] = 0;
+                    }
+                    if (best_iou > truth_iou_threshold) {
+                        delta[obj_index] = output[obj_index] - 1;
+
+                        int cls = target_ptr[best_t*(4 + 1) + b * target_size + 4];
+                        int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
+                        delta_yolo_class(output, delta, class_index, cls, classes, channel_size, 0);
+                        Box truth = float_to_box(target_ptr + best_t * (4 + 1) + b * target_size, 1);
+                        delta_yolo_box(truth, output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
+                    }
+                }
+            }
+        }
+        for(t = 0; t < max_boxes; ++t){
+            Box truth = float_to_box(target_ptr + t * (4 + 1) + b * target_size, 1);
+
+            if(!truth.x) break;
+            float best_iou = 0;
+            int best_n = 0;
+            i = (truth.x * width);
+            j = (truth.y * height);
+            Box truth_shift = truth;
+            truth_shift.x = truth_shift.y = 0;
+            for(n = 0; n < total_anchor_num; ++n){
+                Box pred = {0};
+                pred.w = bias[2 * n + 0] / net_width;
+                pred.h = bias[2 * n + 1] / net_height;
+                float iou = box_iou(pred, truth_shift);
+                if (iou > best_iou){
+                    best_iou = iou;
+                    best_n = n;
+                }
+            }
+
+            int mask_n = int_index(mask, best_n, anchor_num);
+            if(mask_n >= 0){
+                int box_index = entry_index(b, mask_n * channel_size + j * width + i, 0);
+                float iou = delta_yolo_box(truth, output, bias, best_n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
+
+                int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
+                avg_obj += output[obj_index];
+                delta[obj_index] = output[obj_index] - 1;
+
+                int cls = target_ptr[t * (4 + 1) + b * target_size + 4];
+                int class_index = entry_index(b, mask_n * channel_size + j * width + i, 4 + 1);
+                delta_yolo_class(output, delta, class_index, cls, classes, channel_size, &avg_cat);
+
+                ++count;
+                ++class_count;
+                if(iou > .5) recall += 1;
+                if(iou > .75) recall75 += 1;
+                avg_iou += iou;
+            }
+        }
+    }
+    loss = pow(mag_array(delta, info.output_number * info.batch_size), 2);
+    printf("Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(channel_size*anchor_num*info.batch_size), recall/count, recall75/count, count);
+    return loss;
+}
+
+void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat) {
+    if (delta[index]) {
+        delta[index + stride * cls] = output[index + stride * cls] - 1;
+        if(avg_cat)
+            *avg_cat += output[index + stride * cls];
+        return;
+    }
+    for(int n = 0; n < classes; ++n) {
+        delta[index + stride * n] = output[index + stride * n] - ((n == cls) ? 1 : 0);
+        if(n == cls && avg_cat)
+            *avg_cat += output[index + stride * n];
+    }
+}
+
+float YOLOv4Layer::delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride) {
+    Box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride);
+    float iou = box_iou(pred, truth);
+    
+    float tx = (truth.x * lw - i);
+    float ty = (truth.y * lh - j);
+    float tw = log(truth.w * w / biases[2 * n + 0]);
+    float th = log(truth.h * h / biases[2 * n + 1]);
+    
+    delta[index + 0 * stride] = -scale * (tx - x[index + 0 * stride]);
+    delta[index + 1 * stride] = -scale * (ty - x[index + 1 * stride]);
+    delta[index + 2 * stride] = -scale * (tw - x[index + 2 * stride]);
+    delta[index + 3 * stride] = -scale * (th - x[index + 3 * stride]);
+    return iou;
+}
+
+int YOLOv4Layer::entry_index(int batch, int location, int entry) {
+    int channel_size = info.output_width * info.output_height;
+    int n = location / channel_size;
+    int loc = location % channel_size;
+    return batch * info.output_number + n * channel_size * (5 + info.classes) + entry * channel_size + loc;
+}
+
+vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
+    float threshold = 0.5; // TODO: threshold input
+    float *feature = output_tensor->weight;
+    float *bias = biases->weight;
+    float *mask = kernel[0].weight;
+    
+    int width = info.output_width;
+    int height = info.output_height;
+    int net_width = info.net_width;
+    int net_height = info.net_height;
+    int classes = info.classes;
+    int channel_size = width * height;
+    
+    vector<Detection> dets;
+
+    for (int i = 0; i < channel_size; ++i){
+        int row = i / width;
+        int col = i % width;
+        for(int n = 0; n < info.anchor_num; ++n){
+            int obj_index  = entry_index(0, n * channel_size + i, 4);
+            float objectness = feature[obj_index];
+            if(objectness <= threshold)
+                continue;
+            Detection det; det.prob.resize(classes);
+            int box_index  = entry_index(0, n * channel_size + i, 0);
+            det.bbox = get_yolo_box(feature, bias, mask[n], box_index, col, row, width, height, net_width, net_height, channel_size);
+            det.objectness = objectness;
+            det.classes = info.classes;
+            for(int j = 0; j < info.classes; ++j){
+                int class_index = entry_index(0, n * channel_size + i, 4 + 1 + j);
+                float prob = objectness * feature[class_index];
+                det.prob[j] = (prob > threshold) ? prob : 0;
+            }
+            dets.push_back(det);
+        }
+    }
+    
+    return dets;
+}
+
+Box YOLOv4Layer::get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride) {
+    Box b;
+    b.x = (i + x[index + 0 * stride]) / lw;
+    b.y = (j + x[index + 1 * stride]) / lh;
+    b.w = exp(x[index + 2 * stride]) * biases[2 * n + 0] / w;
+    b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
+    return b;
+}
+
+float YOLOv4Layer::mag_array(float *a, int n) {
+    float sum = 0;
+    for(int i = 0; i < n; ++i){
+        sum += a[i] * a[i];
+    }
+    return sqrt(sum);
+}
+
+int YOLOv4Layer::int_index(float *a, int val, int n) {
     for(int i = 0; i < n; ++i) {
         if(a[i] == val)
             return i;

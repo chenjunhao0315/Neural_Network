@@ -15,6 +15,7 @@
 #include <random>
 #include <algorithm>
 #include <unordered_map>
+#include <sstream>
 
 #include "Layer.hpp"
 
@@ -40,6 +41,7 @@ public:
     bool save_darknet(const char *weights_name, int cut_off = -1);
     bool load(const char *model_name, int batch_size_ = 1);
     bool load_darknet(const char *weights_name);
+    bool to_prototxt(const char *filename = "model.prototxt");
     void alloc_workspace();
     void createGraph();
     int getBatchSize() {return batch_size;}

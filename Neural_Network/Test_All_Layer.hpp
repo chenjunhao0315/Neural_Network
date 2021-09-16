@@ -13,6 +13,6 @@
 #include "Neural_Network.hpp"
 #include "Data_Process.hpp"
 
-void test_all_layer();
+void test_all_layer(bool save = false);
 
 #endif /* Test_All_Layer_hpp */

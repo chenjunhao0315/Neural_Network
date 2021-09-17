@@ -41,6 +41,7 @@ void normalize(float *src, float *mean, float *variance, int batch_size, int dim
 void fill_cpu(int size, float *src, float parameter);
 void copy_cpu(int size, float *src, float *dst);
 void scal_cpu(int size, float scale, float *src);
+void scal_add_cpu(int size, float scale, float bias, float *src);
 void axpy_cpu(int size, float scale, float *src, float *dst);
 
 void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);

@@ -162,6 +162,11 @@ void scal_cpu(int size, float scale, float *src) {
         *(src++) *= scale;
 }
 
+void scal_add_cpu(int size, float scale, float bias, float *src) {
+    for (int i = size; i--; ++src)
+        *(src) = *(src) * scale + bias;
+}
+
 void axpy_cpu(int size, float scale, float *src, float *dst) {
     for (int i = size; i--; )
         *(dst++) += scale * *(src++);

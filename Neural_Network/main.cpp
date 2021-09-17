@@ -21,7 +21,7 @@ using namespace std::chrono;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-    test_all_layer(false);
+//    test_all_layer(true);
 
 //    YOLOv3 nn(80, 1);
 //
@@ -49,10 +49,10 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-//    YOLOv3 yolo("yolov3.bin");
-//    IMG img("dog.jpg");
-//    yolo.detect(img);
-//    img.save("detected.jpg", 100);
+    YOLOv3 yolo(80);
+    IMG img("person.jpg");
+    yolo.detect(img);
+    img.save("detected.jpg", 100);
 
 //    Mtcnn mtcnn("1630830419_149_217474.312500.bin", "1630899594_119_16779.394531.bin", "1631183863_35_2587.741699.bin");
 //    mtcnn.min_face_size = 0;
@@ -65,7 +65,7 @@ int main(int argc, const char * argv[]) {
 //    mtcnn.layout(result);
     
 //    Neural_Network nn;
-//    nn.load("1630830419_149_217474.312500.bin");
+//    nn.load("1631183863_35_2587.741699.bin");
 //    nn.to_prototxt();
     
 //    Neural_Network nn;

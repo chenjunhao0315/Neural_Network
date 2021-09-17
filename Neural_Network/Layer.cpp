@@ -24,7 +24,9 @@ Model_Layer::~Model_Layer() {
         case LayerType::UpSample: delete upsample_layer; break;
         case LayerType::Concat: delete concat_layer; break;
         case LayerType::Yolov3: delete yolov3_layer; break;
+        case LayerType::Yolov4: delete yolov4_layer; break;
         case LayerType::Mish: delete mish_layer; break;
+        case LayerType::Dropout: delete dropout_layer; break;
         default: break;
     }
     input_layer = nullptr;
@@ -42,7 +44,9 @@ Model_Layer::~Model_Layer() {
     upsample_layer = nullptr;
     concat_layer = nullptr;
     yolov3_layer = nullptr;
+    yolov4_layer = nullptr;
     mish_layer = nullptr;
+    dropout_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -61,7 +65,9 @@ Model_Layer::Model_Layer() {
     upsample_layer = nullptr;
     concat_layer = nullptr;
     yolov3_layer = nullptr;
+    yolov4_layer = nullptr;
     mish_layer = nullptr;
+    dropout_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -80,7 +86,9 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     upsample_layer = nullptr;
     concat_layer = nullptr;
     yolov3_layer = nullptr;
+    yolov4_layer = nullptr;
     mish_layer = nullptr;
+    dropout_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -129,8 +137,14 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
             case LayerType::Yolov3:
                 yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
                 break;
+            case LayerType::Yolov4:
+                yolov4_layer = new YOLOv4Layer(*L.yolov4_layer);
+                break;
             case LayerType::Mish:
                 mish_layer = new MishLayer(*L.mish_layer);
+                break;
+            case LayerType::Dropout:
+                dropout_layer = new DropoutLayer(*L.dropout_layer);
                 break;
             default:
                 break;
@@ -155,7 +169,9 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     upsample_layer = L.upsample_layer;
     concat_layer = L.concat_layer;
     yolov3_layer = L.yolov3_layer;
+    yolov4_layer = L.yolov4_layer;
     mish_layer = L.mish_layer;
+    dropout_layer = L.dropout_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
@@ -171,7 +187,9 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     L.upsample_layer = nullptr;
     L.concat_layer = nullptr;
     L.yolov3_layer = nullptr;
+    L.yolov4_layer = nullptr;
     L.mish_layer = nullptr;
+    L.dropout_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -190,7 +208,9 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     upsample_layer = nullptr;
     concat_layer = nullptr;
     yolov3_layer = nullptr;
+    yolov4_layer = nullptr;
     mish_layer = nullptr;
+    dropout_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -239,8 +259,14 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             case LayerType::Yolov3:
                 yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
                 break;
+            case LayerType::Yolov4:
+                yolov4_layer = new YOLOv4Layer(*L.yolov4_layer);
+                break;
             case LayerType::Mish:
                 mish_layer = new MishLayer(*L.mish_layer);
+                break;
+            case LayerType::Dropout:
+                dropout_layer = new DropoutLayer(*L.dropout_layer);
                 break;
             default:
                 break;
@@ -265,7 +291,9 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     upsample_layer = nullptr;
     concat_layer = nullptr;
     yolov3_layer = nullptr;
+    yolov4_layer = nullptr;
     mish_layer = nullptr;
+    dropout_layer = nullptr;
     type = string_to_type(opt_["type"]);
     
     switch (type) {
@@ -299,10 +327,14 @@ Model_Layer::Model_Layer(LayerOption opt_) {
             concat_layer = new ConcatLayer(opt_); break;
         case LayerType::Yolov3:
             yolov3_layer = new YOLOv3Layer(opt_); break;
+        case LayerType::Yolov4:
+            yolov4_layer = new YOLOv4Layer(opt_); break;
         case LayerType::Mish:
             mish_layer = new MishLayer(opt_); break;
+        case LayerType::Dropout:
+            dropout_layer = new DropoutLayer(opt_); break;
         default:
-            fprintf(stderr, "Unknown layer type!\n"); break;
+            fprintf(stderr, "[Model_Layer] Unknown layer type!\n"); break;
     }
 }
 
@@ -337,8 +369,12 @@ LayerType Model_Layer::string_to_type(string type) {
         return LayerType::Concat;
     } else if (type == "YOLOv3") {
         return LayerType::Yolov3;
+    } else if (type == "YOLOv4") {
+        return LayerType::Yolov4;
     } else if (type == "Mish") {
         return LayerType::Mish;
+    } else if (type == "Dropout") {
+        return LayerType::Dropout;
     }
     return LayerType::Error;
 }
@@ -375,8 +411,12 @@ void Model_Layer::Forward(Tensor* input_tensor_, bool train) {
             return concat_layer->Forward();
         case LayerType::Yolov3:
             return yolov3_layer->Forward(train);
+        case LayerType::Yolov4:
+            return yolov4_layer->Forward(train);
         case LayerType::Mish:
             return mish_layer->Forward();
+        case LayerType::Dropout:
+            return dropout_layer->Forward();
         default:
             break;
     }
@@ -414,8 +454,12 @@ Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor
             return concat_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Yolov3:
             return yolov3_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
+        case LayerType::Yolov4:
+            return yolov4_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Mish:
             return mish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
+        case LayerType::Dropout:
+            return dropout_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         default:
             break;
     }
@@ -430,6 +474,8 @@ float Model_Layer::Backward(Tensor *target) {
             return euclideanloss_layer->Backward(target);
         case LayerType::Yolov3:
             return yolov3_layer->Backward(target);
+        case LayerType::Yolov4:
+            return yolov4_layer->Backward(target);
         case LayerType::Convolution:
             convolution_layer->Backward(); break;
         case LayerType::Pooling:
@@ -456,6 +502,8 @@ float Model_Layer::Backward(Tensor *target) {
             concat_layer->Backward(); break;
         case LayerType::Mish:
             mish_layer->Backward(); break;
+        case LayerType::Dropout:
+            dropout_layer->Backward(); break;
         default:
             break;
     }
@@ -493,8 +541,12 @@ void Model_Layer::shape() {
         concat_layer->shape();
     } else if (type == LayerType::Yolov3) {
         yolov3_layer->shape();
+    } else if (type == LayerType::Yolov4) {
+        yolov4_layer->shape();
     } else if (type == LayerType::Mish) {
         mish_layer->shape();
+    } else if (type == LayerType::Dropout) {
+        dropout_layer->shape();
     }
 }
 
@@ -530,8 +582,12 @@ int Model_Layer::getParameter(int type_) {
             return concat_layer->getParameter(type_);
         case LayerType::Yolov3:
             return yolov3_layer->getParameter(type_);
+        case LayerType::Yolov4:
+            return yolov4_layer->getParameter(type_);
         case LayerType::Mish:
             return mish_layer->getParameter(type_);
+        case LayerType::Dropout:
+            return dropout_layer->getParameter(type_);
         default:
             break;
     }
@@ -569,8 +625,12 @@ bool Model_Layer::save(FILE *f) {
         return concat_layer->save(f);
     } else if (type == LayerType::Yolov3) {
         return yolov3_layer->save(f);
+    } else if (type == LayerType::Yolov4) {
+        return yolov4_layer->save(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->save(f);
+    } else if (type == LayerType::Dropout) {
+        return dropout_layer->save(f);
     }
     return false;
 }
@@ -606,8 +666,12 @@ bool Model_Layer::save_raw(FILE *f) {
         return concat_layer->save_raw(f);
     } else if (type == LayerType::Yolov3) {
         return yolov3_layer->save_raw(f);
+    } else if (type == LayerType::Yolov4) {
+        return yolov4_layer->save_raw(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->save_raw(f);
+    } else if (type == LayerType::Dropout) {
+        return dropout_layer->save_raw(f);
     }
     return false;
 }
@@ -643,8 +707,12 @@ bool Model_Layer::load(FILE *f) {
         return concat_layer->load(f);
     } else if (type == LayerType::Yolov3) {
         return yolov3_layer->load(f);
+    } else if (type == LayerType::Yolov4) {
+        return yolov4_layer->load(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->load(f);
+    } else if (type == LayerType::Dropout) {
+        return dropout_layer->load(f);
     }
     return false;
 }
@@ -680,8 +748,12 @@ bool Model_Layer::load_raw(FILE *f) {
         return concat_layer->load_raw(f);
     } else if (type == LayerType::Yolov3) {
         return yolov3_layer->load_raw(f);
+    } else if (type == LayerType::Yolov4) {
+        return yolov4_layer->load_raw(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->load_raw(f);
+    } else if (type == LayerType::Dropout) {
+        return dropout_layer->load_raw(f);
     }
     return 0;
 }
@@ -717,8 +789,12 @@ bool Model_Layer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refin
         return concat_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     } else if (type == LayerType::Yolov3) {
         return yolov3_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Yolov4) {
+        return yolov4_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     } else if (type == LayerType::Mish) {
         return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Dropout) {
+        return dropout_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     }
     return 0;
 }
@@ -755,8 +831,12 @@ void Model_Layer::ClearGrad() {
             return concat_layer->ClearGrad();
         case LayerType::Yolov3:
             return yolov3_layer->ClearGrad();
+        case LayerType::Yolov4:
+            return yolov4_layer->ClearGrad();
         case LayerType::Mish:
             return mish_layer->ClearGrad();
+        case LayerType::Dropout:
+            return dropout_layer->ClearGrad();
         default:
             break;
     }
@@ -774,6 +854,8 @@ Train_Args Model_Layer::getTrainArgs() {
             return batchnorm_layer->getTrainArgs();
         case LayerType::Yolov3:
             return yolov3_layer->getTrainArgs();
+        case LayerType::Yolov4:
+            return yolov4_layer->getTrainArgs();
         default:
             return Train_Args();
     }
@@ -940,7 +1022,9 @@ string BaseLayer::type_to_string() {
         case UpSample: return "UpSample";
         case Concat: return "Concat";
         case Yolov3: return "YOLOv3";
+        case Yolov4: return "YOLOv4";
         case Mish: return "Mish";
+        case Dropout: return "Dropout";
         case Error: return "Error";
     }
     return "Unknown";
@@ -1120,10 +1204,27 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.net_height, sizeof(int), 1, f);
         kernel[0].save(f);
         biases->save(f);
+    } else if (type == LayerType::Yolov4) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.total_anchor_num, sizeof(int), 1, f);
+        fwrite(&info.anchor_num, sizeof(int), 1, f);
+        fwrite(&info.classes, sizeof(int), 1, f);
+        fwrite(&info.max_boxes, sizeof(int), 1, f);
+        fwrite(&info.net_width, sizeof(int), 1, f);
+        fwrite(&info.net_height, sizeof(int), 1, f);
+        kernel[0].save(f);
+        biases->save(f);
     } else if (type == LayerType::Mish) {
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
+    } else if (type == LayerType::Dropout) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
+        fwrite(&info.probability, sizeof(float), 1, f);
     }
     return true;
 }
@@ -1143,6 +1244,9 @@ bool BaseLayer::load(FILE *f) {
         kernel[1] = kernel[3];
         kernel[2] = kernel[4];
     } else if (type == LayerType::Yolov3) {
+        kernel[0].load(f);
+        biases->load(f);
+    } else if (type == LayerType::Yolov4) {
         kernel[0].load(f);
         biases->load(f);
     }
@@ -1239,6 +1343,10 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
             for (int i = 1; i <= info.concat_num; ++i) {
                 fprintf(f, "  bottom: \"%s\"\n", refine_struct[id_table[opt["concat_" + to_string(i) + "_name"]]]["name"].c_str());
             }
+            fprintf(f, "  concat_param {\n");
+            fprintf(f, "    splits: %d\n", info.splits);
+            fprintf(f, "    split_id: %d\n", info.split_id);
+            fprintf(f, "  }\n");
         } else if (type == LayerType::Yolov3) {
             fprintf(f, "  yolov3_param {\n");
             fprintf(f, "    classes: %d\n", info.classes);
@@ -1247,7 +1355,19 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
             fprintf(f, "    anchor: \"%s\"\n", opt["anchor"].c_str());
             fprintf(f, "    mask: \"%s\"\n", opt["mask"].c_str());
             fprintf(f, "  }\n");
+        } else if (type == LayerType::Yolov4) {
+            fprintf(f, "  yolov4_param {\n");
+            fprintf(f, "    classes: %d\n", info.classes);
+            fprintf(f, "    total_anchor_num: %d\n", info.total_anchor_num);
+            fprintf(f, "    anchor_num: %d\n", info.anchor_num);
+            fprintf(f, "    anchor: \"%s\"\n", opt["anchor"].c_str());
+            fprintf(f, "    mask: \"%s\"\n", opt["mask"].c_str());
+            fprintf(f, "  }\n");
         } else if (type == LayerType::Mish) {
+        } else if (type == LayerType::Dropout) {
+            fprintf(f, "  dropout_param {\n");
+            fprintf(f, "    ratioi: %g\n", info.probability);
+            fprintf(f, "  }\n");
         }
         fprintf(f, "}\n");
     }
@@ -2338,7 +2458,7 @@ void ConcatLayer::Backward() {
 MishLayer::MishLayer(LayerOption opt_) {
     opt = opt_;
     type = LayerType::Mish;
-    name = (opt.find("name") == opt.end()) ? "yolov3" : opt["name"];
+    name = (opt.find("name") == opt.end()) ? "mish" : opt["name"];
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
     info.batch_size = atoi(opt["batch_size"].c_str());
@@ -2389,6 +2509,72 @@ void MishLayer::Backward() {
         float grad_tsp = (1 - tsp * tsp) * grad_sp;
         float grad = inp * grad_tsp + tsp;
         *(input_delta++) += grad * *(output_delta++);
+    }
+}
+
+DropoutLayer::DropoutLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Dropout;
+    name = (opt.find("name") == opt.end()) ? "dropout" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    info.input_width = atoi(opt["input_width"].c_str());
+    info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+    info.probability = (opt.find("probability") == opt.end()) ? 0.5 : atof(opt["probability"].c_str());
+    info.scale = 1.0 / (1.0 - info.probability);
+    
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Probability storage
+    info.kernel_num = 1;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+}
+
+void DropoutLayer::Forward(bool train) {
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
+    float *prob = kernel->weight;
+    float probability = info.probability;
+    float scale = info.scale;
+    
+    if (!train) {
+        copy_cpu(info.input_number * info.batch_size, input, output);
+        return;
+    }
+    
+    for(int i = info.input_number * info.batch_size; i--; ++input, ++output){
+        float p = Random(0, 1);
+        *(prob++) = p;
+        if(p < probability)
+            *(output) = 0;
+        else
+            *(output) = *(input) * scale;
+    }
+}
+
+void DropoutLayer::Backward() {
+    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *prob = kernel->weight;
+    float probability = info.probability;
+    float scale = info.scale;
+
+    for(int i = info.input_number * info.batch_size; i--; ) {
+        float p = *(prob++);
+        if(p < probability)
+            *(input_delta) = 0;
+        else
+            *(input_delta) = *(output_delta) * scale;
     }
 }
 
@@ -2642,7 +2828,7 @@ int YOLOv3Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.5; // TODO: threshold input
+    float threshold = 0.1; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
@@ -2739,6 +2925,7 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     info.cls_normalizer = (opt.find("cls_normalizer") == opt.end()) ? 1 : atof(opt["cls_normalizer"].c_str());
     info.delta_normalizer = (opt.find("delta_normalizer") == opt.end()) ? 1 : atof(opt["delta_normalizer"].c_str());
     info.beta_nms = (opt.find("beta_nms") == opt.end()) ? 0.6 : atof(opt["beta_nms"].c_str());
+    info.yolov4_new_coordinate = (opt.find("new_coordinate") != opt.end());
     
     kernel = new Tensor [1];
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
@@ -2781,17 +2968,27 @@ void YOLOv4Layer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     int channel_size = info.output_width * info.output_height;
+    float scale_x_y = info.scale_x_y;
+    float scale_x_y_bias = -0.5 * (scale_x_y - 1);
+//    bool new_coordinate = info.yolov4_new_coordinate;
+    bool new_coordinate = false;
     
     memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
 
     for (int b = 0; b < info.batch_size; ++b){
         for(int n = 0; n < info.anchor_num; ++n) {
-            int index = entry_index(b, n * channel_size, 0);
-            activate_array(output + index, 2 * channel_size, LOGISTIC);
-            index = entry_index(b, n * channel_size, 4);
-            activate_array(output + index, (1 + info.classes) * channel_size, LOGISTIC);
+            int bbox_index = entry_index(b, n * channel_size, 0);
+            if (new_coordinate) {
+                
+            } else {
+                activate_array(output + bbox_index, 2 * channel_size, LOGISTIC);
+                int obj_index = entry_index(b, n * channel_size, 4);
+                activate_array(output + obj_index, (1 + info.classes) * channel_size, LOGISTIC);
+            }
+            scal_add_cpu(2 * channel_size, scale_x_y, scale_x_y_bias, output + bbox_index);
         }
     }
+    cout << *output_tensor;
     input_tensor->clearDeltaWeight();
     
     if (!train) {
@@ -2963,7 +3160,7 @@ int YOLOv4Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.5; // TODO: threshold input
+    float threshold = 0.01; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;

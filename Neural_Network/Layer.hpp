@@ -56,6 +56,7 @@ enum LayerType {
     Yolov3,
     Yolov4,
     Mish,
+    Dropout,
     Error
 };
 
@@ -76,6 +77,7 @@ class ConcatLayer;
 class YOLOv3Layer;
 class YOLOv4Layer;
 class MishLayer;
+class DropoutLayer;
 
 // Top layer
 class Model_Layer {
@@ -118,7 +120,9 @@ private:
     UpSampleLayer *upsample_layer;
     ConcatLayer *concat_layer;
     YOLOv3Layer *yolov3_layer;
+    YOLOv4Layer *yolov4_layer;
     MishLayer *mish_layer;
+    DropoutLayer *dropout_layer;
 };
 
 // Base layer
@@ -184,6 +188,9 @@ public:
         int iou_loss;
         int nms_kind;
         float beta_nms;
+        bool yolov4_new_coordinate;
+        float probability;
+        float scale;
         bool reverse;
         bool batchnorm;
     } info;
@@ -321,6 +328,13 @@ public:
     void Backward();
 private:
     vtensorptr concat_tensor;
+};
+
+class DropoutLayer : public BaseLayer {
+public:
+    DropoutLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward();
 };
 
 class YOLOv3Layer : public BaseLayer {

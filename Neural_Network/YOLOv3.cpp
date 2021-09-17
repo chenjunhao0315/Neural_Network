@@ -390,75 +390,75 @@
 //    network.save("yolov3.bin");
 //}
 
-YOLOv3::YOLOv3(int classes_, int batch_size) {
-    classes = classes_;
-    label = get_yolo_label("labelstr.txt", classes);
-    net_width = 416;
-    net_height = 416;
-    threshold = 0.45;
-
-    network = Neural_Network("yolov3");
-    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
-    // Conv_1
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_1"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_1
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_1"}});
-    // Conv_2
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_2"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_2
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_2"}});
-    // Conv_3
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_3"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_3
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_3"}});
-    // Conv_4
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_4"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_4
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_4"}});
-    // Conv_5
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_5"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_5
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_5"}});
-    // Conv_6
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_6"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_6
-    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "1"}, {"padding", "same"}, {"name", "pool_6"}});
-    // Conv_7
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "1024"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_7"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_7
-    // Conv_8
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_8"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_8
-
-    // Conv_lobj_branch
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_lobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_lobj_branch
-    // Conv_lbbox
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_lbbox"}});
-    // End Conv_lbbox
-    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"max_boxes", "90"}, {"name", "yolo_big"}});
-
-    // Conv_9
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_9"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"input_name", "lr_conv_8"}});
-    // End Conv_9
-    network.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample_1"}});
-    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_5"}, {"name", "concat_1"}});
-
-    // Conv_sobj_branch
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_sobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
-    // End Conv_sobj_branch
-    // Conv_sbbox
-    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
-    // End Conv_sbbox
-    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"max_boxes", "90"}, {"name", "yolo_small"}});
-
-    network.addOutput("yolo_small");
-    network.addOutput("yolo_big");
-    network.compile(batch_size);
-    network.load_darknet("yolov3-tiny.weights");
-    network.shape();
-    network.save("yolov3-tiny.bin");
-}
+//YOLOv3::YOLOv3(int classes_, int batch_size) {
+//    classes = classes_;
+//    label = get_yolo_label("labelstr.txt", classes);
+//    net_width = 416;
+//    net_height = 416;
+//    threshold = 0.45;
+//
+//    network = Neural_Network("yolov3");
+//    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
+//    // Conv_1
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_1"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_1
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_1"}});
+//    // Conv_2
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_2"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_2
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_2"}});
+//    // Conv_3
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_3"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_3
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_3"}});
+//    // Conv_4
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_4"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_4
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_4"}});
+//    // Conv_5
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_5"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_5
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_5"}});
+//    // Conv_6
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_6"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_6
+//    network.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "1"}, {"padding", "same"}, {"name", "pool_6"}});
+//    // Conv_7
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "1024"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_7"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_7
+//    // Conv_8
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_8"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_8
+//
+//    // Conv_lobj_branch
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_lobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_lobj_branch
+//    // Conv_lbbox
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_lbbox"}});
+//    // End Conv_lbbox
+//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"max_boxes", "90"}, {"name", "yolo_big"}});
+//
+//    // Conv_9
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_9"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"input_name", "lr_conv_8"}});
+//    // End Conv_9
+//    network.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample_1"}});
+//    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_5"}, {"name", "concat_1"}});
+//
+//    // Conv_sobj_branch
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_sobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+//    // End Conv_sobj_branch
+//    // Conv_sbbox
+//    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
+//    // End Conv_sbbox
+//    network.addLayer(LayerOption{{"type", "YOLOv3"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"max_boxes", "90"}, {"name", "yolo_small"}});
+//
+//    network.addOutput("yolo_small");
+//    network.addOutput("yolo_big");
+//    network.compile(batch_size);
+//    network.load_darknet("yolov3-tiny.weights");
+//    network.shape();
+////    network.save("yolov3-tiny.bin");
+//}
 
 YOLOv3::YOLOv3(const char *model_name, int classes_, int batch_size) {
     network = Neural_Network("yolov3");
@@ -487,7 +487,7 @@ vector<Detection> YOLOv3::detect(IMG &input) {
     }
     
     yolo_nms(dets, classes, threshold);
-    yolo_mark(dets, input, 80, 0.5, label);
+    yolo_mark(dets, input, 80, 0.01, label);
     
     return vector<Detection>();
 }
@@ -914,7 +914,7 @@ void YOLOv3_Trainer::train(int epoch) {
                     *(label_ptr++) = *(label_src_ptr++);
                 }
             }
-            float batch_loss = trainer->train_batch(data, label)[0]; break;
+            float batch_loss = trainer->train_batch(data, label)[0];
             printf("batch_loss: %f\n", batch_loss);
             loss += batch_loss;
             if (j % 5000 >= 0 && j % 5000 < batch_size) {
@@ -924,4 +924,134 @@ void YOLOv3_Trainer::train(int epoch) {
         printf("] ");
         printf("loss: %f\n", loss);
     }
+}
+
+YOLOv3::YOLOv3(int classes_, int batch_size) {
+    classes = classes_;
+    label = get_yolo_label("labelstr.txt", classes);
+    net_width = 416;
+    net_height = 416;
+    threshold = 0.45;
+
+    network = Neural_Network("yolov4");
+    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
+    // Conv_1
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "1"}, {"name", "conv_1"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_1
+
+    // Conv_2
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "1"}, {"name", "conv_2"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_2
+
+    // Conv_3
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_3"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_3
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"splits", "2"}, {"split_id", "1"}, {"name", "split_1"}});
+
+    // Conv_4
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_4"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_4
+
+    // Conv_5
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_5"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_5
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_4"}, {"name", "concat_1"}});
+
+    // Conv_6
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_6"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_6
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_3"}, {"name", "concat_2"}});
+
+    network.addLayer(LayerOption{{"type", "Pooling"}, {"stride", "2"}, {"kernel_width", "2"}, {"name", "pool_1"}});
+
+    // Conv_7
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_7"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_7
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"splits", "2"}, {"split_id", "1"}, {"name", "split_2"}});
+
+    // Conv_8
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_8"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_8
+
+    // Conv_9
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_9"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_9
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_8"}, {"name", "concat_3"}});
+
+    // Conv_10
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_10"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_10
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_7"}, {"name", "concat_4"}});
+
+    network.addLayer(LayerOption{{"type", "Pooling"}, {"stride", "2"}, {"kernel_width", "2"}, {"name", "pool_2"}});
+
+    // Conv_11
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_11"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_11
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"splits", "2"}, {"split_id", "1"}, {"name", "split_3"}});
+
+    // Conv_12
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_12"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_12
+
+    // Conv_13
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_13"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_13
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_12"}, {"name", "concat_5"}});
+
+    // Conv_14
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_14"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_14
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_11"}, {"name", "concat_6"}});
+
+    network.addLayer(LayerOption{{"type", "Pooling"}, {"stride", "2"}, {"kernel_width", "2"}, {"name", "pool_3"}});
+
+    // Conv_15
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_15"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_15
+
+    // Conv_16
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_16"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_16
+
+    // Conv_lobj_branch
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "512"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_lobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_lobj_branch
+    // Conv_lbbox
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_lbbox"}});
+    // End Conv_lbbox
+
+    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "3, 4, 5"}, {"max_boxes", "90"}, {"scale_x_y", "1.05"}, {"name", "yolo_big"}});
+
+    // Conv_17
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "128"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_17"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"input_name", "lr_conv_16"}});
+    // End Conv_17
+
+    network.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample_1"}});
+
+    network.addLayer(LayerOption{{"type", "Concat"}, {"concat", "lr_conv_14"}, {"name", "concat_7"}});
+
+    // Conv_sobj_branch
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "256"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_sobj"}, {"batchnorm", "true"}, {"activation", "LRelu"}});
+    // End Conv_sobj_branch
+    // Conv_sbbox
+    network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", to_string(3 * (classes + 5))}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"name", "conv_sbbox"}});
+    // End Conv_sbbox
+    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "6"}, {"anchor", "10,14  23,27  37,58  81,82  135,169  344,319"}, {"mask", "0, 1, 2"}, {"max_boxes", "90"}, {"scale_x_y", "1.05"}, {"name", "yolo_small"}});
+
+    network.addOutput("yolo_small");
+    network.addOutput("yolo_big");
+    network.compile(batch_size);
+    network.load_darknet("yolov4-tiny.weights");
+    network.shape();
+    network.to_prototxt("yolov4-tiny.prototxt");
 }

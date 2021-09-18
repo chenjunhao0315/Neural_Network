@@ -425,23 +425,39 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     fread(&major, sizeof(int), 1, f);
     fread(&minor, sizeof(int), 1, f);
     fread(&revision, sizeof(int), 1, f);
-    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
-        fread(&seen, sizeof(size_t), 1, f);
-    } else {
-        int iseen = 0;
-        fread(&iseen, sizeof(int), 1, f);
-        seen = iseen;
-    }
+//    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
+//        fread(&seen, sizeof(size_t), 1, f);
+//    } else {
+//        int iseen = 0;
+//        fread(&iseen, sizeof(int), 1, f);
+//        seen = iseen;
+//    }
+    if ((major * 10 + minor) >= 2) {
+            printf("\n seen 64");
+            uint64_t iseen = 0;
+            fread(&iseen, sizeof(uint64_t), 1, f);
+            seen = iseen;
+        }
+        else {
+            printf("\n seen 32");
+            uint32_t iseen = 0;
+            fread(&iseen, sizeof(uint32_t), 1, f);
+            seen = iseen;
+        }
     printf("Major: %d Minor: %d Revision: %d Seen: %d\n", major, minor, revision, seen);
     
     for (int i = 0; i < opt_layer.size(); ++i) {
         LayerOption &opt = opt_layer[i];
+        size_t test = ftell(f);
+        cout << opt["name"] << ": " << check << " / " << test;
         if (opt["type"] == "Convolution") {
             if (opt.find("batchnorm") != opt.end()) {
                 layer[i + 1].load_raw(f);
             }
             layer[i].load_raw(f);
         }
+        test = ftell(f);
+        cout << " -> " << test << endl;
     }
     size_t end = ftell(f);
     printf("End: %zu %zu\n", check, end);
@@ -554,7 +570,7 @@ void Neural_Network::compile(int batch_size_) {
                 }
             }
             opt["concat_num"] = to_string(concat_num);
-        } else if (opt["type"] == "YOLOv3") {
+        } else if (opt["type"] == "YOLOv3" || opt["type"] == "YOLOv4") {
             opt["net_width"] = to_string(layer[0].getParameter(0));
             opt["net_height"] = to_string(layer[0].getParameter(1));
         } else if (opt["type"] == "ShortCut") {

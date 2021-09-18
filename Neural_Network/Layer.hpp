@@ -71,7 +71,7 @@ class PoolingLayer;
 class EuclideanLossLayer;
 class ShortCutLayer;
 class SigmoidLayer;
-class BatchNormalizationlayer;
+class BatchNormalizationLayer;
 class UpSampleLayer;
 class ConcatLayer;
 class YOLOv3Layer;
@@ -116,7 +116,7 @@ private:
     ShortCutLayer *shortcut_layer;
     LReluLayer *lrelu_layer;
     SigmoidLayer *sigmoid_layer;
-    BatchNormalizationlayer *batchnorm_layer;
+    BatchNormalizationLayer *batchnorm_layer;
     UpSampleLayer *upsample_layer;
     ConcatLayer *concat_layer;
     YOLOv3Layer *yolov3_layer;
@@ -298,9 +298,9 @@ public:
     void Backward();
 };
 
-class BatchNormalizationlayer : public BaseLayer {
+class BatchNormalizationLayer : public BaseLayer {
 public:
-    BatchNormalizationlayer(LayerOption opt_);
+    BatchNormalizationLayer(LayerOption opt_);
     void Forward(bool train = false);
     void Backward();
 private:
@@ -377,7 +377,7 @@ public:
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
-    Box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride);
+    Box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride, bool new_coordinate);
     float delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride);
     void delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
     int int_index(float *a, int val, int n);

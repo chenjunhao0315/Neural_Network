@@ -14,8 +14,8 @@
             filePath = "Neural_Network/Layer.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2418"
-            endingLineNumber = "2418"
+            startingLineNumber = "2423"
+            endingLineNumber = "2423"
             landmarkName = "unknown"
             landmarkType = "0">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "Neural_Network/Layer.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2411"
-            endingLineNumber = "2411"
+            startingLineNumber = "2416"
+            endingLineNumber = "2416"
             landmarkName = "unknown"
             landmarkType = "0">
          </BreakpointContent>
@@ -46,8 +46,56 @@
             filePath = "Neural_Network/Layer.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2449"
-            endingLineNumber = "2449"
+            startingLineNumber = "2454"
+            endingLineNumber = "2454"
+            landmarkName = "unknown"
+            landmarkType = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "9764A8ED-1A0F-4C20-A0CC-011C8FD0A330"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Neural_Network/Layer.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "337"
+            endingLineNumber = "337"
+            landmarkName = "unknown"
+            landmarkType = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "B53033EF-B454-4312-BFCB-C3519FE13B1C"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Neural_Network/Layer.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1286"
+            endingLineNumber = "1286"
+            landmarkName = "unknown"
+            landmarkType = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D1BF2D61-E63E-4C27-9D08-FBB0A1F56724"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Neural_Network/Layer.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1278"
+            endingLineNumber = "1278"
             landmarkName = "unknown"
             landmarkType = "0">
          </BreakpointContent>

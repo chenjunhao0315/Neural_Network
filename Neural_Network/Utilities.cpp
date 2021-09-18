@@ -105,7 +105,7 @@ void normalize(float *src, float *mean, float *variance, int batch_size, int dim
     for (int b = batch_size; b--; ) {
         for (int d = 0; d < dimension; ++d) {
             mean_value = mean[d];
-            variance_scale = 1.0 / (sqrt(variance[d]) + 0.000001f);
+            variance_scale = 1.0 / (sqrt(variance[d] + 0.000001f));
             for (int i = size; i--; ++src) {
                 *src = (*(src) - mean_value) * variance_scale;
             }
@@ -142,11 +142,12 @@ void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, fl
 }
 
 void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial) {
+    float check;
     for(int b = 0; b < batch; ++b){
         for(int f = 0; f < filters; ++f){
             for(int i = 0; i < spatial; ++i){
                 int index = b * filters * spatial + f * spatial + i;
-                x[index] = (x[index] - mean[f]) / (sqrt(variance[f]) + 0.000001);
+                check = x[index] = (x[index] - mean[f]) / (sqrt(variance[f] + 0.000001));
             }
         }
     }

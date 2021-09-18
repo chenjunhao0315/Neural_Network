@@ -50,7 +50,7 @@ int main(int argc, const char * argv[]) {
 //    img.save("test_train.jpg");
     
     YOLOv3 yolo(80);
-    IMG img("person.jpg");
+    IMG img("5D4A7770.JPG");
     yolo.detect(img);
     img.save("detected.jpg", 100);
 

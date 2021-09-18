@@ -126,7 +126,7 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
                 sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
                 break;
             case LayerType::BatchNormalization:
-                batchnorm_layer = new BatchNormalizationlayer(*L.batchnorm_layer);
+                batchnorm_layer = new BatchNormalizationLayer(*L.batchnorm_layer);
                 break;
             case LayerType::UpSample:
                 upsample_layer = new UpSampleLayer(*L.upsample_layer);
@@ -248,7 +248,7 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
                 sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
                 break;
             case LayerType::BatchNormalization:
-                batchnorm_layer = new BatchNormalizationlayer(*L.batchnorm_layer);
+                batchnorm_layer = new BatchNormalizationLayer(*L.batchnorm_layer);
                 break;
             case LayerType::UpSample:
                 upsample_layer = new UpSampleLayer(*L.upsample_layer);
@@ -320,7 +320,7 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         case LayerType::Sigmoid:
             sigmoid_layer = new SigmoidLayer(opt_); break;
         case LayerType::BatchNormalization:
-            batchnorm_layer = new BatchNormalizationlayer(opt_); break;
+            batchnorm_layer = new BatchNormalizationLayer(opt_); break;
         case LayerType::UpSample:
             upsample_layer = new UpSampleLayer(opt_); break;
         case LayerType::Concat:
@@ -1943,7 +1943,7 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     info.output_width = atoi(opt["input_width"].c_str());
     info.output_height = atoi(opt["input_height"].c_str());
     info.output_dimension = atoi(opt["input_dimension"].c_str());
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
+    info.output_number = info.input_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = atoi(opt["batch_size"].c_str());
     info.shortcut_width = atoi(opt["shortcut_width"].c_str());
     info.shortcut_height = atoi(opt["shortcut_height"].c_str());
@@ -1968,6 +1968,11 @@ void ShortCutLayer::Forward() {
     int shortcut_dimension = info.shortcut_dimension;
     
     copy_cpu(info.input_number * info.batch_size, input, output);
+//    if (shortcut_width == info.output_width && shortcut_height == info.output_height && shortcut_dimension == info.output_dimension) {
+//        for (int i = info.output_number; i--; ) {
+//            *(output++) = *(input++) + *(shortcut++);
+//        }
+//    }
     shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
 }
 
@@ -2101,7 +2106,7 @@ void SigmoidLayer::Backward() {
     }
 }
 
-BatchNormalizationlayer::BatchNormalizationlayer(LayerOption opt_) {
+BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     opt = opt_;
     type = LayerType::BatchNormalization;
     name = (opt.find("name") == opt.end()) ? "bn" : opt["name"];
@@ -2128,7 +2133,7 @@ BatchNormalizationlayer::BatchNormalizationlayer(LayerOption opt_) {
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
 }
 
-void BatchNormalizationlayer::Forward(bool train) {
+void BatchNormalizationLayer::Forward(bool train) {
     float *src = input_tensor->weight;
     float *output = output_tensor->weight;
     float *bias = biases->weight;
@@ -2167,7 +2172,7 @@ void BatchNormalizationlayer::Forward(bool train) {
     add_bias(output, bias, batch_size, output_dimension, channel_size);
 }
 
-void BatchNormalizationlayer::Backward() {
+void BatchNormalizationLayer::Backward() {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     float *bias_delta = biases->delta_weight;
@@ -2246,7 +2251,7 @@ void BatchNormalizationlayer::Backward() {
 //    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
 }
 
-void BatchNormalizationlayer::backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates) {
+void BatchNormalizationLayer::backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates) {
     for(int f = 0; f < n; ++f){
         float sum = 0;
         for(int b = 0; b < batch; ++b){
@@ -2259,7 +2264,7 @@ void BatchNormalizationlayer::backward_scale_cpu(float *x_norm, float *delta, in
     }
 }
 
-void BatchNormalizationlayer::mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta) {
+void BatchNormalizationLayer::mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta) {
     for(int i = 0; i < filters; ++i){
         mean_delta[i] = 0;
         for (int j = 0; j < batch; ++j) {
@@ -2271,7 +2276,7 @@ void BatchNormalizationlayer::mean_delta_cpu(float *delta, float *variance, int 
         mean_delta[i] *= (-1./sqrt(variance[i] + .00001f));
     }
 }
-void BatchNormalizationlayer::variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta) {
+void BatchNormalizationLayer::variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta) {
     for(int i = 0; i < filters; ++i){
         variance_delta[i] = 0;
         for(int j = 0; j < batch; ++j){
@@ -2283,7 +2288,7 @@ void BatchNormalizationlayer::variance_delta_cpu(float *x, float *delta, float *
         variance_delta[i] *= -0.5 * pow(variance[i] + 0.00001, (float)(-1.5));
     }
 }
-void BatchNormalizationlayer::normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta) {
+void BatchNormalizationLayer::normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta) {
     for(int j = 0; j < batch; ++j){
         for(int f = 0; f < filters; ++f){
             for(int k = 0; k < spatial; ++k){
@@ -2828,7 +2833,7 @@ int YOLOv3Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.1; // TODO: threshold input
+    float threshold = 0.5; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
@@ -2988,7 +2993,6 @@ void YOLOv4Layer::Forward(bool train) {
             scal_add_cpu(2 * channel_size, scale_x_y, scale_x_y_bias, output + bbox_index);
         }
     }
-    cout << *output_tensor;
     input_tensor->clearDeltaWeight();
     
     if (!train) {
@@ -3045,7 +3049,7 @@ float YOLOv4Layer::Backward(Tensor *target) {
             for (i = 0; i < width; ++i) {
                 for (n = 0; n < anchor_num; ++n) {
                     int box_index = entry_index(b, n * channel_size + j * width + i, 0);
-                    Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size);
+                    Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size, info.yolov4_new_coordinate);
                     float best_iou = 0;
                     int best_t = 0;
                     for(t = 0; t < max_boxes; ++t){
@@ -3137,7 +3141,7 @@ void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int c
 }
 
 float YOLOv4Layer::delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride) {
-    Box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride);
+    Box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride, info.yolov4_new_coordinate);
     float iou = box_iou(pred, truth);
     
     float tx = (truth.x * lw - i);
@@ -3160,7 +3164,7 @@ int YOLOv4Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.01; // TODO: threshold input
+    float threshold = 0.5; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
@@ -3184,7 +3188,7 @@ vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
                 continue;
             Detection det; det.prob.resize(classes);
             int box_index  = entry_index(0, n * channel_size + i, 0);
-            det.bbox = get_yolo_box(feature, bias, mask[n], box_index, col, row, width, height, net_width, net_height, channel_size);
+            det.bbox = get_yolo_box(feature, bias, mask[n], box_index, col, row, width, height, net_width, net_height, channel_size, info.yolov4_new_coordinate);
             det.objectness = objectness;
             det.classes = info.classes;
             for(int j = 0; j < info.classes; ++j){
@@ -3199,12 +3203,19 @@ vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
     return dets;
 }
 
-Box YOLOv4Layer::get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride) {
+Box YOLOv4Layer::get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride, bool new_coordinate) {
     Box b;
-    b.x = (i + x[index + 0 * stride]) / lw;
-    b.y = (j + x[index + 1 * stride]) / lh;
-    b.w = exp(x[index + 2 * stride]) * biases[2 * n + 0] / w;
-    b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
+    if (new_coordinate) {
+        b.x = (i + x[index + 0 * stride]) / lw;
+        b.y = (j + x[index + 1 * stride]) / lh;
+        b.w = x[index + 2 * stride] * x[index + 2 * stride] * 4 * biases[2 * n] / w;
+        b.h = x[index + 3 * stride] * x[index + 3 * stride] * 4 * biases[2 * n + 1] / h;
+    } else {
+        b.x = (i + x[index + 0 * stride]) / lw;
+        b.y = (j + x[index + 1 * stride]) / lh;
+        b.w = exp(x[index + 2 * stride]) * biases[2 * n + 0] / w;
+        b.h = exp(x[index + 3 * stride]) * biases[2 * n + 1] / h;
+    }
     return b;
 }
 

@@ -49,10 +49,16 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-    YOLOv3 yolo(80);
-    IMG img("5D4A7770.JPG");
+    YOLOv3 yolo("yolov4-tiny.bin");
+    IMG img("5D4A1809.JPG");
     yolo.detect(img);
     img.save("detected.jpg", 100);
+    
+//    IMG img("target.jpg");
+//    Clock c;
+//    img = img.gaussian_blur(30);
+//    c.stop_and_show();
+//    img.save("gaussian.jpg");
 
 //    Mtcnn mtcnn("1630830419_149_217474.312500.bin", "1630899594_119_16779.394531.bin", "1631183863_35_2587.741699.bin");
 //    mtcnn.min_face_size = 0;
@@ -70,7 +76,7 @@ int main(int argc, const char * argv[]) {
     
 //    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "PRelu"}});
+//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "Mish"}});
 //    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
 //    nn.compile();
 //    nn.shape();
@@ -88,7 +94,7 @@ int main(int argc, const char * argv[]) {
 //    vtensor label{a_l, b_l, c_l, d_l};
 //
 //    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.1}, {"warmup", 5}});
-//    trainer.train(data, label, 100);
+//    trainer.train_batch(data, label, 100);
     
     return 0;
 }

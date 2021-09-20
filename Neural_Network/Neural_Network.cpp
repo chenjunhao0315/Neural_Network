@@ -261,6 +261,29 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             opt["net_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["net_height"] = to_string(temp);
+        } else if (type[0] == 'y' && type[1] == '4') {
+            opt["type"] = "YOLOv4";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["total_anchor_num"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["anchor_num"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["classes"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["max_boxes"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["net_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["net_height"] = to_string(temp);
+            float scale_x_y;
+            fread(&scale_x_y, sizeof(float), 1, f);
+            opt["scale_x_y"] = to_string(scale_x_y);
         } else if (type[0] == 'm' && type[1] == 'i') {
             opt["type"] = "Mish";
             fread(&temp, sizeof(int), 1, f);
@@ -359,6 +382,8 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("cc", 2, 1, f);
         } else if (type == LayerType::Yolov3) {
             fwrite("y3", 2, 1, f);
+        } else if (type == LayerType::Yolov4) {
+            fwrite("y4", 2, 1, f);
         } else if (type == LayerType::Mish) {
             fwrite("mi", 2, 1, f);
         } else if (type == LayerType::Dropout) {

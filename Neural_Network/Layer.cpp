@@ -1214,6 +1214,7 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.max_boxes, sizeof(int), 1, f);
         fwrite(&info.net_width, sizeof(int), 1, f);
         fwrite(&info.net_height, sizeof(int), 1, f);
+        fwrite(&info.scale_x_y, sizeof(float), 1, f);
         kernel[0].save(f);
         biases->save(f);
     } else if (type == LayerType::Mish) {
@@ -1968,12 +1969,13 @@ void ShortCutLayer::Forward() {
     int shortcut_dimension = info.shortcut_dimension;
     
     copy_cpu(info.input_number * info.batch_size, input, output);
-//    if (shortcut_width == info.output_width && shortcut_height == info.output_height && shortcut_dimension == info.output_dimension) {
-//        for (int i = info.output_number; i--; ) {
-//            *(output++) = *(input++) + *(shortcut++);
-//        }
-//    }
-    shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
+    if (shortcut_width == info.output_width && shortcut_height == info.output_height && shortcut_dimension == info.output_dimension) {
+        for (int i = info.output_number * info.batch_size; i--; ) {
+            *(output++) = *(input++) + *(shortcut++);
+        }
+    } else {
+        shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
+    }
 }
 
 void ShortCutLayer::Backward() {
@@ -3164,7 +3166,7 @@ int YOLOv4Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.5; // TODO: threshold input
+    float threshold = 0.3; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;

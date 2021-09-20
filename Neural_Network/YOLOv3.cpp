@@ -472,9 +472,9 @@ YOLOv3::YOLOv3(const char *model_name, int classes_, int batch_size) {
 }
 
 vector<Detection> YOLOv3::detect(IMG &input) {
-    IMG src_img = yolo_pre_process_img(input, 416, 416);
+    IMG src_img = yolo_pre_process_img(input, net_width, net_height);
     Tensor src_tensor(net_width, net_height, 3, 0);
-    convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, 416, 416, 3);
+    convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, net_width, net_height, 3);
     
     Clock c;
     vtensorptr feature_map = network.Forward(&src_tensor);
@@ -487,7 +487,7 @@ vector<Detection> YOLOv3::detect(IMG &input) {
     }
     
     yolo_nms(dets, classes, threshold);
-    yolo_mark(dets, input, 80, 0.5, label);
+    yolo_mark(dets, input, 80, 0.3, label);
     
     return vector<Detection>();
 }
@@ -1053,18 +1053,19 @@ void YOLOv3_Trainer::train(int epoch) {
 //    network.compile(batch_size);
 //    network.load_darknet("yolov4-tiny.weights");
 //    network.shape();
+////    network.save("yolov4-tiny.bin");
 //    network.to_prototxt("yolov4-tiny.prototxt");
 //}
 
 YOLOv3::YOLOv3(int classes_, int batch_size) {
     classes = classes_;
     label = get_yolo_label("labelstr.txt", classes);
-    net_width = 416;
-    net_height = 416;
+    net_width = 608;
+    net_height = 608;
     threshold = 0.45;
 
     network = Neural_Network("yolov4");
-    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
+    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", to_string(net_width)}, {"input_height", to_string(net_height)}, {"input_dimension", "3"}, {"name", "Input"}});
     // Conv_1
     network.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "32"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "1"}, {"name", "conv_1"}, {"batchnorm", "true"}, {"activation", "Mish"}});
     // End Conv_1

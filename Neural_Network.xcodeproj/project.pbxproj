@@ -19,6 +19,7 @@
 		76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */; };
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
+		76FDA0DC26F7C0F2006C816D /* libomp.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 76FDA0DB26F7C0F2006C816D /* libomp.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,6 +61,7 @@
 		76CD64E2269F8AF800A4EDFD /* Image_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Image_Process.hpp; sourceTree = "<group>"; };
 		76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Jpeg.cpp; sourceTree = "<group>"; };
 		76CD64E6269F8B6D00A4EDFD /* Jpeg.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Jpeg.hpp; sourceTree = "<group>"; };
+		76FDA0DB26F7C0F2006C816D /* libomp.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libomp.dylib; path = ../../../../../usr/local/Cellar/llvm/12.0.1/lib/libomp.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				76FDA0DC26F7C0F2006C816D /* libomp.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +90,7 @@
 				76390E722666B3D000FFA5EC /* Neural_Network */,
 				76390E712666B3D000FFA5EC /* Products */,
 				761D5CF226B93FA1009A4FE3 /* OptimizationProfiles */,
+				76FDA0DA26F7C0F2006C816D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -127,6 +131,14 @@
 				76AD0BB726E22DFD006B3028 /* Test_All_Layer.hpp */,
 			);
 			path = Neural_Network;
+			sourceTree = "<group>";
+		};
+		76FDA0DA26F7C0F2006C816D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				76FDA0DB26F7C0F2006C816D /* libomp.dylib */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -207,11 +219,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CC = /usr/local/opt/llvm/bin/clang;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
 				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_MODULES = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -254,10 +267,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /usr/local/opt/llvm/lib/clang/12.0.1/include;
+				LIBRARY_SEARCH_PATHS = /usr/local/opt/llvm/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "-fopenmp";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -266,11 +282,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CC = /usr/local/opt/llvm/bin/clang;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
 				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_MODULES = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -308,9 +325,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /usr/local/opt/llvm/lib/clang/12.0.1/include;
+				LIBRARY_SEARCH_PATHS = /usr/local/opt/llvm/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_CFLAGS = "-fopenmp";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -320,6 +340,11 @@
 			buildSettings = {
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
 				CODE_SIGN_STYLE = Automatic;
+				COMPILER_INDEX_STORE_ENABLE = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/llvm/12.0.1/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -329,6 +354,11 @@
 			buildSettings = {
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
 				CODE_SIGN_STYLE = Automatic;
+				COMPILER_INDEX_STORE_ENABLE = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/llvm/12.0.1/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

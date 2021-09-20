@@ -13,6 +13,7 @@
 #include <chrono>
 #include <vector>
 #include "Tensor.hpp"
+#include "omp.h"
 
 using namespace std::chrono;
 using std::vector;

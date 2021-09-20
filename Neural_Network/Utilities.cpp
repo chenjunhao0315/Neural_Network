@@ -272,6 +272,7 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, f
 }
 
 void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < M; ++i){
         for(int k = 0; k < K; ++k){
             float A_PART = ALPHA * A[i * lda + k];
@@ -283,6 +284,7 @@ void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;
@@ -295,6 +297,7 @@ void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < M; ++i){
         for(int k = 0; k < K; ++k){
             float A_PART = ALPHA * A[k * lda + i];
@@ -306,6 +309,7 @@ void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
+    #pragma omp parallel for num_threads(4)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;
@@ -319,19 +323,33 @@ void gemm_tt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 
 
 void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float BETA, float *C, int ldc) {
-    for(int i = 0; i < M; ++i){
-        for(int j = 0; j < N; ++j){
-            C[i * ldc + j] *= BETA;
+    if (BETA != 1) {
+        for(int i = 0; i < M; ++i){
+            for(int j = 0; j < N; ++j){
+                C[i * ldc + j] *= BETA;
+            }
         }
     }
     if(!TA && !TB)      // A, B not transpose
-        gemm_nn(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+        gemm_nn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
     else if (TA && !TB) // A transpose, B not
-        gemm_tn(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+        gemm_tn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
     else if (!TA && TB) // B transpose, A not
-        gemm_nt(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+        gemm_nt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
     else                // A, B transpose
-        gemm_tt(M, N, K, ALPHA, A,lda, B, ldb, C, ldc);
+        gemm_tt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
+    
+//    #pragma omp parallel for
+//    for (int t = 0; t < M; ++t) {
+//        if (!TA && !TB)
+//            gemm_nn(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
+//        else if (TA && !TB)
+//            gemm_tn(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
+//        else if (!TA && TB)
+//            gemm_nt(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
+//        else
+//            gemm_tt(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
+//    }
 }
 
 float im2col_get_pixel(float *im, int height, int width, int channels, int row, int col, int channel, int pad) {

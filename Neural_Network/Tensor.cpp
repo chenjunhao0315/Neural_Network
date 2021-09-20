@@ -58,8 +58,9 @@ Tensor& Tensor::operator=(const Tensor &T) {
             delta_weight = new float [T.size];
         }
         size = T.size;
-        memcpy(weight, T.weight, sizeof(float) * size);
-        memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
+        int copy_size = sizeof(float) * size;
+        memcpy(weight, T.weight, copy_size);
+        memcpy(delta_weight, T.delta_weight, copy_size);
     }
     return *this;
 }

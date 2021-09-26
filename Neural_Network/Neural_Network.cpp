@@ -450,25 +450,13 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     fread(&major, sizeof(int), 1, f);
     fread(&minor, sizeof(int), 1, f);
     fread(&revision, sizeof(int), 1, f);
-//    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
-//        fread(&seen, sizeof(size_t), 1, f);
-//    } else {
-//        int iseen = 0;
-//        fread(&iseen, sizeof(int), 1, f);
-//        seen = iseen;
-//    }
-    if ((major * 10 + minor) >= 2) {
-            printf("\n seen 64");
-            uint64_t iseen = 0;
-            fread(&iseen, sizeof(uint64_t), 1, f);
-            seen = iseen;
-        }
-        else {
-            printf("\n seen 32");
-            uint32_t iseen = 0;
-            fread(&iseen, sizeof(uint32_t), 1, f);
-            seen = iseen;
-        }
+    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
+        fread(&seen, sizeof(size_t), 1, f);
+    } else {
+        int iseen = 0;
+        fread(&iseen, sizeof(int), 1, f);
+        seen = iseen;
+    }
     printf("Major: %d Minor: %d Revision: %d Seen: %d\n", major, minor, revision, seen);
     
     for (int i = 0; i < opt_layer.size(); ++i) {
@@ -486,7 +474,7 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     }
     size_t end = ftell(f);
     printf("End: %zu %zu\n", check, end);
-    return true;
+    return end == check;
 }
 
 void Neural_Network::addOutput(string name) {
@@ -635,6 +623,12 @@ void Neural_Network::shape() {
     printf("=============================================================\n");
 }
 
+void Neural_Network::show_detail() {
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i].show_detail();
+    }
+}
+
 Neural_Network::nn_status Neural_Network::status() {
     return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
@@ -724,11 +718,7 @@ vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
 
 float Neural_Network::Backward(Tensor *target) {
     float loss = 0;
-    if (model == "sequential") {
-        for (int i = layer_number; i--; ) {
-            loss += layer[i].Backward(target);
-        }
-    } else if (model == "mtcnn") {
+    if (model == "mtcnn") {
         float *target_ptr = target->weight;
         if (target_ptr[0] == 1) {
             Tensor cls_pos(1, 1, 1, 1);
@@ -773,7 +763,11 @@ float Neural_Network::Backward(Tensor *target) {
             }
             loss *= 0.5;
         }
-    } else if (model == "yolov3") {
+    } else if (model == "yolov3" || model == "yolov4") {
+        for (int i = layer_number; i--; ) {
+            loss += layer[i].Backward(target);
+        }
+    } else {
         for (int i = layer_number; i--; ) {
             loss += layer[i].Backward(target);
         }

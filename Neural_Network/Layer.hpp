@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <cassert>
 #include <sstream>
+#include <pthread.h>
 
 #include "Tensor.hpp"
 
@@ -93,6 +94,7 @@ public:
     float Backward(Tensor *target);
     void ClearGrad();
     void shape();
+    void show_detail();
     int getParameter(int type_);
     LayerType getType() {return type;}
     LayerType string_to_type(string type);
@@ -135,6 +137,8 @@ public:
     BaseLayer(BaseLayer &&L);
     BaseLayer& operator=(const BaseLayer &L);
     void shape();
+    void show_detail();
+    long getOperations();
     string type_to_string();
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
@@ -185,9 +189,15 @@ public:
         float obj_normalizer;
         float cls_normalizer;
         float delta_normalizer;
+        float objectness_smooth;
+        float label_smooth_eps;
+        float max_delta;
+        bool focal_loss;
         int iou_loss;
+        int iou_thresh_kind;
         int nms_kind;
         float beta_nms;
+        float iou_thresh;
         bool yolov4_new_coordinate;
         float probability;
         float scale;
@@ -298,6 +308,7 @@ public:
     void Backward();
 };
 
+// BatchNormalization layer
 class BatchNormalizationLayer : public BaseLayer {
 public:
     BatchNormalizationLayer(LayerOption opt_);
@@ -310,6 +321,7 @@ private:
     void normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta);
 };
 
+// UpSample layer
 class UpSampleLayer : public BaseLayer {
 public:
     UpSampleLayer(LayerOption opt_);
@@ -320,6 +332,7 @@ private:
     void downsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
 };
 
+// Concat layer
 class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
@@ -330,6 +343,7 @@ private:
     vtensorptr concat_tensor;
 };
 
+// Dropout layer
 class DropoutLayer : public BaseLayer {
 public:
     DropoutLayer(LayerOption opt_);
@@ -337,6 +351,15 @@ public:
     void Backward();
 };
 
+// Mish layer
+class MishLayer : public BaseLayer {
+public:
+    MishLayer(LayerOption opt_);
+    void Forward();
+    void Backward();
+};
+
+// YOLOv3 layer
 class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
@@ -355,19 +378,26 @@ private:
     Tensor detection;
 };
 
+typedef struct train_yolo_args {
+    BaseLayer::Info info;
+    float *output;
+    float *delta;
+    int b;
+
+    float tot_iou;
+    float tot_giou_loss;
+    float tot_iou_loss;
+    int count;
+    int class_count;
+} train_yolo_args;
+
+// YOLOv4 layer
 class YOLOv4Layer : public BaseLayer {
 public:
     YOLOv4Layer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     float Backward(Tensor *target);
-    
-    enum IOU_LOSS {
-        MSE,
-        GIOU,
-        DIOU,
-        CIOU
-    };
     
     enum NUM_KIND {
         DEFAULT_NMS,
@@ -378,20 +408,17 @@ private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
     Box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride, bool new_coordinate);
-    float delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride);
-    void delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat);
+    Ious delta_yolo_box(Box &truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride, float iou_normalizer, IOU_KIND iou_loss, int accumulate, float max_delta, int *rewritten_bbox, int new_coords);
+    void delta_yolo_class(float *output, float *delta, int index, int class_id, int classes, int stride, float *avg_cat, int focal_loss, float label_smooth_eps, float *classes_multipliers, float cls_normalizer);
+    int compare_yolo_class(float *output, int classes, int class_index, int stride, float objectness, int class_id, float conf_thresh);
+    void averages_yolo_deltas(int class_index, int box_index, int stride, int classes, float *delta);
     int int_index(float *a, int val, int n);
     float mag_array(float *a, int n);
     
     Tensor detection;
 };
 
-class MishLayer : public BaseLayer {
-public:
-    MishLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
-};
+void *process_batch(void* ptr);
 
 void scale_bias(float *output, float *scales, int batch, int n, int size);
 void add_bias(float *output, float *biases, int batch, int n, int size);

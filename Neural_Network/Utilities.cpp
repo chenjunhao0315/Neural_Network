@@ -213,54 +213,6 @@ void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, in
     }
 }
 
-float overlap(float x1, float w1, float x2, float w2) {
-    float l1 = x1 - w1 / 2;
-    float l2 = x2 - w2 / 2;
-    float left = l1 > l2 ? l1 : l2;
-    float r1 = x1 + w1 / 2;
-    float r2 = x2 + w2 / 2;
-    float right = r1 < r2 ? r1 : r2;
-    return right - left;
-}
-
-float box_intersection(Box &a, Box &b) {
-    float w = overlap(a.x, a.w, b.x, b.w);
-    float h = overlap(a.y, a.h, b.y, b.h);
-    if(w < 0 || h < 0)
-        return 0;
-    float area = w*h;
-    return area;
-}
-
-float box_union(Box &a, Box &b) {
-    float i = box_intersection(a, b);
-    float u = a.w * a.h + b.w * b.h - i;
-    return u;
-}
-
-float box_iou(Box &a, Box &b) {
-    return box_intersection(a, b) / box_union(a, b);
-}
-
-Box float_to_box(float *f, int stride)
-{
-    Box b = {0};
-    b.x = f[0];
-    b.y = f[1 * stride];
-    b.w = f[2 * stride];
-    b.h = f[3 * stride];
-    return b;
-}
-
-Box vfloat_to_box(vfloat &src, int index) {
-    Box b;
-    b.x = src[index + 0];
-    b.y = src[index + 1];
-    b.w = src[index + 2];
-    b.h = src[index + 3];
-    return b;
-}
-
 float constrain(float min, float max, float a) {
     if (a < min) return min;
     if (a > max) return max;
@@ -273,10 +225,10 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, f
 
 void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
     #pragma omp parallel for num_threads(4)
-    for(int i = 0; i < M; ++i){
-        for(int k = 0; k < K; ++k){
+    for(int i = 0; i < M; ++i) {
+        for(int k = 0; k < K; ++k) {
             float A_PART = ALPHA * A[i * lda + k];
-            for(int j = 0; j < N; ++j){
+            for(int j = 0; j < N; ++j) {
                 C[i * ldc + j] += A_PART * B[k * ldb + j];
             }
         }

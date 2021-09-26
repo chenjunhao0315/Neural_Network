@@ -13,6 +13,7 @@
 #include <chrono>
 #include <vector>
 #include "Tensor.hpp"
+#include "Box.hpp"
 #include "omp.h"
 
 using namespace std::chrono;
@@ -87,26 +88,6 @@ void im2col_cpu(float* data_im,
 void col2im_cpu(float* data_col,
         int channels, int height, int width,
         int ksize, int stride, int pad, float* data_im);
-
-struct Box {
-    float x, y, w, h;
-};
-
-struct Detection {
-    Box bbox;
-    int classes;
-    vector<float> prob;
-    float objectness;
-    int sort_class;
-};
-
-float overlap(float x1, float w1, float x2, float w2);
-float box_intersection(Box &a, Box &b);
-float box_union(Box &a, Box &b);
-float box_iou(Box &a, Box &b);
-
-Box float_to_box(float *f, int stride);
-Box vfloat_to_box(vfloat &src, int index);
 
 class Clock {
 public:

@@ -13,6 +13,7 @@
 #include "Image_Process.hpp"
 #include "Mtcnn.hpp"
 #include "YOLOv3.hpp"
+#include "YOLOv4.hpp"
 #include "Test_All_Layer.hpp"
 
 using namespace std;
@@ -23,23 +24,23 @@ int main(int argc, const char * argv[]) {
     
 //    test_all_layer(true);
 
-//    YOLOv3 nn(80, 1);
+//    YOLOv4 nn(80);
+
+//    YOLOv4_DataLoader loader("train_clear.txt");
 //
-//    YOLOv3_DataLoader loader("train_clear.txt");
-//
-//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 100}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}, {"sub_division", 2}});
+//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 100}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}});
 //
 ////    YOLOv3_Trainer yolo_trainer(&nn.network, &trainer, &loader);
 ////    yolo_trainer.train(1);
 //
-//    yolo_train_args test = loader.get_train_arg(0);
+//    yolo_train_args_v4 test = loader.get_train_arg(0);
 //    for (int i = 0; i < 100; ++i)
 //        trainer.train_batch(test.data, test.label);
-//
+
 //    IMG img = loader.get_img(0);
 //    nn.detect(img);
 //    img.save("test1.jpg");
-    
+
 //    nn.network.save("testyolo.bin");
     
 //    YOLOv3 test(80);
@@ -49,7 +50,12 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-    YOLOv3 yolo("yolov4-tiny.bin");
+//    YOLOv3 yolo("backup_115008.bin");
+//    IMG img("3000x2060_493047168649.jpg");
+//    yolo.detect(img);
+//    img.save("detected.jpg", 100);
+    
+    YOLOv4 yolo(80);
     IMG img("5D4A1809.JPG");
     yolo.detect(img);
     img.save("detected.jpg", 100);
@@ -60,9 +66,9 @@ int main(int argc, const char * argv[]) {
 //    c.stop_and_show();
 //    img.save("gaussian.jpg");
 
-//    Mtcnn mtcnn("1630830419_149_217474.312500.bin", "1630899594_119_16779.394531.bin", "1631183863_35_2587.741699.bin");
+//    Mtcnn mtcnn("1632205920_149_216519.000000.bin", "1630899594_119_16779.394531.bin", "1631183362_34_2583.320557.bin");
 //    mtcnn.min_face_size = 0;
-//    IMG img("target.jpg");
+//    IMG img("nthuee.jpg");
 //    Clock c;
 //    vector<Bbox> result = mtcnn.detect(img);
 //    c.stop_and_show();

@@ -33,6 +33,7 @@ public:
     void addOutput(string name);
     void compile(int batch_size_ = 1);
     void shape();
+    void show_detail();
     nn_status status();
     vtensorptr Forward(Tensor *input_tensor_, bool train = false);
     float Backward(Tensor *target);

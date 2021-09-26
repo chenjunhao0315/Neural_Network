@@ -65,6 +65,13 @@ Tensor& Tensor::operator=(const Tensor &T) {
     return *this;
 }
 
+Tensor& Tensor::operator=(float c) {
+    float *ptr = weight;
+    for (int i = size; i--; )
+        *(ptr++) = c;
+    return *this;
+}
+
 Tensor& Tensor::operator=(std::initializer_list<float> list) {
     if (list.size() > size) {
         fprintf(stderr, "[Tensor] Initialize out of range!\n");

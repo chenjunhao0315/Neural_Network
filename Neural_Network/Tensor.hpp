@@ -31,6 +31,7 @@ public:
     Tensor(const Tensor &T);
     Tensor(Tensor &&T);
     Tensor& operator=(const Tensor &T);
+    Tensor& operator=(float c);
     Tensor& operator=(std::initializer_list<float> list);
     bool operator==(const Tensor &T) const;
     Tensor& operator+=(const Tensor &T);

@@ -334,7 +334,7 @@ Model_Layer::Model_Layer(LayerOption opt_) {
         case LayerType::Dropout:
             dropout_layer = new DropoutLayer(opt_); break;
         default:
-            fprintf(stderr, "[Model_Layer] Unknown layer type!\n"); break;
+            fprintf(stderr, "[Model_Layer] Name: %s Type: %s\n", opt_["name"].c_str(), opt_["type"].c_str()); break;
     }
 }
 
@@ -547,6 +547,46 @@ void Model_Layer::shape() {
         mish_layer->shape();
     } else if (type == LayerType::Dropout) {
         dropout_layer->shape();
+    }
+}
+
+void Model_Layer::show_detail() {
+    if (type == LayerType::Input) {
+        input_layer->show_detail();
+    } else if (type == LayerType::Fullyconnected) {
+        fullyconnected_layer->show_detail();
+    } else if (type == LayerType::Relu) {
+        relu_layer->show_detail();
+    } else if (type == LayerType::Softmax) {
+        softmax_layer->show_detail();
+    } else if (type == LayerType::Convolution) {
+        convolution_layer->show_detail();
+    } else if (type == LayerType::Pooling) {
+        pooling_layer->show_detail();
+    } else if (type == LayerType::EuclideanLoss) {
+        euclideanloss_layer->show_detail();
+    } else if (type == LayerType::PRelu) {
+        prelu_layer->show_detail();
+    } else if (type == LayerType::ShortCut) {
+        shortcut_layer->show_detail();
+    } else if (type == LayerType::LRelu) {
+        lrelu_layer->show_detail();
+    } else if (type == LayerType::Sigmoid) {
+        sigmoid_layer->show_detail();
+    } else if (type == LayerType::BatchNormalization) {
+        batchnorm_layer->show_detail();
+    } else if (type == LayerType::UpSample) {
+        upsample_layer->show_detail();
+    } else if (type == LayerType::Concat) {
+        concat_layer->show_detail();
+    } else if (type == LayerType::Yolov3) {
+        yolov3_layer->show_detail();
+    } else if (type == LayerType::Yolov4) {
+        yolov4_layer->show_detail();
+    } else if (type == LayerType::Mish) {
+        mish_layer->show_detail();
+    } else if (type == LayerType::Dropout) {
+        dropout_layer->show_detail();
     }
 }
 
@@ -1059,6 +1099,42 @@ void BaseLayer::shape() {
     //    }
 }
 
+void BaseLayer::show_detail() {
+    switch(type) {
+        case LayerType::Convolution: {
+            printf("conv ");
+            printf("%4d ", info.output_dimension);
+            printf("%2d x%2d /%2d (%2d) ", info.kernel_width, info.kernel_height, info.stride, info.padding);
+            printf("%4d x%4d x%4d ->%4d x%4d x%4d ", info.input_width, info.input_height, info.input_dimension, info.output_width, info.output_height, info.output_dimension);
+            long operations = getOperations();
+            if (operations < 10000) {
+                printf("%5.3f KFlOPs", operations / 1000.0);
+            } else if (operations < 10000000) {
+                printf("%5.3f MFlOPs", operations / 1000000.0);
+            } else {
+                printf("%5.3f BFlOPs", operations / 1000000000.0);
+            }
+            printf("\n");
+        }
+        default:
+            break;
+    }
+}
+
+long BaseLayer::getOperations() {
+    switch(type) {
+        case LayerType::Convolution: {
+            return 2l * info.output_dimension * info.kernel_width * info.kernel_height * info.input_dimension * info.output_width * info.output_height;
+        }
+        case LayerType::Fullyconnected: {
+            return 2l * info.input_number * info.output_number;
+        }
+        default:
+            return 0;
+    }
+    return 0;
+}
+
 int BaseLayer::getParameter(int type) {
     switch (type) {
         case 0: return info.output_width; break;
@@ -1475,7 +1551,7 @@ void ConvolutionLayer::Forward() {
         float *b = workspace;
         float *c = output + i * n * m;
         float *im = input + i * input_number;
-
+        
         if (kernel_size == 1) {
             // Doesn't need to rearrange
             b = im;
@@ -1487,7 +1563,7 @@ void ConvolutionLayer::Forward() {
         // Calculate output (input_channel * kernel_n) dot (kernel_n * output_channel)
         gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
     }
-
+    
     if(!info.batchnorm){
         // If not batchnorm, add bias
         add_bias(output, bias, batch_size, info.output_dimension, output_size);
@@ -1516,20 +1592,20 @@ void ConvolutionLayer::Backward() {
     int m = info.output_dimension;
     int n = info.kernel_width * info.kernel_height * info.input_dimension;
     int k = info.output_width * info.output_height;
-
+    
     if(!info.batchnorm){
         // If not batchnorm, backpropagate bias
         backward_bias(bias_delta, output_delta, batch_size, info.output_dimension, k);
     }
-
+    
     for(int i = 0; i < batch_size; ++i){
         float *a = output_delta + i * m * k;
         float *b = workspace;
         float *c = weights_delta;
-
+        
         float *im  = input + i * input_number;
         float *imd = input_delta + i * input_number;
-
+        
         if(kernel_size == 1){
             // Doesn't need to rearrange
             b = im;
@@ -1573,9 +1649,9 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     info.stride = (opt.find("stride") == opt.end()) ? 1 : atoi(opt["stride"].c_str());
     info.padding = (opt.find("padding") == opt.end()) ? 0 : ((opt["padding"] == "same") ? ((info.kernel_width - 1)) : atoi(opt["padding"].c_str()));
     
-    info.output_dimension = info.input_dimension;
     info.output_width = (info.input_width + info.padding - info.kernel_width) / info.stride + 1;
     info.output_height = (info.input_height + info.padding - info.kernel_height) / info.stride + 1;
+    info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
     kernel = new Tensor [1];
@@ -1587,7 +1663,7 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
 
 void PoolingLayer::Forward() {
     int stride = info.stride;
-
+    
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
@@ -1595,16 +1671,16 @@ void PoolingLayer::Forward() {
     int input_height = info.input_height;
     int input_dimension = info.input_dimension;
     int kernel_size = info.kernel_width;
-
+    
     int w_offset = -info.padding / 2;
     int h_offset = -info.padding / 2;
-
+    
     int h = info.output_height;
     int w = info.output_width;
     int c = info.output_dimension;
     
     float *indexes = kernel->weight;
-
+    
     for(int b = 0; b < info.batch_size; ++b){
         for(int k = 0; k < c; ++k){
             for(int i = 0; i < h; ++i){
@@ -1693,7 +1769,7 @@ void FullyConnectedLayer::Backward() {
     if(!info.batchnorm){
         backward_bias(biases->delta_weight, output_tensor->delta_weight, info.batch_size, info.output_dimension, 1);
     }
-
+    
     int m = info.output_dimension;
     int k = info.batch_size;
     int n = info.input_number;
@@ -1701,15 +1777,15 @@ void FullyConnectedLayer::Backward() {
     float *b = input_tensor->weight;
     float *c = kernel->delta_weight;
     gemm(1, 0, m, n, k, 1, a, m, b, n, 1, c, n);
-
+    
     m = info.batch_size;
     k = info.output_dimension;
     n = info.input_number;
-
+    
     a = output_tensor->delta_weight;
     b = kernel->weight;
     c = input_tensor->delta_weight;
-
+    
     gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
 }
 
@@ -1999,14 +2075,14 @@ void ShortCutLayer::Backward() {
 void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out) {
     int stride = w1 / w2;
     int sample = w2 / w1;
-//    assert(stride == h1 / h2);
-//    assert(sample == h2 / h1);
+    //    assert(stride == h1 / h2);
+    //    assert(sample == h2 / h1);
     if(stride < 1) stride = 1;
     if(sample < 1) sample = 1;
     int minw = (w1 < w2) ? w1 : w2;
     int minh = (h1 < h2) ? h1 : h2;
     int minc = (c1 < c2) ? c1 : c2;
-
+    
     for(int b = 0; b < batch; ++b){
         for(int k = 0; k < minc; ++k){
             for(int j = 0; j < minh; ++j){
@@ -2158,12 +2234,12 @@ void BatchNormalizationLayer::Forward(bool train) {
     if (train) {
         mean_cpu(output, batch_size, output_dimension, channel_size, mean);
         variance_cpu(output, mean, batch_size, output_dimension, channel_size, variance);
-
+        
         scal_cpu(output_dimension, 0.99, running_mean);
         axpy_cpu(output_dimension, 0.01, mean, running_mean);
         scal_cpu(output_dimension, 0.99, running_variance);
         axpy_cpu(output_dimension, 0.01, variance, running_variance);
-
+        
         normalize(output, mean, variance, batch_size, output_dimension, channel_size);
         copy_cpu(total_size, output, x_norm);
     } else {
@@ -2187,14 +2263,14 @@ void BatchNormalizationLayer::Backward() {
     float *variance = kernel[2].weight;
     float *x = kernel[5].weight;
     float *x_norm = kernel[6].weight;
-
+    
     int batch_size = info.batch_size;
     int output_dimension = info.output_dimension;
     int one_batch_size = info.input_number;
     int channel_size = info.output_width * info.output_height;
     
     float chain_grad, scale_value, mean_value;
-        
+    
     for (int b = 0; b < batch_size; ++b) {
         for (int d = 0; d < output_dimension; ++d) {
             float &bias_delta_value = bias_delta[d];
@@ -2241,16 +2317,16 @@ void BatchNormalizationLayer::Backward() {
     
     output_delta = output_tensor->delta_weight;
     copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
-
-//    backward_bias(bias_delta, output_delta, batch_size, output_dimension, channel_size);
-//    backward_scale_cpu(x_norm, output_delta, batch_size, output_dimension, channel_size, scale_delta);
-//
-//    scale_bias(output_delta, scale, batch_size, output_dimension, channel_size);
-//
-//    mean_delta_cpu(output_delta, variance, batch_size, output_dimension, channel_size, mean_delta);
-//    variance_delta_cpu(x, output_delta, mean, variance, batch_size, output_dimension, channel_size, variance_delta);
-//    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, batch_size, output_dimension, channel_size, output_delta);
-//    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
+    
+    //    backward_bias(bias_delta, output_delta, batch_size, output_dimension, channel_size);
+    //    backward_scale_cpu(x_norm, output_delta, batch_size, output_dimension, channel_size, scale_delta);
+    //
+    //    scale_bias(output_delta, scale, batch_size, output_dimension, channel_size);
+    //
+    //    mean_delta_cpu(output_delta, variance, batch_size, output_dimension, channel_size, mean_delta);
+    //    variance_delta_cpu(x, output_delta, mean, variance, batch_size, output_dimension, channel_size, variance_delta);
+    //    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, batch_size, output_dimension, channel_size, output_delta);
+    //    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
 }
 
 void BatchNormalizationLayer::backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates) {
@@ -2412,7 +2488,7 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     info.output_dimension /= info.splits;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-//    concat_tensor = new Tensor* [info.concat_num + 1];  // Concat tensor store
+    //    concat_tensor = new Tensor* [info.concat_num + 1];  // Concat tensor store
     concat_tensor.resize(info.concat_num + 1);
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
@@ -2506,7 +2582,7 @@ void MishLayer::Backward() {
     const float MISH_THRESHOLD = 20.0f;
     
     for (int i = info.output_number * info.batch_size; i--; ) {
-
+        
         // implementation from TensorFlow: https://github.com/tensorflow/addons/commit/093cdfa85d334cbe19a37624c33198f3140109ed
         // implementation from Pytorch: https://github.com/thomasbrandon/mish-cuda/blob/master/csrc/mish.h#L26-L31
         float inp = *(activation_input++);
@@ -2575,7 +2651,7 @@ void DropoutLayer::Backward() {
     float *prob = kernel->weight;
     float probability = info.probability;
     float scale = info.scale;
-
+    
     for(int i = info.input_number * info.batch_size; i--; ) {
         float p = *(prob++);
         if(p < probability)
@@ -2655,7 +2731,7 @@ void YOLOv3Layer::Forward(bool train) {
     int channel_size = info.output_width * info.output_height;
     
     memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
-
+    
     for (int b = 0; b < info.batch_size; ++b){
         for(int n = 0; n < info.anchor_num; ++n) {
             int index = entry_index(b, n * channel_size, 0);
@@ -2712,18 +2788,19 @@ float YOLOv3Layer::Backward(Tensor *target) {
     float avg_anyobj = 0;
     int count = 0;
     int class_count = 0;
-    int i,j,b,t,n;
     
     float loss = 0;
-    for (b = 0; b < info.batch_size; ++b) {
-        for (j = 0; j < height; ++j) {
-            for (i = 0; i < width; ++i) {
-                for (n = 0; n < anchor_num; ++n) {
+    
+    #pragma omp parallel for num_threads(4)
+    for (int b = 0; b < info.batch_size; ++b) {
+        for (int j = 0; j < height; ++j) {
+            for (int i = 0; i < width; ++i) {
+                for (int n = 0; n < anchor_num; ++n) {
                     int box_index = entry_index(b, n * channel_size + j * width + i, 0);
                     Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size);
                     float best_iou = 0;
                     int best_t = 0;
-                    for(t = 0; t < max_boxes; ++t){
+                    for(int t = 0; t < max_boxes; ++t){
                         Box truth = float_to_box(target_ptr + t * (4 + 1) + target_size, 1);
                         if(!truth.x) break;
                         float iou = box_iou(pred, truth);
@@ -2740,7 +2817,7 @@ float YOLOv3Layer::Backward(Tensor *target) {
                     }
                     if (best_iou > truth_iou_threshold) {
                         delta[obj_index] = output[obj_index] - 1;
-
+                        
                         int cls = target_ptr[best_t*(4 + 1) + b * target_size + 4];
                         int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
                         delta_yolo_class(output, delta, class_index, cls, classes, channel_size, 0);
@@ -2750,17 +2827,17 @@ float YOLOv3Layer::Backward(Tensor *target) {
                 }
             }
         }
-        for(t = 0; t < max_boxes; ++t){
+        for(int t = 0; t < max_boxes; ++t){
             Box truth = float_to_box(target_ptr + t * (4 + 1) + b * target_size, 1);
-
+            
             if(!truth.x) break;
             float best_iou = 0;
             int best_n = 0;
-            i = (truth.x * width);
-            j = (truth.y * height);
+            int i = (truth.x * width);
+            int j = (truth.y * height);
             Box truth_shift = truth;
             truth_shift.x = truth_shift.y = 0;
-            for(n = 0; n < total_anchor_num; ++n){
+            for(int n = 0; n < total_anchor_num; ++n){
                 Box pred = {0};
                 pred.w = bias[2 * n + 0] / net_width;
                 pred.h = bias[2 * n + 1] / net_height;
@@ -2770,20 +2847,20 @@ float YOLOv3Layer::Backward(Tensor *target) {
                     best_n = n;
                 }
             }
-
+            
             int mask_n = int_index(mask, best_n, anchor_num);
             if(mask_n >= 0){
                 int box_index = entry_index(b, mask_n * channel_size + j * width + i, 0);
                 float iou = delta_yolo_box(truth, output, bias, best_n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
-
+                
                 int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
                 avg_obj += output[obj_index];
                 delta[obj_index] = output[obj_index] - 1;
-
+                
                 int cls = target_ptr[t * (4 + 1) + b * target_size + 4];
                 int class_index = entry_index(b, mask_n * channel_size + j * width + i, 4 + 1);
                 delta_yolo_class(output, delta, class_index, cls, classes, channel_size, &avg_cat);
-
+                
                 ++count;
                 ++class_count;
                 if(iou > .5) recall += 1;
@@ -2835,7 +2912,7 @@ int YOLOv3Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.5; // TODO: threshold input
+    float threshold = 0.05; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
@@ -2848,7 +2925,7 @@ vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
     int channel_size = width * height;
     
     vector<Detection> dets;
-
+    
     for (int i = 0; i < channel_size; ++i){
         int row = i / width;
         int col = i % width;
@@ -2932,9 +3009,44 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     info.cls_normalizer = (opt.find("cls_normalizer") == opt.end()) ? 1 : atof(opt["cls_normalizer"].c_str());
     info.delta_normalizer = (opt.find("delta_normalizer") == opt.end()) ? 1 : atof(opt["delta_normalizer"].c_str());
     info.beta_nms = (opt.find("beta_nms") == opt.end()) ? 0.6 : atof(opt["beta_nms"].c_str());
-    info.yolov4_new_coordinate = (opt.find("new_coordinate") != opt.end());
+    info.objectness_smooth = (opt.find("objectness_smooth") == opt.end()) ? 0 : atof(opt["objectness_smooth"].c_str());
+    info.label_smooth_eps = (opt.find("label_smooth_eps") == opt.end()) ? 0 : atof(opt["label_smooth_eps"].c_str());
+    info.max_delta = (opt.find("max_delta") == opt.end()) ? FLT_MAX : atof(opt["max_delta"].c_str());
+    info.iou_thresh = (opt.find("iou_thresh") == opt.end()) ? FLT_MAX : atof(opt["iou_thresh"].c_str());
     
-    kernel = new Tensor [1];
+    info.yolov4_new_coordinate = (opt.find("new_coordinate") != opt.end());
+    info.focal_loss = (opt.find("focal_loss") != opt.end());
+    if (opt.find("iou_loss") != opt.end()) {
+        string iou_loss = opt["iou_loss"];
+        if (iou_loss == "mse") {
+            info.iou_loss = MSE;
+        } else if (iou_loss == "giou") {
+            info.iou_loss = GIOU;
+        } else if (iou_loss == "diou") {
+            info.iou_loss = DIOU;
+        } else if (iou_loss == "ciou") {
+            info.iou_loss = CIOU;
+        }
+    } else {
+        info.iou_loss = IOU;
+    }
+    
+    if (opt.find("iou_thresh_kind") != opt.end()) {
+        string iou_loss = opt["iou_thresh_kind"];
+        if (iou_loss == "iou") {
+            info.iou_thresh_kind = IOU;
+        } else if (iou_loss == "giou") {
+            info.iou_thresh_kind = GIOU;
+        } else if (iou_loss == "diou") {
+            info.iou_thresh_kind = DIOU;
+        } else if (iou_loss == "ciou") {
+            info.iou_thresh_kind = CIOU;
+        }
+    } else {
+        info.iou_thresh_kind = IOU;
+    }
+    
+    kernel = new Tensor [4];
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
     if (opt.find("mask") == opt.end()) {
         for (int i = 0; i < info.anchor_num; ++i)
@@ -2949,7 +3061,10 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
             kernel[0].weight[i] = n;
         }
     }
-    info.kernel_num = 1;
+    kernel[1] = Tensor(1, 1, info.batch_size * info.output_width * info.output_height * info.anchor_num, -1);   // labels
+    kernel[2] = Tensor(1, 1, info.batch_size * info.output_width * info.output_height * info.anchor_num, -1);   // class_ids
+    kernel[3] = Tensor(1, 1, 1, 0); // classes_multipliers
+    info.kernel_num = 4;
     
     biases = new Tensor(2, 1, info.total_anchor_num, 0); // Anchor
     stringstream ss;
@@ -2977,11 +3092,10 @@ void YOLOv4Layer::Forward(bool train) {
     int channel_size = info.output_width * info.output_height;
     float scale_x_y = info.scale_x_y;
     float scale_x_y_bias = -0.5 * (scale_x_y - 1);
-//    bool new_coordinate = info.yolov4_new_coordinate;
-    bool new_coordinate = false;
+    bool new_coordinate = info.yolov4_new_coordinate;
     
     memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
-
+    
     for (int b = 0; b < info.batch_size; ++b){
         for(int n = 0; n < info.anchor_num; ++n) {
             int bbox_index = entry_index(b, n * channel_size, 0);
@@ -3015,9 +3129,6 @@ void YOLOv4Layer::Forward(bool train) {
 }
 
 float YOLOv4Layer::Backward(Tensor *target) {
-    float ignore_iou_threshold = 0.7; // TODO: should be input
-    float truth_iou_threshold = 1;
-    
     int width = info.input_width;
     int height = info.input_height;
     int net_width = info.net_width;
@@ -3026,16 +3137,47 @@ float YOLOv4Layer::Backward(Tensor *target) {
     int total_anchor_num = info.total_anchor_num;
     int channel_size = width * height;
     int max_boxes = info.max_boxes;
-    int target_size = 5 * max_boxes;
+    int truth_size = 4 + 2; // x y w h id track_id
+    int truths = truth_size * max_boxes;
     int classes = info.classes;
+    int batch_size = info.batch_size;
+    bool new_coordinate = info.yolov4_new_coordinate;
+    float ignore_thresh = info.ignore_iou_threshold;
+    float truth_thresh = info.truth_iou_threshold;
+    float obj_normalizer = info.obj_normalizer;
+    float iou_normalizer = info.iou_normalizer;
+    float cls_normalizer = info.cls_normalizer;
+    float objectness_smooth = info.objectness_smooth;
+    float label_smooth_eps = info.label_smooth_eps;
+    float max_delta = info.max_delta;
+    bool focal_loss = info.focal_loss;
+    float iou_thresh = info.iou_thresh;
+    
+    IOU_KIND iou_loss = (IOU_KIND)info.iou_loss;
+    IOU_KIND iou_thresh_kind = (IOU_KIND)info.iou_thresh_kind;
     
     float *output = output_tensor->weight;
     float *delta = input_tensor->delta_weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
     float *target_ptr = target->weight;
+//    float *classes_multipliers = kernel[4].weight;
+    float *classes_multipliers = nullptr;
     
-    float avg_iou = 0;
+    kernel[1] = -1;
+    kernel[2] = -1;
+    float *labels = kernel[1].weight;
+    float *class_ids = kernel[2].weight;
+    int rewritten_bbox = 0;
+    
+    float tot_iou = 0;
+    float tot_giou = 0;
+    float tot_diou = 0;
+    float tot_ciou = 0;
+    float tot_iou_loss = 0;
+    float tot_giou_loss = 0;
+    float tot_diou_loss = 0;
+    float tot_ciou_loss = 0;
     float recall = 0;
     float recall75 = 0;
     float avg_cat = 0;
@@ -3043,119 +3185,396 @@ float YOLOv4Layer::Backward(Tensor *target) {
     float avg_anyobj = 0;
     int count = 0;
     int class_count = 0;
-    int i,j,b,t,n;
     
     float loss = 0;
-    for (b = 0; b < info.batch_size; ++b) {
-        for (j = 0; j < height; ++j) {
-            for (i = 0; i < width; ++i) {
-                for (n = 0; n < anchor_num; ++n) {
+    
+    #pragma omp parallel for num_threads(4)
+    for (int b = 0; b < batch_size; ++b) {
+        for (int j = 0; j < height; ++j) {
+            for (int i = 0; i < width; ++i) {
+                for (int n = 0; n < anchor_num; ++n) {
+                    int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
+                    int obj_index = entry_index(b, n * channel_size + j * width + i, 4);
                     int box_index = entry_index(b, n * channel_size + j * width + i, 0);
-                    Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size, info.yolov4_new_coordinate);
+                    Box pred = get_yolo_box(output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, channel_size, new_coordinate);
+                    float best_match_iou = 0;
+                    int best_match_t = 0;
                     float best_iou = 0;
                     int best_t = 0;
-                    for(t = 0; t < max_boxes; ++t){
-                        Box truth = float_to_box(target_ptr + t * (4 + 1) + target_size, 1);
-                        if(!truth.x) break;
+                    for (int t = 0; t < max_boxes; ++t) {
+                        Box truth = float_to_box(target_ptr + t * truth_size + b * truths, 1);
+                        if (!truth.x) break;  // continue;
+                        int class_id = target_ptr[t * truth_size + b * truths + 4];
+                        float objectness = output[obj_index];
+                        if (isnan(objectness) || isinf(objectness)) output[obj_index] = 0;
+                        int class_id_match = compare_yolo_class(output, classes, class_index, channel_size, objectness, class_id, 0.25f);
+                        
                         float iou = box_iou(pred, truth);
+                        if (iou > best_match_iou && class_id_match == 1) {
+                            best_match_iou = iou;
+                            best_match_t = t;
+                        }
                         if (iou > best_iou) {
                             best_iou = iou;
                             best_t = t;
                         }
                     }
-                    int obj_index = entry_index(b, n * channel_size + j * width + i, 4);
+                    
                     avg_anyobj += output[obj_index];
-                    delta[obj_index] = output[obj_index];
-                    if (best_iou > ignore_iou_threshold) {
-                        delta[obj_index] = 0;
+                    delta[obj_index] = -(obj_normalizer * (0 - output[obj_index]));
+                    if (best_match_iou > ignore_thresh) {
+                        if (objectness_smooth) {
+                            const float delta_obj = obj_normalizer * (best_match_iou - output[obj_index]);
+                            if (delta_obj < delta[obj_index])
+                                delta[obj_index] = -delta_obj;
+                            
+                        }
+                        else delta[obj_index] = 0;
                     }
-                    if (best_iou > truth_iou_threshold) {
-                        delta[obj_index] = output[obj_index] - 1;
-
-                        int cls = target_ptr[best_t*(4 + 1) + b * target_size + 4];
-                        int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
-                        delta_yolo_class(output, delta, class_index, cls, classes, channel_size, 0);
-                        Box truth = float_to_box(target_ptr + best_t * (4 + 1) + b * target_size, 1);
-                        delta_yolo_box(truth, output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
+                    if (best_iou > truth_thresh) {
+                        const float iou_multiplier = best_iou * best_iou;// (best_iou - l.truth_thresh) / (1.0 - l.truth_thresh);
+                        if (objectness_smooth)
+                            delta[obj_index] = -obj_normalizer * (iou_multiplier - output[obj_index]);
+                        else
+                            delta[obj_index] = -obj_normalizer * (1 - output[obj_index]);
+                        
+                        int class_id = target_ptr[best_t * truth_size + b * truths + 4];
+                        delta_yolo_class(output, delta, class_index, class_id, classes, channel_size, 0, focal_loss, label_smooth_eps, classes_multipliers, cls_normalizer);
+                        float class_multiplier = (classes_multipliers) ? classes_multipliers[class_id] : 1.0f;
+                        if (objectness_smooth)
+                            delta[class_index + channel_size * class_id] = -class_multiplier * (iou_multiplier - output[class_index + channel_size * class_id]);
+                        Box truth = float_to_box(target_ptr + best_t * truth_size + b * truths, 1);
+                        delta_yolo_box(truth, output, bias, mask[n], box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size, iou_normalizer * class_multiplier, iou_loss, 1, max_delta, &rewritten_bbox, new_coordinate);
+//                        (*state.net.total_bbox)++;
                     }
                 }
             }
         }
-        for(t = 0; t < max_boxes; ++t){
-            Box truth = float_to_box(target_ptr + t * (4 + 1) + b * target_size, 1);
-
-            if(!truth.x) break;
+        for (int t = 0; t < max_boxes; ++t) {
+            Box truth = float_to_box(target_ptr + t * truth_size + b * truths, 1);
+            if (!truth.x) break;  // continue;
+            int class_id = target_ptr[t * truth_size + b * truths + 4];
+            if (class_id >= classes || class_id < 0) continue; // if label contains class_id more than number of classes in the cfg-file and class_id check garbage value
+            
             float best_iou = 0;
             int best_n = 0;
-            i = (truth.x * width);
-            j = (truth.y * height);
+            int i = (truth.x * width);
+            int j = (truth.y * height);
             Box truth_shift = truth;
             truth_shift.x = truth_shift.y = 0;
-            for(n = 0; n < total_anchor_num; ++n){
-                Box pred = {0};
+            for (int n = 0; n < total_anchor_num; ++n) {
+                Box pred = { 0 };
                 pred.w = bias[2 * n + 0] / net_width;
                 pred.h = bias[2 * n + 1] / net_height;
                 float iou = box_iou(pred, truth_shift);
-                if (iou > best_iou){
+                if (iou > best_iou) {
                     best_iou = iou;
                     best_n = n;
                 }
             }
-
+            
             int mask_n = int_index(mask, best_n, anchor_num);
-            if(mask_n >= 0){
+            if (mask_n >= 0) {
+                int class_id = target_ptr[t * truth_size + b * truths + 4];
+                
                 int box_index = entry_index(b, mask_n * channel_size + j * width + i, 0);
-                float iou = delta_yolo_box(truth, output, bias, best_n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size);
-
+                float class_multiplier = (classes_multipliers) ? classes_multipliers[class_id] : 1.0f;
+                Ious all_ious = delta_yolo_box(truth, output, bias, best_n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size, iou_normalizer * class_multiplier, iou_loss, 1, max_delta, &rewritten_bbox, new_coordinate);
+//                (*state.net.total_bbox)++;
+                
+                int truth_in_index = t * truth_size + b * truths + 5;
+                int track_id = target_ptr[truth_in_index];
+                int truth_out_index = b * anchor_num * channel_size + mask_n * channel_size + j * width + i;
+                labels[truth_out_index] = track_id;
+                class_ids[truth_out_index] = class_id;
+                
+                // range is 0 <= 1
+                tot_iou += all_ious.iou;
+                tot_iou_loss += 1 - all_ious.iou;
+                // range is -1 <= giou <= 1
+                tot_giou += all_ious.giou;
+                tot_giou_loss += 1 - all_ious.giou;
+                
+                tot_diou += all_ious.diou;
+                tot_diou_loss += 1 - all_ious.diou;
+                
+                tot_ciou += all_ious.ciou;
+                tot_ciou_loss += 1 - all_ious.ciou;
+                
                 int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
                 avg_obj += output[obj_index];
-                delta[obj_index] = output[obj_index] - 1;
-
-                int cls = target_ptr[t * (4 + 1) + b * target_size + 4];
+                if (objectness_smooth) {
+                    float delta_obj = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                    if (delta[obj_index] == 0)
+                        delta[obj_index] = delta_obj;
+                }
+                else
+                    delta[obj_index] = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                
                 int class_index = entry_index(b, mask_n * channel_size + j * width + i, 4 + 1);
-                delta_yolo_class(output, delta, class_index, cls, classes, channel_size, &avg_cat);
-
+                delta_yolo_class(output, delta, class_index, class_id, classes, channel_size, &avg_cat, focal_loss, label_smooth_eps, classes_multipliers, cls_normalizer);
+                
                 ++count;
                 ++class_count;
-                if(iou > .5) recall += 1;
-                if(iou > .75) recall75 += 1;
-                avg_iou += iou;
+                if (all_ious.iou > .5) recall += 1;
+                if (all_ious.iou > .75) recall75 += 1;
+            }
+            
+            // iou_thresh
+            for (int n = 0; n < total_anchor_num; ++n) {
+                int mask_n = int_index(mask, n, anchor_num);
+                if (mask_n >= 0 && n != best_n && iou_thresh < 1.0f) {
+                    Box pred = { 0 };
+                    pred.w = bias[2 * n + 0] / net_width;
+                    pred.h = bias[2 * n + 1] / net_height;
+                    float iou = box_iou_kind(pred, truth_shift, iou_thresh_kind); // IOU, GIOU, MSE, DIOU, CIOU
+                    // iou, n
+                    
+                    if (iou > iou_thresh) {
+                        int class_id = target_ptr[t * truth_size + b * truths + 4];
+                        
+                        int box_index = entry_index(b, mask_n * channel_size + j * width + i, 0);
+                        float class_multiplier = (classes_multipliers) ? classes_multipliers[class_id] : 1.0f;
+                        Ious all_ious = delta_yolo_box(truth, output, bias, n, box_index, i, j, width, height, net_width, net_height, delta, (2 - truth.w * truth.h), channel_size, iou_normalizer * class_multiplier, iou_loss, 1, max_delta, &rewritten_bbox, new_coordinate);
+//                        (*state.net.total_bbox)++;
+                        
+                        // range is 0 <= 1
+                        tot_iou += all_ious.iou;
+                        tot_iou_loss += 1 - all_ious.iou;
+                        // range is -1 <= giou <= 1
+                        tot_giou += all_ious.giou;
+                        tot_giou_loss += 1 - all_ious.giou;
+                        
+                        tot_diou += all_ious.diou;
+                        tot_diou_loss += 1 - all_ious.diou;
+                        
+                        tot_ciou += all_ious.ciou;
+                        tot_ciou_loss += 1 - all_ious.ciou;
+                        
+                        int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
+                        avg_obj += output[obj_index];
+                        if (objectness_smooth) {
+                            float delta_obj = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                            if (delta[obj_index] == 0)
+                                delta[obj_index] = delta_obj;
+                        }
+                        else
+                            delta[obj_index] = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                        
+                        int class_index = entry_index(b, mask_n * channel_size + j * width + i, 4 + 1);
+                        delta_yolo_class(output, delta, class_index, class_id, classes, channel_size, &avg_cat, focal_loss, label_smooth_eps, classes_multipliers, cls_normalizer);
+                        
+                        ++count;
+                        ++class_count;
+                        if (all_ious.iou > .5) recall += 1;
+                        if (all_ious.iou > .75) recall75 += 1;
+                    }
+                }
             }
         }
+        
+        if (iou_thresh < 1.0f) {
+            // averages the deltas obtained by the function: delta_yolo_box()_accumulate
+            for (int j = 0; j < height; ++j) {
+                for (int i = 0; i < width; ++i) {
+                    for (int n = 0; n < anchor_num; ++n) {
+                        int obj_index = entry_index(b, n * channel_size + j * width + i, 4);
+                        int box_index = entry_index(b, n * channel_size + j * width + i, 0);
+                        int class_index = entry_index(b, n * channel_size + j * width + i, 4 + 1);
+                        
+                        if (delta[obj_index] != 0)
+                            averages_yolo_deltas(class_index, box_index, channel_size, classes, delta);
+                    }
+                }
+            }
+        }
+        
     }
-    loss = pow(mag_array(delta, info.output_number * info.batch_size), 2);
-    printf("Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(channel_size*anchor_num*info.batch_size), recall/count, recall75/count, count);
+    
+    if (count == 0) count = 1;
+    if (class_count == 0) class_count = 1;
+
+    loss = pow(mag_array(delta, info.output_number * batch_size), 2);
+
+    loss /= batch_size;
+
+//    fprintf(stderr, "v3 (%s loss, Normalizer: (iou: %.2f, obj: %.2f, cls: %.2f) Avg (IOU: %f), count: %d, total_loss = %f \n", (iou_loss == MSE ? "mse" : (iou_loss == GIOU ? "giou" : "iou")), iou_normalizer, obj_normalizer, cls_normalizer, tot_iou / count, count, loss);
+    
+    fprintf(stderr, "v3 (%s loss, Normalizer: (iou: %.2f, obj: %.2f, cls: %.2f) Avg (IOU: %f, GIOU: %f), Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f, count: %d, total_loss = %f \n", (iou_loss == MSE ? "mse" : (iou_loss == GIOU ? "giou" : "iou")), iou_normalizer, obj_normalizer, cls_normalizer, tot_iou / count, tot_giou / count, avg_cat / class_count, avg_obj / count, avg_anyobj / (channel_size * anchor_num * batch_size), recall / count, recall75 / count, count, loss);
+    
     return loss;
 }
 
-void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat) {
-    if (delta[index]) {
-        delta[index + stride * cls] = output[index + stride * cls] - 1;
-        if(avg_cat)
-            *avg_cat += output[index + stride * cls];
-        return;
+void YOLOv4Layer::averages_yolo_deltas(int class_index, int box_index, int stride, int classes, float *delta) {
+
+    int classes_in_one_box = 0;
+    int c;
+    for (c = 0; c < classes; ++c) {
+        if (delta[class_index + stride * c] < 0) classes_in_one_box++;
     }
-    for(int n = 0; n < classes; ++n) {
-        delta[index + stride * n] = output[index + stride * n] - ((n == cls) ? 1 : 0);
-        if(n == cls && avg_cat)
-            *avg_cat += output[index + stride * n];
+
+    if (classes_in_one_box > 0) {
+        delta[box_index + 0 * stride] /= classes_in_one_box;
+        delta[box_index + 1 * stride] /= classes_in_one_box;
+        delta[box_index + 2 * stride] /= classes_in_one_box;
+        delta[box_index + 3 * stride] /= classes_in_one_box;
     }
 }
 
-float YOLOv4Layer::delta_yolo_box(Box truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride) {
-    Box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride, info.yolov4_new_coordinate);
-    float iou = box_iou(pred, truth);
-    
-    float tx = (truth.x * lw - i);
-    float ty = (truth.y * lh - j);
-    float tw = log(truth.w * w / biases[2 * n + 0]);
-    float th = log(truth.h * h / biases[2 * n + 1]);
-    
-    delta[index + 0 * stride] = -scale * (tx - x[index + 0 * stride]);
-    delta[index + 1 * stride] = -scale * (ty - x[index + 1 * stride]);
-    delta[index + 2 * stride] = -scale * (tw - x[index + 2 * stride]);
-    delta[index + 3 * stride] = -scale * (th - x[index + 3 * stride]);
-    return iou;
+void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int class_id, int classes, int stride, float *avg_cat, int focal_loss, float label_smooth_eps, float *classes_multipliers, float cls_normalizer) {
+    int n;
+    if (delta[index + stride * class_id]) {
+        float y_true = 1;
+        if (label_smooth_eps)
+            y_true = y_true *  (1 - label_smooth_eps) + 0.5 * label_smooth_eps;
+        float result_delta = y_true - output[index + stride * class_id];
+        if(!isnan(result_delta) && !isinf(result_delta))
+            delta[index + stride*class_id] = -result_delta;
+        //delta[index + stride*class_id] = 1 - output[index + stride*class_id];
+
+        if (classes_multipliers)
+            delta[index + stride*class_id] *= classes_multipliers[class_id];
+        if(avg_cat)
+            *avg_cat += output[index + stride * class_id];
+        return;
+    }
+    // Focal loss
+    if (focal_loss) {
+        // Focal Loss
+        float alpha = 0.5;    // 0.25 or 0.5
+        //float gamma = 2;    // hardcoded in many places of the grad-formula
+
+        int ti = index + stride * class_id;
+        float pt = output[ti] + 0.000000000000001F;
+        float grad = -(1 - pt) * (2 * pt*logf(pt) + pt - 1);
+
+        for (n = 0; n < classes; ++n) {
+            delta[index + stride * n] = -((((n == class_id) ? 1 : 0) - output[index + stride*n]));
+
+            delta[index + stride * n] *= alpha * grad;
+
+            if (n == class_id && avg_cat)
+                *avg_cat += output[index + stride * n];
+        }
+    } else {
+        // default
+        for (n = 0; n < classes; ++n) {
+            float y_true = ((n == class_id) ? 1 : 0);
+            if (label_smooth_eps)
+                y_true = y_true *  (1 - label_smooth_eps) + 0.5 * label_smooth_eps;
+            float result_delta = y_true - output[index + stride * n];
+            if (!isnan(result_delta) && !isinf(result_delta))
+                delta[index + stride * n] = -result_delta;
+
+            if (classes_multipliers && n == class_id)
+                delta[index + stride*class_id] *= classes_multipliers[class_id] * cls_normalizer;
+            if (n == class_id && avg_cat)
+                *avg_cat += output[index + stride*n];
+        }
+    }
+}
+
+Ious YOLOv4Layer::delta_yolo_box(Box &truth, float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, float *delta, float scale, int stride, float iou_normalizer, IOU_KIND iou_loss, int accumulate, float max_delta, int *rewritten_bbox, int new_coords) {
+    if (delta[index + 0 * stride] || delta[index + 1 * stride] || delta[index + 2 * stride] || delta[index + 3 * stride]) {
+        (*rewritten_bbox)++;
+    }
+
+    Ious all_ious = {0};
+    // i - step in layer width
+    // j - step in layer height
+    //  Returns a box in absolute coordinates
+    Box pred = get_yolo_box(x, biases, n, index, i, j, lw, lh, w, h, stride, new_coords);
+    all_ious.iou = box_iou(pred, truth);
+    all_ious.giou = box_giou(pred, truth);
+    all_ious.diou = box_diou(pred, truth);
+    all_ious.ciou = box_ciou(pred, truth);
+    // avoid nan in dx_box_iou
+    if (pred.w == 0) { pred.w = 1.0; }
+    if (pred.h == 0) { pred.h = 1.0; }
+    if (iou_loss == MSE)    // old loss
+    {
+        float tx = (truth.x * lw - i);
+        float ty = (truth.y * lh - j);
+        float tw = log(truth.w * w / biases[2 * n + 0]);
+        float th = log(truth.h * h / biases[2 * n + 1]);
+
+        if (new_coords) {
+            tw = sqrt(truth.w*w / (4 * biases[2 * n]));
+            th = sqrt(truth.h*h / (4 * biases[2 * n + 1]));
+        }
+
+        // accumulate delta
+        delta[index + 0 * stride] += -scale * (tx - x[index + 0 * stride]) * iou_normalizer;
+        delta[index + 1 * stride] += -scale * (ty - x[index + 1 * stride]) * iou_normalizer;
+        delta[index + 2 * stride] += -scale * (tw - x[index + 2 * stride]) * iou_normalizer;
+        delta[index + 3 * stride] += -scale * (th - x[index + 3 * stride]) * iou_normalizer;
+    }
+    else {
+        all_ious.dx_iou = dx_box_iou(pred, truth, iou_loss);
+
+        // jacobian^t (transpose)
+        //float dx = (all_ious.dx_iou.dl + all_ious.dx_iou.dr);
+        //float dy = (all_ious.dx_iou.dt + all_ious.dx_iou.db);
+        //float dw = ((-0.5 * all_ious.dx_iou.dl) + (0.5 * all_ious.dx_iou.dr));
+        //float dh = ((-0.5 * all_ious.dx_iou.dt) + (0.5 * all_ious.dx_iou.db));
+
+        // jacobian^t (transpose)
+        float dx = all_ious.dx_iou.dt;
+        float dy = all_ious.dx_iou.db;
+        float dw = all_ious.dx_iou.dl;
+        float dh = all_ious.dx_iou.dr;
+
+
+        // predict exponential, apply gradient of e^delta_t ONLY for w,h
+        if (new_coords) {
+            //dw *= 8 * x[index + 2 * stride];
+            //dh *= 8 * x[index + 3 * stride];
+            //dw *= 8 * x[index + 2 * stride] * biases[2 * n] / w;
+            //dh *= 8 * x[index + 3 * stride] * biases[2 * n + 1] / h;
+
+            //float grad_w = 8 * exp(-x[index + 2 * stride]) / pow(exp(-x[index + 2 * stride]) + 1, 3);
+            //float grad_h = 8 * exp(-x[index + 3 * stride]) / pow(exp(-x[index + 3 * stride]) + 1, 3);
+            //dw *= grad_w;
+            //dh *= grad_h;
+        }
+        else {
+            dw *= exp(x[index + 2 * stride]);
+            dh *= exp(x[index + 3 * stride]);
+        }
+
+        // normalize iou weight
+        dx *= iou_normalizer;
+        dy *= iou_normalizer;
+        dw *= iou_normalizer;
+        dh *= iou_normalizer;
+
+        dx = fix_nan_inf(dx);
+        dy = fix_nan_inf(dy);
+        dw = fix_nan_inf(dw);
+        dh = fix_nan_inf(dh);
+
+        if (max_delta != FLT_MAX) {
+            dx = clip_value(dx, max_delta);
+            dy = clip_value(dy, max_delta);
+            dw = clip_value(dw, max_delta);
+            dh = clip_value(dh, max_delta);
+        }
+
+        if (!accumulate) {
+            delta[index + 0 * stride] = 0;
+            delta[index + 1 * stride] = 0;
+            delta[index + 2 * stride] = 0;
+            delta[index + 3 * stride] = 0;
+        }
+
+        // accumulate delta
+        delta[index + 0 * stride] += -dx;
+        delta[index + 1 * stride] += -dy;
+        delta[index + 2 * stride] += -dw;
+        delta[index + 3 * stride] += -dh;
+    }
+
+    return all_ious;
 }
 
 int YOLOv4Layer::entry_index(int batch, int location, int entry) {
@@ -3163,6 +3582,16 @@ int YOLOv4Layer::entry_index(int batch, int location, int entry) {
     int n = location / channel_size;
     int loc = location % channel_size;
     return batch * info.output_number + n * channel_size * (5 + info.classes) + entry * channel_size + loc;
+}
+
+int YOLOv4Layer::compare_yolo_class(float *output, int classes, int class_index, int stride, float objectness, int class_id, float conf_thresh) {
+    for (int j = 0; j < classes; ++j) {
+        float prob = output[class_index + stride * j];
+        if (prob > conf_thresh) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
@@ -3179,7 +3608,7 @@ vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
     int channel_size = width * height;
     
     vector<Detection> dets;
-
+    
     for (int i = 0; i < channel_size; ++i){
         int row = i / width;
         int col = i % width;

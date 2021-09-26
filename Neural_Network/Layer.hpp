@@ -42,22 +42,24 @@ struct Train_Args {
 enum LayerType {
     Input,
     Fullyconnected,
+    Convolution,
     Relu,
     PRelu,
     LRelu,
-    Softmax,
-    Convolution,
-    Pooling,
-    EuclideanLoss,
-    ShortCut,
     Sigmoid,
-    BatchNormalization,
+    Mish,
+    Swish,
+    Dropout,
+    Pooling,
+    AvgPooling,
     UpSample,
+    ShortCut,
     Concat,
+    BatchNormalization,
+    Softmax,
+    EuclideanLoss,
     Yolov3,
     Yolov4,
-    Mish,
-    Dropout,
     Error
 };
 
@@ -78,7 +80,9 @@ class ConcatLayer;
 class YOLOv3Layer;
 class YOLOv4Layer;
 class MishLayer;
+class SwishLayer;
 class DropoutLayer;
+class AvgPoolingLayer;
 
 // Top layer
 class Model_Layer {
@@ -125,6 +129,8 @@ private:
     YOLOv4Layer *yolov4_layer;
     MishLayer *mish_layer;
     DropoutLayer *dropout_layer;
+    AvgPoolingLayer *avgpooling_layer;
+    SwishLayer *swish_layer;
 };
 
 // Base layer
@@ -140,7 +146,7 @@ public:
     void show_detail();
     long getOperations();
     string type_to_string();
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
+    virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
     int size() {return info.output_width * info.output_height * info.output_dimension;}
@@ -359,6 +365,22 @@ public:
     void Backward();
 };
 
+// Swish layer
+class SwishLayer : public BaseLayer {
+public:
+    SwishLayer(LayerOption opt_);
+    void Forward();
+    void Backward();
+};
+
+// AvgPooling layer
+class AvgPoolingLayer : public BaseLayer {
+public:
+    AvgPoolingLayer(LayerOption opt_);
+    void Forward();
+    void Backward();
+};
+
 // YOLOv3 layer
 class YOLOv3Layer : public BaseLayer {
 public:
@@ -417,8 +439,6 @@ private:
     
     Tensor detection;
 };
-
-void *process_batch(void* ptr);
 
 void scale_bias(float *output, float *scales, int batch, int n, int size);
 void add_bias(float *output, float *biases, int batch, int n, int size);

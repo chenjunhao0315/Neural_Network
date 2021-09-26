@@ -38,6 +38,7 @@ float box_iou_kind(Box &a, Box &b, IOU_KIND iou_kind) {
         case GIOU: return box_giou(a, b);
         case DIOU: return box_diou(a, b);
         case CIOU: return box_ciou(a, b);
+        default: return box_iou(a, b);
     }
     return box_iou(a, b);
 }

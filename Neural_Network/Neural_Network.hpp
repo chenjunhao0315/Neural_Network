@@ -44,7 +44,7 @@ public:
     bool load_darknet(const char *weights_name);
     bool to_prototxt(const char *filename = "model.prototxt");
     void alloc_workspace();
-    void createGraph();
+    void constructGraph();
     int getBatchSize() {return batch_size;}
     vector<Train_Args> getTrainArgs();
     vfloat predict(Tensor *input);

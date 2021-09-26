@@ -26,7 +26,9 @@ Model_Layer::~Model_Layer() {
         case LayerType::Yolov3: delete yolov3_layer; break;
         case LayerType::Yolov4: delete yolov4_layer; break;
         case LayerType::Mish: delete mish_layer; break;
+        case LayerType::Swish: delete swish_layer; break;
         case LayerType::Dropout: delete dropout_layer; break;
+        case LayerType::AvgPooling: delete avgpooling_layer; break;
         default: break;
     }
     input_layer = nullptr;
@@ -46,7 +48,9 @@ Model_Layer::~Model_Layer() {
     yolov3_layer = nullptr;
     yolov4_layer = nullptr;
     mish_layer = nullptr;
+    swish_layer = nullptr;
     dropout_layer = nullptr;
+    avgpooling_layer = nullptr;
 }
 
 Model_Layer::Model_Layer() {
@@ -67,7 +71,9 @@ Model_Layer::Model_Layer() {
     yolov3_layer = nullptr;
     yolov4_layer = nullptr;
     mish_layer = nullptr;
+    swish_layer = nullptr;
     dropout_layer = nullptr;
+    avgpooling_layer = nullptr;
 }
 
 Model_Layer::Model_Layer(const Model_Layer &L) {
@@ -88,7 +94,9 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
     yolov3_layer = nullptr;
     yolov4_layer = nullptr;
     mish_layer = nullptr;
+    swish_layer = nullptr;
     dropout_layer = nullptr;
+    avgpooling_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -143,8 +151,14 @@ Model_Layer::Model_Layer(const Model_Layer &L) {
             case LayerType::Mish:
                 mish_layer = new MishLayer(*L.mish_layer);
                 break;
+            case LayerType::Swish:
+                swish_layer = new SwishLayer(*L.swish_layer);
+                break;
             case LayerType::Dropout:
                 dropout_layer = new DropoutLayer(*L.dropout_layer);
+                break;
+            case LayerType::AvgPooling:
+                avgpooling_layer = new AvgPoolingLayer(*L.avgpooling_layer);
                 break;
             default:
                 break;
@@ -171,7 +185,9 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     yolov3_layer = L.yolov3_layer;
     yolov4_layer = L.yolov4_layer;
     mish_layer = L.mish_layer;
+    swish_layer = L.swish_layer;
     dropout_layer = L.dropout_layer;
+    avgpooling_layer = L.avgpooling_layer;
     L.input_layer = nullptr;
     L.fullyconnected_layer = nullptr;
     L.relu_layer = nullptr;
@@ -189,7 +205,9 @@ Model_Layer::Model_Layer(Model_Layer &&L) {
     L.yolov3_layer = nullptr;
     L.yolov4_layer = nullptr;
     L.mish_layer = nullptr;
+    L.swish_layer = nullptr;
     L.dropout_layer = nullptr;
+    L.avgpooling_layer = nullptr;
 }
 
 Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
@@ -210,7 +228,9 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
     yolov3_layer = nullptr;
     yolov4_layer = nullptr;
     mish_layer = nullptr;
+    swish_layer = nullptr;
     dropout_layer = nullptr;
+    avgpooling_layer = nullptr;
     if (this != &L) {
         type = L.type;
         switch (type) {
@@ -265,8 +285,14 @@ Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
             case LayerType::Mish:
                 mish_layer = new MishLayer(*L.mish_layer);
                 break;
+            case LayerType::Swish:
+                swish_layer = new SwishLayer(*L.swish_layer);
+                break;
             case LayerType::Dropout:
                 dropout_layer = new DropoutLayer(*L.dropout_layer);
+                break;
+            case LayerType::AvgPooling:
+                avgpooling_layer = new AvgPoolingLayer(*L.avgpooling_layer);
                 break;
             default:
                 break;
@@ -293,7 +319,9 @@ Model_Layer::Model_Layer(LayerOption opt_) {
     yolov3_layer = nullptr;
     yolov4_layer = nullptr;
     mish_layer = nullptr;
+    swish_layer = nullptr;
     dropout_layer = nullptr;
+    avgpooling_layer = nullptr;
     type = string_to_type(opt_["type"]);
     
     switch (type) {
@@ -331,8 +359,12 @@ Model_Layer::Model_Layer(LayerOption opt_) {
             yolov4_layer = new YOLOv4Layer(opt_); break;
         case LayerType::Mish:
             mish_layer = new MishLayer(opt_); break;
+        case LayerType::Swish:
+            swish_layer = new SwishLayer(opt_); break;
         case LayerType::Dropout:
             dropout_layer = new DropoutLayer(opt_); break;
+        case LayerType::AvgPooling:
+            avgpooling_layer = new AvgPoolingLayer(opt_); break;
         default:
             fprintf(stderr, "[Model_Layer] Name: %s Type: %s\n", opt_["name"].c_str(), opt_["type"].c_str()); break;
     }
@@ -373,8 +405,12 @@ LayerType Model_Layer::string_to_type(string type) {
         return LayerType::Yolov4;
     } else if (type == "Mish") {
         return LayerType::Mish;
+    } else if (type == "Swish") {
+        return LayerType::Swish;
     } else if (type == "Dropout") {
         return LayerType::Dropout;
+    } else if (type == "AvgPooling") {
+        return LayerType::AvgPooling;
     }
     return LayerType::Error;
 }
@@ -415,8 +451,12 @@ void Model_Layer::Forward(Tensor* input_tensor_, bool train) {
             return yolov4_layer->Forward(train);
         case LayerType::Mish:
             return mish_layer->Forward();
+        case LayerType::Swish:
+            return swish_layer->Forward();
         case LayerType::Dropout:
             return dropout_layer->Forward();
+        case LayerType::AvgPooling:
+            return avgpooling_layer->Forward();
         default:
             break;
     }
@@ -458,8 +498,12 @@ Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor
             return yolov4_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Mish:
             return mish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
+        case LayerType::Swish:
+            return swish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         case LayerType::Dropout:
             return dropout_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
         default:
             break;
     }
@@ -502,8 +546,12 @@ float Model_Layer::Backward(Tensor *target) {
             concat_layer->Backward(); break;
         case LayerType::Mish:
             mish_layer->Backward(); break;
+        case LayerType::Swish:
+            swish_layer->Backward(); break;
         case LayerType::Dropout:
             dropout_layer->Backward(); break;
+        case LayerType::AvgPooling:
+            avgpooling_layer->Backward(); break;
         default:
             break;
     }
@@ -545,8 +593,12 @@ void Model_Layer::shape() {
         yolov4_layer->shape();
     } else if (type == LayerType::Mish) {
         mish_layer->shape();
+    } else if (type == LayerType::Swish) {
+        swish_layer->shape();
     } else if (type == LayerType::Dropout) {
         dropout_layer->shape();
+    } else if (type == LayerType::AvgPooling) {
+        avgpooling_layer->shape();
     }
 }
 
@@ -585,8 +637,12 @@ void Model_Layer::show_detail() {
         yolov4_layer->show_detail();
     } else if (type == LayerType::Mish) {
         mish_layer->show_detail();
+    } else if (type == LayerType::Swish) {
+        swish_layer->show_detail();
     } else if (type == LayerType::Dropout) {
         dropout_layer->show_detail();
+    } else if (type == LayerType::AvgPooling) {
+        avgpooling_layer->show_detail();
     }
 }
 
@@ -626,8 +682,12 @@ int Model_Layer::getParameter(int type_) {
             return yolov4_layer->getParameter(type_);
         case LayerType::Mish:
             return mish_layer->getParameter(type_);
+        case LayerType::Swish:
+            return swish_layer->getParameter(type_);
         case LayerType::Dropout:
             return dropout_layer->getParameter(type_);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->getParameter(type_);
         default:
             break;
     }
@@ -669,8 +729,12 @@ bool Model_Layer::save(FILE *f) {
         return yolov4_layer->save(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->save(f);
+    } else if (type == LayerType::Swish) {
+        return swish_layer->save(f);
     } else if (type == LayerType::Dropout) {
         return dropout_layer->save(f);
+    } else if (type == LayerType::AvgPooling) {
+        return avgpooling_layer->save(f);
     }
     return false;
 }
@@ -710,8 +774,12 @@ bool Model_Layer::save_raw(FILE *f) {
         return yolov4_layer->save_raw(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->save_raw(f);
+    } else if (type == LayerType::Swish) {
+        return swish_layer->save_raw(f);
     } else if (type == LayerType::Dropout) {
         return dropout_layer->save_raw(f);
+    } else if (type == LayerType::AvgPooling) {
+        return avgpooling_layer->save_raw(f);
     }
     return false;
 }
@@ -751,8 +819,12 @@ bool Model_Layer::load(FILE *f) {
         return yolov4_layer->load(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->load(f);
+    } else if (type == LayerType::Swish) {
+        return swish_layer->load(f);
     } else if (type == LayerType::Dropout) {
         return dropout_layer->load(f);
+    } else if (type == LayerType::AvgPooling) {
+        return avgpooling_layer->load(f);
     }
     return false;
 }
@@ -792,8 +864,12 @@ bool Model_Layer::load_raw(FILE *f) {
         return yolov4_layer->load_raw(f);
     } else if (type == LayerType::Mish) {
         return mish_layer->load_raw(f);
+    } else if (type == LayerType::Swish) {
+        return swish_layer->load_raw(f);
     } else if (type == LayerType::Dropout) {
         return dropout_layer->load_raw(f);
+    } else if (type == LayerType::AvgPooling) {
+        return avgpooling_layer->load_raw(f);
     }
     return 0;
 }
@@ -833,8 +909,12 @@ bool Model_Layer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refin
         return yolov4_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     } else if (type == LayerType::Mish) {
         return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::Swish) {
+        return swish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     } else if (type == LayerType::Dropout) {
         return dropout_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    } else if (type == LayerType::AvgPooling) {
+        return avgpooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
     }
     return 0;
 }
@@ -875,8 +955,12 @@ void Model_Layer::ClearGrad() {
             return yolov4_layer->ClearGrad();
         case LayerType::Mish:
             return mish_layer->ClearGrad();
+        case LayerType::Swish:
+            return swish_layer->ClearGrad();
         case LayerType::Dropout:
             return dropout_layer->ClearGrad();
+        case LayerType::AvgPooling:
+            return avgpooling_layer->ClearGrad();
         default:
             break;
     }
@@ -1064,7 +1148,9 @@ string BaseLayer::type_to_string() {
         case Yolov3: return "YOLOv3";
         case Yolov4: return "YOLOv4";
         case Mish: return "Mish";
+        case Swish: return "Swish";
         case Dropout: return "Dropout";
+        case AvgPooling: return "AvgPooling";
         case Error: return "Error";
     }
     return "Unknown";
@@ -1297,11 +1383,19 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
+    } else if (type == LayerType::Swish) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
     } else if (type == LayerType::Dropout) {
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
         fwrite(&info.probability, sizeof(float), 1, f);
+    } else if (type == LayerType::AvgPooling) {
+        fwrite(&info.input_width, sizeof(int), 1, f);
+        fwrite(&info.input_height, sizeof(int), 1, f);
+        fwrite(&info.input_dimension, sizeof(int), 1, f);
     }
     return true;
 }
@@ -2568,6 +2662,7 @@ void MishLayer::Forward() {
     float *src = input_tensor->weight;
     float *activation_input = kernel[0].weight;
     float *dst = output_tensor->weight;
+    
     for (int i = info.input_number * info.batch_size; i--; ) {
         float x_val = *(src++);
         *(activation_input++) = x_val;
@@ -2592,6 +2687,60 @@ void MishLayer::Backward() {
         float grad_tsp = (1 - tsp * tsp) * grad_sp;
         float grad = inp * grad_tsp + tsp;
         *(input_delta++) += grad * *(output_delta++);
+    }
+}
+
+SwishLayer::SwishLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Swish;
+    name = (opt.find("name") == opt.end()) ? "swish" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    info.input_width = atoi(opt["input_width"].c_str());
+    info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+    kernel = new Tensor [1];
+    kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Input Storage
+    info.kernel_num = 1;
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+}
+
+void SwishLayer::Forward() {
+    float *src = input_tensor->weight;
+    float *activation_input = kernel[0].weight;
+    float *dst = output_tensor->weight;
+    
+    int n = info.input_number * info.batch_size;
+//    #pragma omp parallel for num_threads(4)
+    for (int i = 0; i < n; ++i) {
+        float x_val = src[i];
+        float sigmoid = logistic_activate(x_val);
+        activation_input[i] = sigmoid;
+        dst[i] = x_val * sigmoid;
+    }
+}
+
+void SwishLayer::Backward() {
+    float *output = output_tensor->weight;
+    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *activation_input = kernel[0].weight;
+    
+    int n = info.output_number * info.batch_size;
+//    #pragma omp parallel for
+    for (int i = 0; i < n; ++i) {
+        float swish = output[i];
+        input_delta[i] += output_delta[i] * (swish + activation_input[i] * (1 - swish));
     }
 }
 
@@ -2658,6 +2807,67 @@ void DropoutLayer::Backward() {
             *(input_delta) = 0;
         else
             *(input_delta) = *(output_delta) * scale;
+    }
+}
+
+AvgPoolingLayer::AvgPoolingLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::AvgPooling;
+    name = (opt.find("name") == opt.end()) ? "avgpooling" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.batch_size = atoi(opt["batch_size"].c_str());
+    
+    info.input_width = atoi(opt["input_width"].c_str());
+    info.input_height = atoi(opt["input_height"].c_str());
+    info.input_dimension = atoi(opt["input_dimension"].c_str());
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    
+    info.output_width = 1;
+    info.output_height = 1;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+    output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+}
+
+void AvgPoolingLayer::Forward() {
+    int batch_size = info.batch_size;
+    int output_dimension = info.output_dimension;
+    int channel_size = info.input_width * info.input_height;
+    
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
+    
+    for(int b = 0; b < batch_size; ++b){
+        for(int k = 0; k < output_dimension; ++k){
+            int out_index = k + b * output_dimension;
+            output[out_index] = 0;
+            for(int i = 0; i < channel_size; ++i){
+                int in_index = i + channel_size * (k + b * output_dimension);
+                output[out_index] += input[in_index];
+            }
+            output[out_index] /= channel_size;
+        }
+    }
+}
+
+void AvgPoolingLayer::Backward() {
+    int batch_size = info.batch_size;
+    int output_dimension = info.output_dimension;
+    int channel_size = info.input_width * info.input_height;
+    
+    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor->delta_weight;
+    
+    for(int b = 0; b < batch_size; ++b){
+        for(int k = 0; k < output_dimension; ++k){
+            int out_index = k + b * output_dimension;
+            for(int i = 0; i < channel_size; ++i){
+                int in_index = i + channel_size * (k + b * output_dimension);
+                input_delta[in_index] += output_delta[out_index] / (channel_size);
+            }
+        }
     }
 }
 

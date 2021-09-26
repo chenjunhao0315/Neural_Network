@@ -292,6 +292,14 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             opt["input_height"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
+        } else if (type[0] == 's' && type[1] == 'w') {
+            opt["type"] = "Swish";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
         } else if (type[0] == 'd' && type[1] == 'o') {
             opt["type"] = "Dropout";
             fread(&temp, sizeof(int), 1, f);
@@ -303,6 +311,16 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             float prob;
             fread(&prob, sizeof(float), 1, f);
             opt["probability"] = to_string(temp);
+        } else if (type[0] == 'a' && type[1] == 'p') {
+            opt["type"] = "AvgPooling";
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_width"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_height"] = to_string(temp);
+            fread(&temp, sizeof(int), 1, f);
+            opt["input_dimension"] = to_string(temp);
+        } else {
+            fprintf(stderr, "[Neural_Network] Load unknown layer!\n");
         }
         opt_layer.push_back(opt);
         layer[i] = Model_Layer(opt);
@@ -319,7 +337,7 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         output_layer.push_back(string(output));
     }
     fclose(f);
-    createGraph();
+    constructGraph();
     for (int i = 0; i < output_layer.size(); ++i) {
         vector<int> route;
         string target_name = output_layer[i];
@@ -386,8 +404,12 @@ bool Neural_Network::save(const char *model_name) {
             fwrite("y4", 2, 1, f);
         } else if (type == LayerType::Mish) {
             fwrite("mi", 2, 1, f);
+        } else if (type == LayerType::Swish) {
+            fwrite("sw", 2, 1, f);
         } else if (type == LayerType::Dropout) {
             fwrite("do", 2, 1, f);
+        } else if (type == LayerType::AvgPooling) {
+            fwrite("ap", 2, 1, f);
         }
         layer[i].save(f);
     }
@@ -541,6 +563,12 @@ void Neural_Network::addLayer(LayerOption opt_) {
             }
             auto_opt["type"] = "Mish";
             opt_layer.push_back(auto_opt);
+        } else if (method == "Swish") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sw_" + opt_["name"];
+            }
+            auto_opt["type"] = "Swish";
+            opt_layer.push_back(auto_opt);
         }
     }
 }
@@ -597,7 +625,7 @@ void Neural_Network::compile(int batch_size_) {
     printf("*****************************\n");
     if (output_layer.empty())
         output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
-    createGraph();
+    constructGraph();
     
     for (int i = 0; i < output_layer.size(); ++i) {
         vector<int> route;
@@ -676,12 +704,15 @@ bool Neural_Network::to_prototxt(const char *filename) {
     return true;
 }
 
-void Neural_Network::createGraph() {
+void Neural_Network::constructGraph() {
     alloc_workspace();
     for (int i = 0; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
         vtensorptr extra_tensor;
         if (opt["type"] == "ShortCut") {
+            if (terminal.find(opt["shortcut"]) == terminal.end()) {
+                fprintf(stderr, "[Graph Constructor] ShortCut layer connect error, %s doesn't exist!\n", opt["shortcut"].c_str());
+            }
             extra_tensor.push_back(terminal[opt["shortcut"]]);
         } else if (opt["type"] == "Concat") {
             extra_tensor.push_back(terminal[opt["input_name"]]);
@@ -693,8 +724,16 @@ void Neural_Network::createGraph() {
                     string concat_name;
                     getline(concat_list, concat_name, ',');
                     concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
+                    if (terminal.find(concat_name) == terminal.end()) {
+                        fprintf(stderr, "[Graph Constructor] Concat layer connect error, %s doesn't exist!\n", concat_name.c_str());
+                    }
                     extra_tensor.push_back(terminal[concat_name]);
                 }
+            }
+        }
+        if (terminal.find(opt["input_name"]) == terminal.end()) {
+            if (opt["input_name"] != "default") {
+                fprintf(stderr, "[Graph Constructor] Layer connect error, %s doesn't exist!\n", opt["input_name"].c_str());
             }
         }
         Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);

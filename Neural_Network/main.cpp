@@ -50,8 +50,8 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-//    YOLOv3 yolo("backup_115008.bin");
-//    IMG img("3000x2060_493047168649.jpg");
+//    YOLOv3 yolo("backup_30016.bin");
+//    IMG img("5D4A7770.JPG");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     

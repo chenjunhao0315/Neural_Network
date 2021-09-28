@@ -1,5 +1,6 @@
 # Neural_Network
 
+The XOR problem example
 ```c++
 #include <iostream>
 
@@ -27,7 +28,7 @@ int main(int argc, const char * argv[]) {
     Tensor d_l(1, 1, 1, 1);
     vtensor label{a_l, b_l, c_l, d_l};
 
-    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::ADAM}, {"learning_rate", 0.1}, {"warmup", 5}});
+    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.1}, {"warmup", 5}});
     trainer.train_batch(data, label, 100);
     
     printf("Input (0, 0) -> %.0f\n", nn.predict(&a)[0]);

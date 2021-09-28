@@ -30,6 +30,11 @@ This is a simple project to implement neural network in c++. The structure of ne
 * Yolov3 layer
 * Yolov4 layer
 
+# Build and run
+```
+g++ -O
+```
+
 # Example
 The XOR problem example
 ```c++

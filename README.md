@@ -1,5 +1,33 @@
 # Neural_Network
 
+# About
+This is a simple project to implement neural network purely in c++.
+
+# Feature
+* C++14
+* Multi-thread support with Openmp
+## Layer
+* Input layer
+* Fullyconnected layer
+* Convolution layer
+* Relu layer layer
+* PRelu layer
+* LRelu layer
+* Sigmoid layer
+* Mish layer
+* Swish layer
+* Dropout layer
+* Pooling layer
+* AvgPooling layer
+* UpSample layer
+* ShortCut layer
+* Concat layer
+* BatchNormalization layer
+* Softmax layer
+* EuclideanLoss layer
+* Yolov3 layer
+* Yolov4 layer
+
 The XOR problem example
 ```c++
 #include <iostream>

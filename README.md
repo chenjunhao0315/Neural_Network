@@ -31,6 +31,11 @@ This is a simple project to implement neural network in c++. The structure of ne
 * Yolov3 layer
 * Yolov4 layer
 
+## Supported Solvers
+* SGD
+* ADADELTA
+* ADAM
+
 # Build and run
 If the project doesn't include YOLOv4 layer, you can build with
 * `$ g++ -Ofast -fopenmp -o nn *.cpp`

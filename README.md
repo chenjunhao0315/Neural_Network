@@ -1,6 +1,6 @@
 # Neural_Network
 
-```
+```c++
 #include <iostream>
 
 #include "Neural_Network.hpp"

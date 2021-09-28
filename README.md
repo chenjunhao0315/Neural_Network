@@ -1,12 +1,13 @@
 # Neural_Network
 
-# About
+# Introduction
 This is a simple project to implement neural network in c++. The structure of network is inspired by [ConvNetJS][1] and [Darknet][2].
 
 # Feature
 * C++14
 * Multi-thread support with Openmp
 * Run only on CPU
+* Structure visualization with [Netron][3] by Caffee2 like prototxt file
 
 ## Supported Layers
 * Input layer (data input)
@@ -81,3 +82,4 @@ int main(int argc, const char * argv[]) {
 
 [1]: https://cs.stanford.edu/people/karpathy/convnetjs/
 [2]: https://github.com/pjreddie/darknet
+[3]: https://netron.app

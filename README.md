@@ -6,6 +6,8 @@ This is a simple project to implement neural network purely in c++.
 # Feature
 * C++14
 * Multi-thread support with Openmp
+* Run only on CPU
+
 ## Layer
 * Input layer
 * Fullyconnected layer

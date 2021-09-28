@@ -14,8 +14,6 @@ int main(int argc, const char * argv[]) {
     nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "Relu"}});
     nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
     nn.compile();
-    nn.shape();
-    nn.to_prototxt();
 
     Tensor a(1, 1, 2, 0);
     Tensor b(1, 1, 2, 1);

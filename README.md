@@ -1,9 +1,7 @@
 # Neural_Network
 
 # About
-This is a simple project to implement neural network purely in c++.
-[ConvNetJS][1]
-[Darknet][2]
+This is a simple project to implement neural network purely in c++. The structure of network is inspired by [ConvNetJS][1] and [Darknet][2].
 
 # Feature
 * C++14

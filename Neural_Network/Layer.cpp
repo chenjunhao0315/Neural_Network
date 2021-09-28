@@ -559,90 +559,96 @@ float Model_Layer::Backward(Tensor *target) {
 }
 
 void Model_Layer::shape() {
-    if (type == LayerType::Input) {
-        input_layer->shape();
-    } else if (type == LayerType::Fullyconnected) {
-        fullyconnected_layer->shape();
-    } else if (type == LayerType::Relu) {
-        relu_layer->shape();
-    } else if (type == LayerType::Softmax) {
-        softmax_layer->shape();
-    } else if (type == LayerType::Convolution) {
-        convolution_layer->shape();
-    } else if (type == LayerType::Pooling) {
-        pooling_layer->shape();
-    } else if (type == LayerType::EuclideanLoss) {
-        euclideanloss_layer->shape();
-    } else if (type == LayerType::PRelu) {
-        prelu_layer->shape();
-    } else if (type == LayerType::ShortCut) {
-        shortcut_layer->shape();
-    } else if (type == LayerType::LRelu) {
-        lrelu_layer->shape();
-    } else if (type == LayerType::Sigmoid) {
-        sigmoid_layer->shape();
-    } else if (type == LayerType::BatchNormalization) {
-        batchnorm_layer->shape();
-    } else if (type == LayerType::UpSample) {
-        upsample_layer->shape();
-    } else if (type == LayerType::Concat) {
-        concat_layer->shape();
-    } else if (type == LayerType::Yolov3) {
-        yolov3_layer->shape();
-    } else if (type == LayerType::Yolov4) {
-        yolov4_layer->shape();
-    } else if (type == LayerType::Mish) {
-        mish_layer->shape();
-    } else if (type == LayerType::Swish) {
-        swish_layer->shape();
-    } else if (type == LayerType::Dropout) {
-        dropout_layer->shape();
-    } else if (type == LayerType::AvgPooling) {
-        avgpooling_layer->shape();
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->shape();
+        case LayerType::Pooling:
+            return pooling_layer->shape();
+        case LayerType::PRelu:
+            return prelu_layer->shape();
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->shape();
+        case LayerType::Relu:
+            return relu_layer->shape();
+        case LayerType::ShortCut:
+            return shortcut_layer->shape();
+        case LayerType::Softmax:
+            return softmax_layer->shape();
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->shape();
+        case LayerType::Input:
+            return input_layer->shape();
+        case LayerType::LRelu:
+            return lrelu_layer->shape();
+        case LayerType::Sigmoid:
+            return sigmoid_layer->shape();
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->shape();
+        case LayerType::UpSample:
+            return upsample_layer->shape();
+        case LayerType::Concat:
+            return concat_layer->shape();
+        case LayerType::Yolov3:
+            return yolov3_layer->shape();
+        case LayerType::Yolov4:
+            return yolov4_layer->shape();
+        case LayerType::Mish:
+            return mish_layer->shape();
+        case LayerType::Swish:
+            return swish_layer->shape();
+        case LayerType::Dropout:
+            return dropout_layer->shape();
+        case LayerType::AvgPooling:
+            return avgpooling_layer->shape();
+        default:
+            break;
     }
 }
 
 void Model_Layer::show_detail() {
-    if (type == LayerType::Input) {
-        input_layer->show_detail();
-    } else if (type == LayerType::Fullyconnected) {
-        fullyconnected_layer->show_detail();
-    } else if (type == LayerType::Relu) {
-        relu_layer->show_detail();
-    } else if (type == LayerType::Softmax) {
-        softmax_layer->show_detail();
-    } else if (type == LayerType::Convolution) {
-        convolution_layer->show_detail();
-    } else if (type == LayerType::Pooling) {
-        pooling_layer->show_detail();
-    } else if (type == LayerType::EuclideanLoss) {
-        euclideanloss_layer->show_detail();
-    } else if (type == LayerType::PRelu) {
-        prelu_layer->show_detail();
-    } else if (type == LayerType::ShortCut) {
-        shortcut_layer->show_detail();
-    } else if (type == LayerType::LRelu) {
-        lrelu_layer->show_detail();
-    } else if (type == LayerType::Sigmoid) {
-        sigmoid_layer->show_detail();
-    } else if (type == LayerType::BatchNormalization) {
-        batchnorm_layer->show_detail();
-    } else if (type == LayerType::UpSample) {
-        upsample_layer->show_detail();
-    } else if (type == LayerType::Concat) {
-        concat_layer->show_detail();
-    } else if (type == LayerType::Yolov3) {
-        yolov3_layer->show_detail();
-    } else if (type == LayerType::Yolov4) {
-        yolov4_layer->show_detail();
-    } else if (type == LayerType::Mish) {
-        mish_layer->show_detail();
-    } else if (type == LayerType::Swish) {
-        swish_layer->show_detail();
-    } else if (type == LayerType::Dropout) {
-        dropout_layer->show_detail();
-    } else if (type == LayerType::AvgPooling) {
-        avgpooling_layer->show_detail();
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->show_detail();
+        case LayerType::Pooling:
+            return pooling_layer->show_detail();
+        case LayerType::PRelu:
+            return prelu_layer->show_detail();
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->show_detail();
+        case LayerType::Relu:
+            return relu_layer->show_detail();
+        case LayerType::ShortCut:
+            return shortcut_layer->show_detail();
+        case LayerType::Softmax:
+            return softmax_layer->show_detail();
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->show_detail();
+        case LayerType::Input:
+            return input_layer->show_detail();
+        case LayerType::LRelu:
+            return lrelu_layer->show_detail();
+        case LayerType::Sigmoid:
+            return sigmoid_layer->show_detail();
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->show_detail();
+        case LayerType::UpSample:
+            return upsample_layer->show_detail();
+        case LayerType::Concat:
+            return concat_layer->show_detail();
+        case LayerType::Yolov3:
+            return yolov3_layer->show_detail();
+        case LayerType::Yolov4:
+            return yolov4_layer->show_detail();
+        case LayerType::Mish:
+            return mish_layer->show_detail();
+        case LayerType::Swish:
+            return swish_layer->show_detail();
+        case LayerType::Dropout:
+            return dropout_layer->show_detail();
+        case LayerType::AvgPooling:
+            return avgpooling_layer->show_detail();
+        default:
+            break;
     }
 }
 
@@ -695,228 +701,243 @@ int Model_Layer::getParameter(int type_) {
 }
 
 bool Model_Layer::save(FILE *f) {
-    if (type == LayerType::Input) {
-        return input_layer->save(f);
-    } else if (type == LayerType::Fullyconnected) {
-        return fullyconnected_layer->save(f);
-    } else if (type == LayerType::Relu) {
-        return relu_layer->save(f);
-    } else if (type == LayerType::Softmax) {
-        return softmax_layer->save(f);
-    } else if (type == LayerType::Convolution) {
-        return convolution_layer->save(f);
-    } else if (type == LayerType::Pooling) {
-        return pooling_layer->save(f);
-    } else if (type == LayerType::EuclideanLoss) {
-        return euclideanloss_layer->save(f);
-    } else if (type == LayerType::PRelu) {
-        return prelu_layer->save(f);
-    } else if (type == LayerType::ShortCut) {
-        return shortcut_layer->save(f);
-    } else if (type == LayerType::LRelu) {
-        return lrelu_layer->save(f);
-    } else if (type == LayerType::Sigmoid) {
-        return sigmoid_layer->save(f);
-    } else if (type == LayerType::BatchNormalization) {
-        return batchnorm_layer->save(f);
-    } else if (type == LayerType::UpSample) {
-        return upsample_layer->save(f);
-    } else if (type == LayerType::Concat) {
-        return concat_layer->save(f);
-    } else if (type == LayerType::Yolov3) {
-        return yolov3_layer->save(f);
-    } else if (type == LayerType::Yolov4) {
-        return yolov4_layer->save(f);
-    } else if (type == LayerType::Mish) {
-        return mish_layer->save(f);
-    } else if (type == LayerType::Swish) {
-        return swish_layer->save(f);
-    } else if (type == LayerType::Dropout) {
-        return dropout_layer->save(f);
-    } else if (type == LayerType::AvgPooling) {
-        return avgpooling_layer->save(f);
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->save(f);
+        case LayerType::Pooling:
+            return pooling_layer->save(f);
+        case LayerType::PRelu:
+            return prelu_layer->save(f);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->save(f);
+        case LayerType::Relu:
+            return relu_layer->save(f);
+        case LayerType::ShortCut:
+            return shortcut_layer->save(f);
+        case LayerType::Softmax:
+            return softmax_layer->save(f);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->save(f);
+        case LayerType::Input:
+            return input_layer->save(f);
+        case LayerType::LRelu:
+            return lrelu_layer->save(f);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->save(f);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->save(f);
+        case LayerType::UpSample:
+            return upsample_layer->save(f);
+        case LayerType::Concat:
+            return concat_layer->save(f);
+        case LayerType::Yolov3:
+            return yolov3_layer->save(f);
+        case LayerType::Yolov4:
+            return yolov4_layer->save(f);
+        case LayerType::Mish:
+            return mish_layer->save(f);
+        case LayerType::Swish:
+            return swish_layer->save(f);
+        case LayerType::Dropout:
+            return dropout_layer->save(f);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->save(f);
+        default:
+            break;
     }
     return false;
 }
 
 bool Model_Layer::save_raw(FILE *f) {
-    if (type == LayerType::Input) {
-        return input_layer->save_raw(f);
-    } else if (type == LayerType::Fullyconnected) {
-        return fullyconnected_layer->save_raw(f);
-    } else if (type == LayerType::Relu) {
-        return relu_layer->save_raw(f);
-    } else if (type == LayerType::Softmax) {
-        return softmax_layer->save_raw(f);
-    } else if (type == LayerType::Convolution) {
-        return convolution_layer->save_raw(f);
-    } else if (type == LayerType::Pooling) {
-        return pooling_layer->save_raw(f);
-    } else if (type == LayerType::EuclideanLoss) {
-        return euclideanloss_layer->save_raw(f);
-    } else if (type == LayerType::PRelu) {
-        return prelu_layer->save_raw(f);
-    } else if (type == LayerType::ShortCut) {
-        return shortcut_layer->save_raw(f);
-    } else if (type == LayerType::LRelu) {
-        return lrelu_layer->save_raw(f);
-    } else if (type == LayerType::Sigmoid) {
-        return sigmoid_layer->save_raw(f);
-    } else if (type == LayerType::BatchNormalization) {
-        return batchnorm_layer->save_raw(f);
-    } else if (type == LayerType::UpSample) {
-        return upsample_layer->save_raw(f);
-    } else if (type == LayerType::Concat) {
-        return concat_layer->save_raw(f);
-    } else if (type == LayerType::Yolov3) {
-        return yolov3_layer->save_raw(f);
-    } else if (type == LayerType::Yolov4) {
-        return yolov4_layer->save_raw(f);
-    } else if (type == LayerType::Mish) {
-        return mish_layer->save_raw(f);
-    } else if (type == LayerType::Swish) {
-        return swish_layer->save_raw(f);
-    } else if (type == LayerType::Dropout) {
-        return dropout_layer->save_raw(f);
-    } else if (type == LayerType::AvgPooling) {
-        return avgpooling_layer->save_raw(f);
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->save_raw(f);
+        case LayerType::Pooling:
+            return pooling_layer->save_raw(f);
+        case LayerType::PRelu:
+            return prelu_layer->save_raw(f);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->save_raw(f);
+        case LayerType::Relu:
+            return relu_layer->save_raw(f);
+        case LayerType::ShortCut:
+            return shortcut_layer->save_raw(f);
+        case LayerType::Softmax:
+            return softmax_layer->save_raw(f);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->save_raw(f);
+        case LayerType::Input:
+            return input_layer->save_raw(f);
+        case LayerType::LRelu:
+            return lrelu_layer->save_raw(f);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->save_raw(f);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->save_raw(f);
+        case LayerType::UpSample:
+            return upsample_layer->save_raw(f);
+        case LayerType::Concat:
+            return concat_layer->save_raw(f);
+        case LayerType::Yolov3:
+            return yolov3_layer->save_raw(f);
+        case LayerType::Yolov4:
+            return yolov4_layer->save_raw(f);
+        case LayerType::Mish:
+            return mish_layer->save_raw(f);
+        case LayerType::Swish:
+            return swish_layer->save_raw(f);
+        case LayerType::Dropout:
+            return dropout_layer->save_raw(f);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->save_raw(f);
+        default:
+            break;
     }
     return false;
 }
 
 bool Model_Layer::load(FILE *f) {
-    if (type == LayerType::Input) {
-        return input_layer->load(f);
-    } else if (type == LayerType::Fullyconnected) {
-        return fullyconnected_layer->load(f);
-    } else if (type == LayerType::Relu) {
-        return relu_layer->load(f);
-    } else if (type == LayerType::Softmax) {
-        return softmax_layer->load(f);
-    } else if (type == LayerType::Convolution) {
-        return convolution_layer->load(f);
-    } else if (type == LayerType::Pooling) {
-        return pooling_layer->load(f);
-    } else if (type == LayerType::EuclideanLoss) {
-        return euclideanloss_layer->load(f);
-    } else if (type == LayerType::PRelu) {
-        return prelu_layer->load(f);
-    } else if (type == LayerType::ShortCut) {
-        return shortcut_layer->load(f);
-    } else if (type == LayerType::LRelu) {
-        return lrelu_layer->load(f);
-    } else if (type == LayerType::Sigmoid) {
-        return sigmoid_layer->load(f);
-    } else if (type == LayerType::BatchNormalization) {
-        return batchnorm_layer->load(f);
-    } else if (type == LayerType::UpSample) {
-        return upsample_layer->load(f);
-    } else if (type == LayerType::Concat) {
-        return concat_layer->load(f);
-    } else if (type == LayerType::Yolov3) {
-        return yolov3_layer->load(f);
-    } else if (type == LayerType::Yolov4) {
-        return yolov4_layer->load(f);
-    } else if (type == LayerType::Mish) {
-        return mish_layer->load(f);
-    } else if (type == LayerType::Swish) {
-        return swish_layer->load(f);
-    } else if (type == LayerType::Dropout) {
-        return dropout_layer->load(f);
-    } else if (type == LayerType::AvgPooling) {
-        return avgpooling_layer->load(f);
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->load(f);
+        case LayerType::Pooling:
+            return pooling_layer->load(f);
+        case LayerType::PRelu:
+            return prelu_layer->load(f);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->load(f);
+        case LayerType::Relu:
+            return relu_layer->load(f);
+        case LayerType::ShortCut:
+            return shortcut_layer->load(f);
+        case LayerType::Softmax:
+            return softmax_layer->load(f);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->load(f);
+        case LayerType::Input:
+            return input_layer->load(f);
+        case LayerType::LRelu:
+            return lrelu_layer->load(f);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->load(f);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->load(f);
+        case LayerType::UpSample:
+            return upsample_layer->load(f);
+        case LayerType::Concat:
+            return concat_layer->load(f);
+        case LayerType::Yolov3:
+            return yolov3_layer->load(f);
+        case LayerType::Yolov4:
+            return yolov4_layer->load(f);
+        case LayerType::Mish:
+            return mish_layer->load(f);
+        case LayerType::Swish:
+            return swish_layer->load(f);
+        case LayerType::Dropout:
+            return dropout_layer->load(f);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->load(f);
+        default:
+            break;
     }
     return false;
 }
 
 bool Model_Layer::load_raw(FILE *f) {
-    if (type == LayerType::Input) {
-        return input_layer->load_raw(f);
-    } else if (type == LayerType::Fullyconnected) {
-        return fullyconnected_layer->load_raw(f);
-    } else if (type == LayerType::Relu) {
-        return relu_layer->load_raw(f);
-    } else if (type == LayerType::Softmax) {
-        return softmax_layer->load_raw(f);
-    } else if (type == LayerType::Convolution) {
-        return convolution_layer->load_raw(f);
-    } else if (type == LayerType::Pooling) {
-        return pooling_layer->load_raw(f);
-    } else if (type == LayerType::EuclideanLoss) {
-        return euclideanloss_layer->load_raw(f);
-    } else if (type == LayerType::PRelu) {
-        return prelu_layer->load_raw(f);
-    } else if (type == LayerType::ShortCut) {
-        return shortcut_layer->load_raw(f);
-    } else if (type == LayerType::LRelu) {
-        return lrelu_layer->load_raw(f);
-    } else if (type == LayerType::Sigmoid) {
-        return sigmoid_layer->load_raw(f);
-    } else if (type == LayerType::BatchNormalization) {
-        return batchnorm_layer->load_raw(f);
-    } else if (type == LayerType::UpSample) {
-        return upsample_layer->load_raw(f);
-    } else if (type == LayerType::Concat) {
-        return concat_layer->load_raw(f);
-    } else if (type == LayerType::Yolov3) {
-        return yolov3_layer->load_raw(f);
-    } else if (type == LayerType::Yolov4) {
-        return yolov4_layer->load_raw(f);
-    } else if (type == LayerType::Mish) {
-        return mish_layer->load_raw(f);
-    } else if (type == LayerType::Swish) {
-        return swish_layer->load_raw(f);
-    } else if (type == LayerType::Dropout) {
-        return dropout_layer->load_raw(f);
-    } else if (type == LayerType::AvgPooling) {
-        return avgpooling_layer->load_raw(f);
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->load_raw(f);
+        case LayerType::Pooling:
+            return pooling_layer->load_raw(f);
+        case LayerType::PRelu:
+            return prelu_layer->load_raw(f);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->load_raw(f);
+        case LayerType::Relu:
+            return relu_layer->load_raw(f);
+        case LayerType::ShortCut:
+            return shortcut_layer->load_raw(f);
+        case LayerType::Softmax:
+            return softmax_layer->load_raw(f);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->load_raw(f);
+        case LayerType::Input:
+            return input_layer->load_raw(f);
+        case LayerType::LRelu:
+            return lrelu_layer->load_raw(f);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->load_raw(f);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->load_raw(f);
+        case LayerType::UpSample:
+            return upsample_layer->load_raw(f);
+        case LayerType::Concat:
+            return concat_layer->load_raw(f);
+        case LayerType::Yolov3:
+            return yolov3_layer->load_raw(f);
+        case LayerType::Yolov4:
+            return yolov4_layer->load_raw(f);
+        case LayerType::Mish:
+            return mish_layer->load_raw(f);
+        case LayerType::Swish:
+            return swish_layer->load_raw(f);
+        case LayerType::Dropout:
+            return dropout_layer->load_raw(f);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->load_raw(f);
+        default:
+            break;
     }
-    return 0;
+    return false;
 }
 
 bool Model_Layer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table) {
-    if (type == LayerType::Input) {
-        return input_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Fullyconnected) {
-        return fullyconnected_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Relu) {
-        return relu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Softmax) {
-        return softmax_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Convolution) {
-        return convolution_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Pooling) {
-        return pooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::EuclideanLoss) {
-        return euclideanloss_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::PRelu) {
-        return prelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::ShortCut) {
-        return shortcut_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::LRelu) {
-        return lrelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Sigmoid) {
-        return sigmoid_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::BatchNormalization) {
-        return batchnorm_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::UpSample) {
-        return upsample_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Concat) {
-        return concat_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Yolov3) {
-        return yolov3_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Yolov4) {
-        return yolov4_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Mish) {
-        return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Swish) {
-        return swish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::Dropout) {
-        return dropout_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-    } else if (type == LayerType::AvgPooling) {
-        return avgpooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+    switch (type) {
+        case LayerType::Convolution:
+            return convolution_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Pooling:
+            return pooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::PRelu:
+            return prelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Fullyconnected:
+            return fullyconnected_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Relu:
+            return relu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::ShortCut:
+            return shortcut_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Softmax:
+            return softmax_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::EuclideanLoss:
+            return euclideanloss_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Input:
+            return input_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::LRelu:
+            return lrelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Sigmoid:
+            return sigmoid_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::BatchNormalization:
+            return batchnorm_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::UpSample:
+            return upsample_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Concat:
+            return concat_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Yolov3:
+            return yolov3_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Yolov4:
+            return yolov4_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Mish:
+            return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Swish:
+            return swish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::Dropout:
+            return dropout_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        case LayerType::AvgPooling:
+            return avgpooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
+        default:
+            break;
     }
-    return 0;
+    return false;
 }
 
 void Model_Layer::ClearGrad() {
@@ -1026,34 +1047,6 @@ BaseLayer::BaseLayer() {
     output_tensor = nullptr;
     kernel = nullptr;
     biases = nullptr;
-}
-
-BaseLayer::BaseLayer(BaseLayer *L) {
-    if (this != L) {
-        type = L->type;
-        name = L->name;
-        input_name = L->input_name;
-        info = L->info;
-        opt = L->opt;
-        input_tensor = L->input_tensor;
-        if (L->output_tensor)
-            output_tensor = new Tensor(L->output_tensor);
-        else
-            output_tensor = nullptr;
-        if (L->kernel) {
-            kernel = new Tensor [info.kernel_num];
-            for (int i = 0; i < info.kernel_num; ++i) {
-                kernel[i] = L->kernel[i];
-            }
-        } else {
-            kernel = nullptr;
-        }
-        if (L->biases) {
-            biases = new Tensor(L->biases);
-        } else {
-            biases = nullptr;
-        }
-    }
 }
 
 BaseLayer::BaseLayer(const BaseLayer &L) {
@@ -1412,8 +1405,10 @@ bool BaseLayer::load(FILE *f) {
         kernel[4].load(f);
         biases->load(f);
         // Test
-        kernel[1] = kernel[3];
-        kernel[2] = kernel[4];
+        kernel[3].copyTo(kernel[1]);
+        kernel[4].copyTo(kernel[2]);
+//        kernel[1] = kernel[3];
+//        kernel[2] = kernel[4];
     } else if (type == LayerType::Yolov3) {
         kernel[0].load(f);
         biases->load(f);
@@ -1455,8 +1450,10 @@ bool BaseLayer::load_raw(FILE *f) {
         kernel[3].load_raw(f);
         kernel[4].load_raw(f);
         // Test
-        kernel[1] = kernel[3];
-        kernel[2] = kernel[4];
+        kernel[3].copyTo(kernel[1]);
+        kernel[4].copyTo(kernel[2]);
+//        kernel[1] = kernel[3];
+//        kernel[2] = kernel[4];
     }
     return true;
 }
@@ -1535,6 +1532,7 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
             fprintf(f, "    mask: \"%s\"\n", opt["mask"].c_str());
             fprintf(f, "  }\n");
         } else if (type == LayerType::Mish) {
+        } else if (type == LayerType::Swish) {
         } else if (type == LayerType::Dropout) {
             fprintf(f, "  dropout_param {\n");
             fprintf(f, "    ratioi: %g\n", info.probability);
@@ -1558,6 +1556,7 @@ InputLayer::InputLayer(LayerOption opt_) {
     info.batch_size = atoi(opt["batch_size"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void InputLayer::Forward(Tensor *input_tensor_) {
@@ -1592,6 +1591,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     
     kernel = new Tensor [1];
     kernel[0] = Tensor(1, 1, info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension, 0);
+    kernel[0].extend();
     float *kernel_weight = kernel->weight;
     float scale = sqrt(2.0 / (info.kernel_width * info.kernel_height * info.input_dimension));
     for (int i = 0; i < info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension; ++i) {
@@ -1600,6 +1600,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     biases = new Tensor(1, 1, info.output_dimension, bias);
+    biases->extend();
     
     int kernel_n = info.kernel_width * info.kernel_height * info.input_dimension;
     int out_size = info.output_width * info.output_height;
@@ -1607,6 +1608,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.workspace_size = workspace_size;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_) {
@@ -1753,6 +1755,7 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 void PoolingLayer::Forward() {
@@ -1784,8 +1787,8 @@ void PoolingLayer::Forward() {
                     int max_i = -1;
                     for(int n = 0; n < kernel_size; ++n){
                         for(int m = 0; m < kernel_size; ++m){
-                            int cur_h = h_offset + i*stride + n;
-                            int cur_w = w_offset + j*stride + m;
+                            int cur_h = h_offset + i * stride + n;
+                            int cur_w = w_offset + j * stride + m;
                             int index = cur_w + input_width * (cur_h + input_height * (k + b * input_dimension));
                             bool valid = (cur_h >= 0 && cur_h < input_height && cur_w >= 0 && cur_w < input_width);
                             float val = (valid != false) ? input[index] : -10000000;
@@ -1832,6 +1835,7 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     
     kernel = new Tensor [1];
     kernel[0] = Tensor(info.input_number, 1, info.output_dimension, 0);
+    kernel[0].extend();
     float *kernel_weight = kernel->weight;
     float scale = sqrt(1.0 / (info.input_number));
     for (int i = 0; i < info.input_number * info.output_dimension; ++i) {
@@ -1841,7 +1845,9 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     
     float bias = (opt.find("bias") == opt.end()) ? 0 : atof(opt["bias"].c_str());
     biases = new Tensor(1, 1, info.output_dimension, bias);
+    biases->extend();
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void FullyConnectedLayer::Forward() {
@@ -1896,35 +1902,34 @@ ReluLayer::ReluLayer(LayerOption opt_) {
     info.batch_size = atoi(opt["batch_size"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 void ReluLayer::Forward() {
-    float *val = input_tensor->weight;
-    float *out = output_tensor->weight;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     float value;
     
     for (int i = info.input_number * info.batch_size; i--; ) {
-        value = *(val++);
-        *(out++) = (value < 0) ? 0 : value;
+        value = *(input++);
+        *(output++) = (value < 0) ? 0 : value;
     }
 }
 
 void ReluLayer::Backward() {
     int one_batch_size = info.input_number;
-    float *act_weight = output_tensor->weight;
-    float *act_grad = output_tensor->delta_weight;
-    float *pos_grad = input_tensor->delta_weight;
+    float *output = output_tensor->weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor->delta_weight;
     
     for (int b = info.batch_size; b--; ) {
         for (int i = info.input_number; i--; ) {
-            if (act_weight[i] <= 0)
-                pos_grad[i] += 0;
-            else
-                pos_grad[i] += act_grad[i];
+            if (output[i] > 0)
+                input_delta[i] += output_delta[i];
         }
-        act_weight += one_batch_size;
-        act_grad += one_batch_size;
-        pos_grad += one_batch_size;
+        output += one_batch_size;
+        output_delta += one_batch_size;
+        input_delta += one_batch_size;
     }
 }
 
@@ -1942,50 +1947,52 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     float alpha = (opt.find("alpha") == opt.end()) ? 0.25 : atof(opt["alpha"].c_str());
     kernel = new Tensor [1];
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension, alpha);
+    kernel[0].extend();
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 void PReluLayer::Forward() {
-    float *val = input_tensor->weight;
-    float *out = output_tensor->weight;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     
     for (int b = info.batch_size; b--; ) {
         float *alpha = kernel->weight;
         float value;
         for (int i = info.input_number; i--; ++alpha) {
-            value = *(val++);
-            *(out++) = (value < 0) ? value * *alpha : value;
+            value = *(input++);
+            *(output++) = (value < 0) ? value * *alpha : value;
         }
     }
 }
 
 void PReluLayer::Backward() {
     int one_batch_size = info.input_number;
-    float *act_weight = output_tensor->weight;
-    float *act_grad = output_tensor->delta_weight;
-    float *pos_grad = input_tensor->delta_weight;
+    float *output = output_tensor->weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor->delta_weight;
     
     for (int b = info.batch_size; b--; ) {
         float *alpha = kernel->weight;
-        float *alpha_grad = kernel->delta_weight;
+        float *alpha_delta = kernel->delta_weight;
         float chain_grad;
         
         for (int i = 0; i < info.input_number; ++i) {
-            chain_grad = act_grad[i];
-            if (act_weight[i] < 0) {
-                pos_grad[i] += chain_grad * alpha[i];
-                alpha_grad[i] += act_weight[i] * chain_grad;
+            chain_grad = output_delta[i];
+            if (output[i] < 0) {
+                input_delta[i] += chain_grad * alpha[i];
+                alpha_delta[i] += output[i] * chain_grad;
             }
             else {
-                pos_grad[i] += chain_grad;
-                alpha_grad[i] += 0;
+                input_delta[i] += chain_grad;
+                alpha_delta[i] += 0;
             }
         }
-        act_weight += one_batch_size;
-        act_grad += one_batch_size;
-        pos_grad += one_batch_size;
+        output += one_batch_size;
+        output_delta += one_batch_size;
+        input_delta += one_batch_size;
     }
 }
 
@@ -2006,33 +2013,34 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void SoftmaxLayer::Forward() {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
-    float *act = input_tensor->weight;
-    float *expo_sum_ptr = kernel->weight;
-    float *cal_weight = output_tensor->weight;
+    float *input = input_tensor->weight;
+    float *expo_sum = kernel->weight;
+    float *output = output_tensor->weight;
     
     for (int b = info.batch_size; b--; ) {
-        float max = act[0];
+        float max = input[0];
         for (int i = 1; i < info.output_dimension; ++i) {
-            if (act[i] > max)
-                max = act[i];
+            if (input[i] > max)
+                max = input[i];
         }
         float sum = 0;
         for (int i = 0; i < info.output_dimension; ++i) {
-            sum += (expo_sum_ptr[i] = exp(act[i] - max));
+            sum += (expo_sum[i] = exp(input[i] - max));
         }
         for (int i = 0; i < info.output_dimension; ++i) {
-            expo_sum_ptr[i] /= sum;
-            cal_weight[i] = expo_sum_ptr[i];
+            expo_sum[i] /= sum;
+            output[i] = expo_sum[i];
         }
-        act += one_batch_input_size;
-        expo_sum_ptr += one_batch_output_size;
-        cal_weight += one_batch_output_size;
+        input += one_batch_input_size;
+        expo_sum += one_batch_output_size;
+        output += one_batch_output_size;
     }
 }
 
@@ -2040,8 +2048,8 @@ float SoftmaxLayer::Backward(Tensor *target) {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
-    float *cal_delta_weight = input_tensor->delta_weight;
-    float *expo_sum_ptr = kernel->weight;
+    float *input_delta = input_tensor->delta_weight;
+    float *expo_sum = kernel->weight;
     float *target_ptr = target->weight;
     
     int output_dimension = info.output_dimension;
@@ -2049,17 +2057,17 @@ float SoftmaxLayer::Backward(Tensor *target) {
     for (int b = 0; b < info.batch_size; ++b) {
         for (int i = 0; i < output_dimension; ++i) {
             float indicator = (i == target_ptr[b]) ? 1.0 : 0.0;
-            float mul = -(indicator - expo_sum_ptr[i]);
-            cal_delta_weight[i] = mul;
+            float mul = -(indicator - expo_sum[i]);
+            input_delta[i] = mul;
         }
-        cal_delta_weight += one_batch_input_size;
-        expo_sum_ptr += one_batch_output_size;
+        input_delta += one_batch_input_size;
+        expo_sum += one_batch_output_size;
     }
     float loss = 0;
-    expo_sum_ptr = kernel->weight;
+    expo_sum = kernel->weight;
     for (int b = 0; b < info.batch_size; ++b) {
-        loss += -log(expo_sum_ptr[(int)target_ptr[b]]);
-        expo_sum_ptr += one_batch_output_size;
+        loss += -log(expo_sum[(int)target_ptr[b]]);
+        expo_sum += one_batch_output_size;
     }
     return loss;
 }
@@ -2077,6 +2085,7 @@ EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
     info.batch_size = atoi(opt["batch_size"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void EuclideanLossLayer::Forward() {
@@ -2084,23 +2093,21 @@ void EuclideanLossLayer::Forward() {
 }
 
 float EuclideanLossLayer::Backward(Tensor *target) {
-    Tensor *cal_tensor = input_tensor;
-    
     int one_batch_size = info.output_dimension;
     
-    float *cal_weight = cal_tensor->weight;
-    float *cal_delta_weight = cal_tensor->delta_weight;
+    float *input = input_tensor->weight;
+    float *input_delta = input_tensor->delta_weight;
     float *target_ptr = target->weight;
     float loss = 0;
     
     for (int b = 0; b < info.batch_size; ++b) {
         for (int i = 0; i < info.output_dimension; ++i) {
-            float delta = cal_weight[i] - target_ptr[i + b * one_batch_size];
-            cal_delta_weight[i] += delta;
+            float delta = input[i] - target_ptr[i + b * one_batch_size];
+            input_delta[i] += delta;
             loss += 0.5 * delta * delta;
         }
-        cal_weight += one_batch_size;
-        cal_delta_weight += one_batch_size;
+        input += one_batch_size;
+        input_delta += one_batch_size;
     }
     return loss;
 }
@@ -2121,6 +2128,7 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     info.shortcut_dimension = atoi(opt["shortcut_dimension"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
@@ -2149,7 +2157,6 @@ void ShortCutLayer::Forward() {
 }
 
 void ShortCutLayer::Backward() {
-    
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
@@ -2208,38 +2215,39 @@ LReluLayer::LReluLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 void LReluLayer::Forward() {
-    float *val = input_tensor->weight;
-    float *out = output_tensor->weight;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     float value, scale = kernel[0][0];
-    for (int i = info.input_number * info.batch_size; i--; ++val) {
-        value = *val;
-        *(out++) = (value > 0) ? value : value * scale;
+    for (int i = info.input_number * info.batch_size; i--; ++input) {
+        value = *input;
+        *(output++) = (value > 0) ? value : value * scale;
     }
 }
 
 void LReluLayer::Backward() {
     int one_batch_size = info.input_number;
-    float *act_weight = output_tensor->weight;
-    float *act_grad = output_tensor->delta_weight;
-    float *pos_grad = input_tensor->delta_weight;
+    float *output = output_tensor->weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor->delta_weight;
     float chain_grad, scale = kernel[0][0];
     
     for (int b = info.batch_size; b--; ) {
         for (int i = 0; i < info.input_number; ++i) {
-            chain_grad = act_grad[i];
-            if (act_weight[i] < 0) {
-                pos_grad[i] += chain_grad * scale;
+            chain_grad = output_delta[i];
+            if (output[i] < 0) {
+                input_delta[i] += chain_grad * scale;
             }
             else {
-                pos_grad[i] += chain_grad;
+                input_delta[i] += chain_grad;
             }
         }
-        act_weight += one_batch_size;
-        act_grad += one_batch_size;
-        pos_grad += one_batch_size;
+        output += one_batch_size;
+        output_delta += one_batch_size;
+        input_delta += one_batch_size;
     }
 }
 
@@ -2256,25 +2264,26 @@ SigmoidLayer::SigmoidLayer(LayerOption opt_) {
     info.batch_size = atoi(opt["batch_size"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor->extend();
 }
 
 void SigmoidLayer::Forward() {
-    float *val = input_tensor->weight;
-    float *out = output_tensor->weight;
+    float *input = input_tensor->weight;
+    float *output = output_tensor->weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
-        *(out++) = 1.0 / (1.0 + exp(-(*(val++))));
+        *(output++) = 1.0 / (1.0 + exp(-(*(input++))));
     }
 }
 
 void SigmoidLayer::Backward() {
-    float *act_weight = output_tensor->weight;
-    float *act_grad = output_tensor->delta_weight;
-    float *pos_grad = input_tensor->delta_weight;
+    float *output = output_tensor->weight;
+    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor->delta_weight;
     float value;
     
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
-        value = *(act_weight++);
-        *(pos_grad++) = value * (1.0 - value) * *(act_grad++);
+        value = *(output++);
+        *(input_delta++) = value * (1.0 - value) * *(output_delta++);
     }
 }
 
@@ -2292,8 +2301,11 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     
     kernel = new Tensor [7];
     kernel[0] = Tensor(1, 1, info.output_dimension, 1); // scale
+    kernel[0].extend();
     kernel[1] = Tensor(1, 1, info.output_dimension, 0); // mean
+    kernel[1].extend();
     kernel[2] = Tensor(1, 1, info.output_dimension, 0); // variance
+    kernel[2].extend();
     kernel[3] = Tensor(1, 1, info.output_dimension, 0); // running mean
     kernel[4] = Tensor(1, 1, info.output_dimension, 0); // running variance
     kernel[5] = Tensor(1, 1, info.input_number * info.batch_size, 0); // x
@@ -2301,12 +2313,14 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     info.kernel_num = 7;
     
     biases = new Tensor(1, 1, info.output_dimension, 0);
+    biases->extend();
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void BatchNormalizationLayer::Forward(bool train) {
-    float *src = input_tensor->weight;
+    float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float *bias = biases->weight;
     float *scale = kernel[0].weight;
@@ -2322,7 +2336,7 @@ void BatchNormalizationLayer::Forward(bool train) {
     int total_size = info.input_number * batch_size;
     int channel_size = info.output_width * info.output_height;
     
-    copy_cpu(total_size, src, output);
+    copy_cpu(total_size, input, output);
     copy_cpu(total_size, output, x);
     
     if (train) {
@@ -2498,6 +2512,7 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
     info.batch_size = atoi(opt["batch_size"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void UpSampleLayer::Forward() {
@@ -2586,6 +2601,7 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     concat_tensor.resize(info.concat_num + 1);
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
@@ -2655,18 +2671,19 @@ MishLayer::MishLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void MishLayer::Forward() {
     const float MISH_THRESHOLD = 20;
-    float *src = input_tensor->weight;
+    float *input = input_tensor->weight;
     float *activation_input = kernel[0].weight;
-    float *dst = output_tensor->weight;
+    float *output = output_tensor->weight;
     
     for (int i = info.input_number * info.batch_size; i--; ) {
-        float x_val = *(src++);
+        float x_val = *(input++);
         *(activation_input++) = x_val;
-        *(dst++) = x_val * tanh_activate(softplus_activate(x_val, MISH_THRESHOLD));
+        *(output++) = x_val * tanh_activate(softplus_activate(x_val, MISH_THRESHOLD));
     }
 }
 
@@ -2713,20 +2730,21 @@ SwishLayer::SwishLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void SwishLayer::Forward() {
-    float *src = input_tensor->weight;
+    float *input = input_tensor->weight;
     float *activation_input = kernel[0].weight;
-    float *dst = output_tensor->weight;
+    float *output = output_tensor->weight;
     
     int n = info.input_number * info.batch_size;
 //    #pragma omp parallel for num_threads(4)
     for (int i = 0; i < n; ++i) {
-        float x_val = src[i];
+        float x_val = input[i];
         float sigmoid = logistic_activate(x_val);
         activation_input[i] = sigmoid;
-        dst[i] = x_val * sigmoid;
+        output[i] = x_val * sigmoid;
     }
 }
 
@@ -2770,6 +2788,7 @@ DropoutLayer::DropoutLayer(LayerOption opt_) {
     info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void DropoutLayer::Forward(bool train) {
@@ -2829,6 +2848,7 @@ AvgPoolingLayer::AvgPoolingLayer(LayerOption opt_) {
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
 }
 
 void AvgPoolingLayer::Forward() {
@@ -3514,9 +3534,9 @@ float YOLOv4Layer::Backward(Tensor *target) {
                 int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
                 avg_obj += output[obj_index];
                 if (objectness_smooth) {
-                    float delta_obj = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                    float delta_obj = class_multiplier * obj_normalizer * (1 - output[obj_index]);
                     if (delta[obj_index] == 0)
-                        delta[obj_index] = delta_obj;
+                        delta[obj_index] = -delta_obj;
                 }
                 else
                     delta[obj_index] = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
@@ -3564,9 +3584,9 @@ float YOLOv4Layer::Backward(Tensor *target) {
                         int obj_index = entry_index(b, mask_n * channel_size + j * width + i, 4);
                         avg_obj += output[obj_index];
                         if (objectness_smooth) {
-                            float delta_obj = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
+                            float delta_obj = class_multiplier * obj_normalizer * (1 - output[obj_index]);
                             if (delta[obj_index] == 0)
-                                delta[obj_index] = delta_obj;
+                                delta[obj_index] = -delta_obj;
                         }
                         else
                             delta[obj_index] = -class_multiplier * obj_normalizer * (1 - output[obj_index]);
@@ -3603,7 +3623,7 @@ float YOLOv4Layer::Backward(Tensor *target) {
     
     if (count == 0) count = 1;
     if (class_count == 0) class_count = 1;
-
+    
     loss = pow(mag_array(delta, info.output_number * batch_size), 2);
 
     loss /= batch_size;
@@ -3620,7 +3640,8 @@ void YOLOv4Layer::averages_yolo_deltas(int class_index, int box_index, int strid
     int classes_in_one_box = 0;
     int c;
     for (c = 0; c < classes; ++c) {
-        if (delta[class_index + stride * c] < 0) classes_in_one_box++;
+        if (delta[class_index + stride * c] < 0)
+            classes_in_one_box++;
     }
 
     if (classes_in_one_box > 0) {
@@ -3632,19 +3653,18 @@ void YOLOv4Layer::averages_yolo_deltas(int class_index, int box_index, int strid
 }
 
 void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int class_id, int classes, int stride, float *avg_cat, int focal_loss, float label_smooth_eps, float *classes_multipliers, float cls_normalizer) {
-    int n;
     if (delta[index + stride * class_id]) {
         float y_true = 1;
         if (label_smooth_eps)
             y_true = y_true *  (1 - label_smooth_eps) + 0.5 * label_smooth_eps;
         float result_delta = y_true - output[index + stride * class_id];
         if(!isnan(result_delta) && !isinf(result_delta))
-            delta[index + stride*class_id] = -result_delta;
+            delta[index + stride * class_id] = -result_delta;
         //delta[index + stride*class_id] = 1 - output[index + stride*class_id];
 
         if (classes_multipliers)
-            delta[index + stride*class_id] *= classes_multipliers[class_id];
-        if(avg_cat)
+            delta[index + stride * class_id] *= classes_multipliers[class_id];
+        if (avg_cat)
             *avg_cat += output[index + stride * class_id];
         return;
     }
@@ -3656,9 +3676,9 @@ void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int c
 
         int ti = index + stride * class_id;
         float pt = output[ti] + 0.000000000000001F;
-        float grad = -(1 - pt) * (2 * pt*logf(pt) + pt - 1);
+        float grad = -(1 - pt) * (2 * pt * logf(pt) + pt - 1);
 
-        for (n = 0; n < classes; ++n) {
+        for (int n = 0; n < classes; ++n) {
             delta[index + stride * n] = -((((n == class_id) ? 1 : 0) - output[index + stride*n]));
 
             delta[index + stride * n] *= alpha * grad;
@@ -3668,7 +3688,7 @@ void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int c
         }
     } else {
         // default
-        for (n = 0; n < classes; ++n) {
+        for (int n = 0; n < classes; ++n) {
             float y_true = ((n == class_id) ? 1 : 0);
             if (label_smooth_eps)
                 y_true = y_true *  (1 - label_smooth_eps) + 0.5 * label_smooth_eps;
@@ -3677,7 +3697,7 @@ void YOLOv4Layer::delta_yolo_class(float *output, float *delta, int index, int c
                 delta[index + stride * n] = -result_delta;
 
             if (classes_multipliers && n == class_id)
-                delta[index + stride*class_id] *= classes_multipliers[class_id] * cls_normalizer;
+                delta[index + stride * class_id] *= classes_multipliers[class_id] * cls_normalizer;
             if (n == class_id && avg_cat)
                 *avg_cat += output[index + stride*n];
         }
@@ -3805,7 +3825,7 @@ int YOLOv4Layer::compare_yolo_class(float *output, int classes, int class_index,
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.3; // TODO: threshold input
+    float threshold = 0.05; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;

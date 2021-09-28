@@ -28,10 +28,14 @@ Tensor::Tensor(const Tensor &T) {
         dimension = T.dimension;
         size = T.size;
         weight = new float [size];
-        delta_weight = new float [size];
-        int copy_size = sizeof(float) * size;
-        memcpy(weight, T.weight, copy_size);
-        memcpy(delta_weight, T.delta_weight, copy_size);
+        memcpy(weight, T.weight, sizeof(float) * size);
+        
+        if (T.delta_weight) {
+            delta_weight = new float [size];
+            memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
+        } else {
+            delta_weight = nullptr;
+        }
     }
 }
 
@@ -53,14 +57,17 @@ Tensor& Tensor::operator=(const Tensor &T) {
         dimension = T.dimension;
         if (size != T.size) {
             delete [] weight;
-            weight = new float [T.size];
             delete [] delta_weight;
-            delta_weight = new float [T.size];
         }
         size = T.size;
-        int copy_size = sizeof(float) * size;
-        memcpy(weight, T.weight, copy_size);
-        memcpy(delta_weight, T.delta_weight, copy_size);
+        weight = new float [size];
+        memcpy(weight, T.weight, sizeof(float) * size);
+        if (T.delta_weight) {
+            delta_weight = new float [size];
+            memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
+        } else {
+            delta_weight = nullptr;
+        }
     }
     return *this;
 }
@@ -128,7 +135,8 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     
     // initialize
     weight = new float [size];
-    delta_weight = new float [size]();
+    delta_weight = nullptr;
+//    delta_weight = new float [size]();
     
     // assign random value
     float scale = sqrt(1.0 / size);
@@ -145,8 +153,17 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     
     // initialize
     weight = new float [size];
-    delta_weight = new float [size]();
+    delta_weight = nullptr;
+//    delta_weight = new float [size]();
     fill(weight, weight + size, parameter);
+}
+
+void Tensor::extend() {
+    delta_weight = new float [size]();
+}
+
+void Tensor::copyTo(Tensor &T) {
+    memcpy(T.weight, weight, sizeof(float) * min(size, T.size));
 }
 
 Tensor::Tensor(Tensor *T) {
@@ -158,7 +175,11 @@ Tensor::Tensor(Tensor *T) {
         
         // initialize
         weight = new float [size]();
-        delta_weight = new float [size]();
+        if (T->delta_weight)
+            delta_weight = new float [size]();
+        else
+            delta_weight = nullptr;
+        
         
         memcpy(weight, T->weight, sizeof(float) * size);
     }
@@ -172,7 +193,8 @@ Tensor::Tensor(vfloat &V) {
     
     // initialize
     weight = new float [size];
-    delta_weight = new float [size]();
+//    delta_weight = new float [size]();
+    delta_weight = nullptr;
     for (int i = 0; i < size; ++i) {
         weight[i] = V[i];
     }
@@ -187,9 +209,10 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     
     // initialize
     weight = new float [n * 3];
-    delta_weight = new float [n * 3];
+    delta_weight = nullptr;
+//    delta_weight = new float [n * 3];
     fill(weight, weight + n, 0);
-    fill(delta_weight, delta_weight + n, 0);
+//    fill(delta_weight, delta_weight + n, 0);
     
     for (int i = 0; i < n; ++i) {
         weight[i] = V1[i];
@@ -206,7 +229,8 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
     
     // initialize
     weight = new float [n];
-    delta_weight = new float [n]();
+    delta_weight = nullptr;
+//    delta_weight = new float [n]();
     
     copy_cpu(n, pixelArray, weight);
 }
@@ -241,11 +265,14 @@ void Tensor::showWeight() {
 }
 
 void Tensor::showDeltaWeight() {
-    int n = size;
-    for (int i = 0; i < n; ++i) {
-        printf("%.2f ", delta_weight[i]);
+    if (delta_weight) {
+        for (int i = 0; i < size; ++i) {
+            printf("%.2f ", delta_weight[i]);
+        }
+        printf("\n");
+    } else {
+        fprintf(stderr, "[Tensor] Delta weight doesn't exist!\n");
     }
-    printf("\n");
 }
 
 void Tensor::clearDeltaWeight() {

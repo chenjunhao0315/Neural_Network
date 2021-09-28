@@ -44,6 +44,8 @@ public:
     Tensor(float* RGB, int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_, float parameter);
+    void extend();
+    void copyTo(Tensor &T);
     Tensor concate(const Tensor &T);
     void set(int width_, int height_, int dimension_, float value);
     float get(int width_, int height_, int dimension_);

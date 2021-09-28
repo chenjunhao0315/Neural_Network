@@ -17,7 +17,8 @@
 #include <unordered_map>
 #include <cassert>
 #include <sstream>
-#include <pthread.h>
+//#include <pthread.h>
+#include <cmath>
 
 #include "Tensor.hpp"
 

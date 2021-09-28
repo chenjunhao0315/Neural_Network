@@ -91,7 +91,7 @@ void cal_variance(float *src, float *mean, int batch_size, int dimension, int si
             float &variance_value = variance[d];
             mean_value = mean[d];
             for (i = 0; i < size; ++i) {
-                variance_value += pow((*(src++) - mean[d]), 2);
+                variance_value += pow((*(src++) - mean_value), 2);
             }
         }
     }
@@ -142,12 +142,11 @@ void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, fl
 }
 
 void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial) {
-    float check;
     for(int b = 0; b < batch; ++b){
         for(int f = 0; f < filters; ++f){
             for(int i = 0; i < spatial; ++i){
                 int index = b * filters * spatial + f * spatial + i;
-                check = x[index] = (x[index] - mean[f]) / (sqrt(variance[f] + 0.000001));
+                x[index] = (x[index] - mean[f]) / (sqrt(variance[f] + 0.000001));
             }
         }
     }

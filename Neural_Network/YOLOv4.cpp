@@ -603,7 +603,8 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
     network.addOutput("yolo_small");
     network.addOutput("yolo_big");
     network.compile(batch_size);
-    network.load_darknet("yolov4-tiny.weights");
+//    network.load_darknet("yolov4-tiny.weights");
+    network.load_darknet("yolov4-tiny.conv.29");
     network.shape();
 //    network.save("yolov4-tiny.bin");
 //    network.save_darknet("yolov4-tiny.conv.29", 64);

@@ -710,9 +710,6 @@ void Neural_Network::constructGraph() {
         LayerOption &opt = opt_layer[i];
         vtensorptr extra_tensor;
         if (opt["type"] == "ShortCut") {
-            if (terminal.find(opt["shortcut"]) == terminal.end()) {
-                fprintf(stderr, "[Graph Constructor] ShortCut layer connect error, %s doesn't exist!\n", opt["shortcut"].c_str());
-            }
             extra_tensor.push_back(terminal[opt["shortcut"]]);
         } else if (opt["type"] == "Concat") {
             extra_tensor.push_back(terminal[opt["input_name"]]);
@@ -724,16 +721,8 @@ void Neural_Network::constructGraph() {
                     string concat_name;
                     getline(concat_list, concat_name, ',');
                     concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
-                    if (terminal.find(concat_name) == terminal.end()) {
-                        fprintf(stderr, "[Graph Constructor] Concat layer connect error, %s doesn't exist!\n", concat_name.c_str());
-                    }
                     extra_tensor.push_back(terminal[concat_name]);
                 }
-            }
-        }
-        if (terminal.find(opt["input_name"]) == terminal.end()) {
-            if (opt["input_name"] != "default") {
-                fprintf(stderr, "[Graph Constructor] Layer connect error, %s doesn't exist!\n", opt["input_name"].c_str());
             }
         }
         Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);

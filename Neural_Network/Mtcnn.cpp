@@ -629,22 +629,22 @@ Tensor MtcnnLoader::getImg(int index) {
     fread(pixel, 1, image_step, img_ptr);
     float normal_pixel[image_step];
     
-    if (0) {
-        unsigned char pixel_R[net_size * net_size];
-        unsigned char pixel_G[net_size * net_size];
-        unsigned char pixel_B[net_size * net_size];
-        for (int i = 0; i < net_size * net_size; ++i) {
-            pixel_R[i] = pixel[i * 3  +  0];
-            pixel_G[i] = pixel[i * 3  +  1];
-            pixel_B[i] = pixel[i * 3  +  2];
-        }
-        
-        string file_name = to_string(index);
-        FILE *f = fopen(file_name.c_str(), "wb");
-        fprintf(f, "P6\n%d %d\n255\n", net_size, net_size);
-        fwrite(pixel, sizeof(unsigned char), 3 * net_size * net_size, f);
-        fclose(f);
-    }
+//    if (0) {
+//        unsigned char pixel_R[net_size * net_size];
+//        unsigned char pixel_G[net_size * net_size];
+//        unsigned char pixel_B[net_size * net_size];
+//        for (int i = 0; i < net_size * net_size; ++i) {
+//            pixel_R[i] = pixel[i * 3  +  0];
+//            pixel_G[i] = pixel[i * 3  +  1];
+//            pixel_B[i] = pixel[i * 3  +  2];
+//        }
+//        
+//        string file_name = to_string(index);
+//        FILE *f = fopen(file_name.c_str(), "wb");
+//        fprintf(f, "P6\n%d %d\n255\n", net_size, net_size);
+//        fwrite(pixel, sizeof(unsigned char), 3 * net_size * net_size, f);
+//        fclose(f);
+//    }
     index = 0;
     for (int d = 0; d < 3; ++d) {
         for (int h = 0; h < net_size; ++h) {

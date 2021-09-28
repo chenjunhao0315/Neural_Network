@@ -31,9 +31,10 @@ This is a simple project to implement neural network in c++. The structure of ne
 * Yolov4 layer
 
 # Build and run
-```
-g++ -O
-```
+If the project doesn't include YOLOv4 layer, you can build with
+* `$ g++ -Ofast -fopenmp -o nn *.cpp`
+Else, the isnan() function is not working at -Ofast flag
+* `$ g++ -O3 -fopenmp -o nn *.cpp`
 
 # Example
 The XOR problem example

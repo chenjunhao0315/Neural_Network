@@ -1,18 +1,19 @@
 # Neural_Network
 
 # About
-This is a simple project to implement neural network purely in c++. The structure of network is inspired by [ConvNetJS][1] and [Darknet][2].
+This is a simple project to implement neural network in c++. The structure of network is inspired by [ConvNetJS][1] and [Darknet][2].
 
 # Feature
 * C++14
 * Multi-thread support with Openmp
 * Run only on CPU
 
-## Layer
-* Input layer
+## Supported Layers
+* Input layer (data input)
 * Fullyconnected layer
 * Convolution layer
-* Relu layer layer
+* BatchNormalization layer
+* Relu layer
 * PRelu layer
 * LRelu layer
 * Sigmoid layer
@@ -22,9 +23,8 @@ This is a simple project to implement neural network purely in c++. The structur
 * Pooling layer
 * AvgPooling layer
 * UpSample layer
-* ShortCut layer
-* Concat layer
-* BatchNormalization layer
+* ShortCut layer (single layer)
+* Concat layer (multi layers)
 * Softmax layer
 * EuclideanLoss layer
 * Yolov3 layer

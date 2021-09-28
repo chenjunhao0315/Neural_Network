@@ -2,6 +2,8 @@
 
 # About
 This is a simple project to implement neural network purely in c++.
+[ConvNetJS][1]
+[Darknet][2]
 
 # Feature
 * C++14
@@ -69,5 +71,5 @@ int main(int argc, const char * argv[]) {
 }
 ```
 
-[1] https://cs.stanford.edu/people/karpathy/convnetjs/
-[2] https://github.com/pjreddie/darknet
+[1]: https://cs.stanford.edu/people/karpathy/convnetjs/
+[2]: https://github.com/pjreddie/darknet

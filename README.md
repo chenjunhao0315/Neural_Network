@@ -2,15 +2,8 @@
 
 ```
 #include <iostream>
-#include <chrono>
 
 #include "Neural_Network.hpp"
-#include "Data_Process.hpp"
-#include "Image_Process.hpp"
-#include "Mtcnn.hpp"
-#include "YOLOv3.hpp"
-#include "YOLOv4.hpp"
-#include "Test_All_Layer.hpp"
 
 using namespace std;
 
@@ -21,7 +14,7 @@ int main(int argc, const char * argv[]) {
     nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
     nn.compile();
     nn.shape();
-    nn.to_prototxt("test.prototxt");
+    nn.to_prototxt();
 
     Tensor a(1, 1, 2, 0);
     Tensor b(1, 1, 2, 1);

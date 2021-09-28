@@ -30,6 +30,7 @@ This is a simple project to implement neural network purely in c++.
 * Yolov3 layer
 * Yolov4 layer
 
+# Example
 The XOR problem example
 ```c++
 #include <iostream>
@@ -67,3 +68,6 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 ```
+
+[1] https://cs.stanford.edu/people/karpathy/convnetjs/
+[2] https://github.com/pjreddie/darknet

@@ -48,7 +48,7 @@ It will add layer to neural network, checking the structure of input tensor at s
 nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});	// The options are unordered
 ```
 * Input layer options
-> **input_width**
+> **input_width** <br>
 > **input_height**
 > **input_dimension**
 * Fullyconnected layer options

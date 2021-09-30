@@ -49,19 +49,19 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 ```
 * Input layer options
 > **input_width** <br>
-> **input_height**
+> **input_height** <br>
 > **input_dimension**
 * Fullyconnected layer options
-> **number_neurons**
-> batchnorm (none)
+> **number_neurons** <br>
+> batchnorm (none) <br>
 > activation (none)
 * Convolution layer options
-> **number_kernel**
-> **kernel_width**
-> kernel_height ( = kernel_width)
-> stride (1)
-> padding (0)
-> batchnorm (none)
+> **number_kernel** <br>
+> **kernel_width** <br>
+> kernel_height ( = kernel_width) <br>
+> stride (1) <br>
+> padding (0) <br>
+> batchnorm (none) <br>
 > actiivation (none)
 * BatchNormalization layer
 * Relu layer
@@ -75,9 +75,9 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 * Dropout layer
 > probability (0.5)
 * Pooling layer (output = (layer_size + padding - kernel_size) / stride + 1)
-> **kernel_width**
-> kernel_height ( = kernel_width)
-> stride (1)
+> **kernel_width** <br>
+> kernel_height ( = kernel_width) <br>
+> stride (1) <br>
 > padding (0)
 * AvgPooling layer
 * UpSample layer
@@ -85,42 +85,42 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 * ShortCut layer (single layer)
 > **shortcut**
 * Concat layer (multi layers)
-> concat (none)
-> splits (1)
+> concat (none) <br>
+> splits (1) <br>
 > split_id (0)
 * Softmax layer
 * EuclideanLoss layer
 * Yolov3 layer
-> **total_anchor_num**
-> **anchor_num**
-> **classes**
-> **max_boxes**
-> **anchor**
-> mask
-> ignore_iou_threshold (0.5)
+> **total_anchor_num** <br>
+> **anchor_num** <br>
+> **classes** <br>
+> **max_boxes** <br>
+> **anchor** <br>
+> mask <br>
+> ignore_iou_threshold (0.5) <br>
 > truth_iou_threshold (1)
 * Yolov4 layer
-> **total_anchor_num**
-> **anchor_num**
-> **classes**
-> **max_boxes**
-> **anchor**
-> mask
-> ignore_iou_threshold (0.5)
-> truth_iou_threshold (1)
-> scale_x_y (1)
-> iou_normalizer (0.75)
-> obj_normalizer (1)
-> cls_normalizer (1)
-> delta_normalizer (1)
-> beta_nms (0.6)
-> objectness_smooth (0)
-> label_smooth_eps (0)
-> max_delta (FLT_MAX)
-> iou_thresh (FLT_MAX)
-> new_coordinate (false)
-> focal_loss (false)
-> iou_loss (IOU)
+> **total_anchor_num** <br>
+> **anchor_num** <br>
+> **classes** <br>
+> **max_boxes** <br>
+> **anchor** <br>
+> mask <br>
+> ignore_iou_threshold (0.5) <br>
+> truth_iou_threshold (1) <br>
+> scale_x_y (1) <br>
+> iou_normalizer (0.75) <br>
+> obj_normalizer (1) <br>
+> cls_normalizer (1) <br>
+> delta_normalizer (1) <br>
+> beta_nms (0.6) <br>
+> objectness_smooth (0) <br>
+> label_smooth_eps (0) <br>
+> max_delta (FLT_MAX) <br>
+> iou_thresh (FLT_MAX) <br>
+> new_coordinate (false) <br>
+> focal_loss (false) <br>
+> iou_loss (IOU) <br>
 > iou_thresh_kind (IOU)
 
 #### Add output
@@ -221,22 +221,22 @@ Trainer trainer(&network, TrainerOption{{"method", XXX}, {"trainer_option", YYY}
 * Trainer:&#58;Method::SGD
 > momentum (0.9)
 * Trainer:&#58;Method::ADADELTA
-> ro (0.95)
+> ro (0.95) <br>
 > eps (1e-6)
 * Trainer:&#58;Method::ADAM
-> ro (0.95)
-> eps (1e-6)
-> beta_1 (0.9)
+> ro (0.95) <br>
+> eps (1e-6) <br>
+> beta_1 (0.9) <br>
 > beta_2 (0.999)
 
 ###### Learning rate policy
 * CONSTANT
 * STEP
-> **step**
+> **step** <br>
 > **scale**
 * STEPS
-> **steps**
-> **step_X**
+> **steps** <br>
+> **step_X** <br>
 > **scale_X**
 * EXP
 > gamma (1)
@@ -281,23 +281,23 @@ class Tensor {
 ```
 
 #### Initialize the tensor
-* Method 1
+* Method 1 <br>
 You will get a **Tensor t** with random value inside.
 ```cpp
 Tensor t(WIDTH, HEIGHT, DIMENSION);
 ```
-* Method 2
+* Method 2 <br>
 You will get a **Tensor t** with identical value **PARAMETER** inside.
 ```cpp
 Tensor t(WIDTH, HEIGHT, DIMENSION, PARAMETER);
 ```
-* Method 3
+* Method 3 <br>
 You will get a **Tensor t** with the same value as the **vector** you past in with **width** and **height** are equal to **1**.
 ```cpp
 vfloat v{1, 2, 3};
 Tensor t(v);
 ```
-* Method 4
+* Method 4 <br>
 You will get a **Tensor t** with the same value as the **array** you past in.
 ```cpp
 float f[3] = {1, 2, 3};
@@ -312,25 +312,25 @@ t.extend();
 ```
 
 #### Operation on Tensor
-* = (Tensor)
+* = (Tensor) <br>
 Deep copy from a to b, including extend.
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
 Tensor b = a;   // b = [1, 1]
 ```
-* = (float)
+* = (float) <br>
 Set all value to input
 ```cpp
 Tensor a(1, 1, 3, 0);	// a = [0, 0, 0]
 a = 1;  // a = [1, 1, 1]
 ```
-* = (initializer list)
+* = (initializer list) <br>
 Set the previous element to initialzer list
 ```cpp
 Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
 a = {1, 2, 4};  // a = [1, 2, 4, 3, 3]
 ```
-* [INDEX]
+* [INDEX] <br>
 Revise or take the value at INDEX.
 ```cpp
 Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
@@ -361,7 +361,7 @@ Tensor a(1, 1, 2, 1);   // a = [1, 1]
 Tensor b(1, 1, 2, 2);   // b = [2, 2]
 Tensor c = a - b;   // c = [-1,-1]
 ```
-* <<
+* << <br>
 Print all **weighs** in Tensor.
 
 ## Build and run

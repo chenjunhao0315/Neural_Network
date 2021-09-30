@@ -176,7 +176,7 @@ nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
 nn.compile();
 nn.to_prototxt();
 ```
-The graph show by Nerton.
+The graph shown by Nerton.
 ![image](https://github.com/chenjunhao0315/Neural_Network/blob/main/Example_Network.png)
 
 #### Forward Propagation
@@ -316,50 +316,50 @@ t.extend();
 Deep copy from a to b, including extend.
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
-Tensor b = a;			  // b = [1, 1]
+Tensor b = a;			// b = [1, 1]
 ```
 * = (float)
 Set all value to input
 ```cpp
 Tensor a(1, 1, 3, 0);	// a = [0, 0, 0]
-a = 1;						 // a = [1, 1, 1]
+a = 1;				    // a = [1, 1, 1]
 ```
 * = (initializer list)
 Set the previous element to initialzer list
 ```cpp
 Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
-a = {1, 2, 4};			  // a = [1, 2, 4, 3, 3]
+a = {1, 2, 4};			// a = [1, 2, 4, 3, 3]
 ```
 * [INDEX]
 Revise or take the value at INDEX.
 ```cpp
 Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
-a[2] = 0;					 // a = [3, 3, 0, 3, 3]
-float value = a[4];	  // value = 4
+a[2] = 0;			    // a = [3, 3, 0, 3, 3]
+float value = a[4];	    // value = 4
 ```
 * += (Tensor)
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
 Tensor b(1, 1, 2, 2);	// b = [2, 2]
-a += b;					   // a = [3, 3] b = [2, 2]
+a += b;					// a = [3, 3] b = [2, 2]
 ```
 * -= (Tensor)
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
 Tensor b(1, 1, 2, 2);	// b = [2, 2]
-a -= b;					   // a = [-1, -1] b = [2, 2]
+a -= b;					// a = [-1, -1] b = [2, 2]
 ```
 * \+ (Tensor)
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
 Tensor b(1, 1, 2, 2);	// b = [2, 2]
-Tensor c = a + b;		 // c = [3, 3]
+Tensor c = a + b;		// c = [3, 3]
 ```
 * \- (Tensor)
 ```cpp
 Tensor a(1, 1, 2, 1);	// a = [1, 1]
 Tensor b(1, 1, 2, 2);	// b = [2, 2]
-Tensor c = a - b;		 // c = [-1,-1]
+Tensor c = a - b;		// c = [-1,-1]
 ```
 * <<
 Print all **weighs** in Tensor.

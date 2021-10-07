@@ -7,1032 +7,6 @@
 
 #include "Layer.hpp"
 
-Model_Layer::~Model_Layer() {
-    switch (type) {
-        case LayerType::Input: delete input_layer; break;
-        case LayerType::Fullyconnected: delete fullyconnected_layer; break;
-        case LayerType::Relu: delete relu_layer; break;
-        case LayerType::Softmax: delete softmax_layer; break;
-        case LayerType::Convolution: delete convolution_layer; break;
-        case LayerType::Pooling: delete pooling_layer; break;
-        case LayerType::EuclideanLoss: delete euclideanloss_layer; break;
-        case LayerType::PRelu: delete prelu_layer; break;
-        case LayerType::ShortCut: delete shortcut_layer; break;
-        case LayerType::LRelu: delete lrelu_layer; break;
-        case LayerType::Sigmoid: delete sigmoid_layer; break;
-        case LayerType::BatchNormalization: delete batchnorm_layer; break;
-        case LayerType::UpSample: delete upsample_layer; break;
-        case LayerType::Concat: delete concat_layer; break;
-        case LayerType::Yolov3: delete yolov3_layer; break;
-        case LayerType::Yolov4: delete yolov4_layer; break;
-        case LayerType::Mish: delete mish_layer; break;
-        case LayerType::Swish: delete swish_layer; break;
-        case LayerType::Dropout: delete dropout_layer; break;
-        case LayerType::AvgPooling: delete avgpooling_layer; break;
-        default: break;
-    }
-    input_layer = nullptr;
-    fullyconnected_layer = nullptr;
-    relu_layer = nullptr;
-    prelu_layer = nullptr;
-    softmax_layer = nullptr;
-    convolution_layer = nullptr;
-    pooling_layer = nullptr;
-    euclideanloss_layer = nullptr;
-    shortcut_layer = nullptr;
-    lrelu_layer = nullptr;
-    sigmoid_layer = nullptr;
-    batchnorm_layer = nullptr;
-    upsample_layer = nullptr;
-    concat_layer = nullptr;
-    yolov3_layer = nullptr;
-    yolov4_layer = nullptr;
-    mish_layer = nullptr;
-    swish_layer = nullptr;
-    dropout_layer = nullptr;
-    avgpooling_layer = nullptr;
-}
-
-Model_Layer::Model_Layer() {
-    input_layer = nullptr;
-    fullyconnected_layer = nullptr;
-    relu_layer = nullptr;
-    prelu_layer = nullptr;
-    softmax_layer = nullptr;
-    convolution_layer = nullptr;
-    pooling_layer = nullptr;
-    euclideanloss_layer = nullptr;
-    shortcut_layer = nullptr;
-    lrelu_layer = nullptr;
-    sigmoid_layer = nullptr;
-    batchnorm_layer = nullptr;
-    upsample_layer = nullptr;
-    concat_layer = nullptr;
-    yolov3_layer = nullptr;
-    yolov4_layer = nullptr;
-    mish_layer = nullptr;
-    swish_layer = nullptr;
-    dropout_layer = nullptr;
-    avgpooling_layer = nullptr;
-}
-
-Model_Layer::Model_Layer(const Model_Layer &L) {
-    input_layer = nullptr;
-    fullyconnected_layer = nullptr;
-    relu_layer = nullptr;
-    prelu_layer = nullptr;
-    softmax_layer = nullptr;
-    convolution_layer = nullptr;
-    pooling_layer = nullptr;
-    euclideanloss_layer = nullptr;
-    shortcut_layer = nullptr;
-    lrelu_layer = nullptr;
-    sigmoid_layer = nullptr;
-    batchnorm_layer = nullptr;
-    upsample_layer = nullptr;
-    concat_layer = nullptr;
-    yolov3_layer = nullptr;
-    yolov4_layer = nullptr;
-    mish_layer = nullptr;
-    swish_layer = nullptr;
-    dropout_layer = nullptr;
-    avgpooling_layer = nullptr;
-    if (this != &L) {
-        type = L.type;
-        switch (type) {
-            case LayerType::Input:
-                input_layer = new InputLayer(*L.input_layer);
-                break;
-            case LayerType::Fullyconnected:
-                fullyconnected_layer = new FullyConnectedLayer(*L.fullyconnected_layer);
-                break;
-            case LayerType::Relu:
-                relu_layer = new ReluLayer(*L.relu_layer);
-                break;
-            case LayerType::Softmax:
-                softmax_layer = new SoftmaxLayer(*L.softmax_layer);
-                break;
-            case LayerType::Convolution:
-                convolution_layer = new ConvolutionLayer(*L.convolution_layer);
-                break;
-            case LayerType::Pooling:
-                pooling_layer = new PoolingLayer(*L.pooling_layer);
-                break;
-            case LayerType::EuclideanLoss:
-                euclideanloss_layer = new EuclideanLossLayer(*L.euclideanloss_layer);
-                break;
-            case LayerType::PRelu:
-                prelu_layer = new PReluLayer(*L.prelu_layer);
-                break;
-            case LayerType::ShortCut:
-                shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
-                break;
-            case LayerType::LRelu:
-                lrelu_layer = new LReluLayer(*L.lrelu_layer);
-                break;
-            case LayerType::Sigmoid:
-                sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
-                break;
-            case LayerType::BatchNormalization:
-                batchnorm_layer = new BatchNormalizationLayer(*L.batchnorm_layer);
-                break;
-            case LayerType::UpSample:
-                upsample_layer = new UpSampleLayer(*L.upsample_layer);
-                break;
-            case LayerType::Concat:
-                concat_layer = new ConcatLayer(*L.concat_layer);
-                break;
-            case LayerType::Yolov3:
-                yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
-                break;
-            case LayerType::Yolov4:
-                yolov4_layer = new YOLOv4Layer(*L.yolov4_layer);
-                break;
-            case LayerType::Mish:
-                mish_layer = new MishLayer(*L.mish_layer);
-                break;
-            case LayerType::Swish:
-                swish_layer = new SwishLayer(*L.swish_layer);
-                break;
-            case LayerType::Dropout:
-                dropout_layer = new DropoutLayer(*L.dropout_layer);
-                break;
-            case LayerType::AvgPooling:
-                avgpooling_layer = new AvgPoolingLayer(*L.avgpooling_layer);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-Model_Layer::Model_Layer(Model_Layer &&L) {
-    type = L.type;
-    input_layer = L.input_layer;
-    fullyconnected_layer = L.fullyconnected_layer;
-    relu_layer = L.relu_layer;
-    prelu_layer = L.prelu_layer;
-    softmax_layer = L.softmax_layer;
-    convolution_layer = L.convolution_layer;
-    pooling_layer = L.pooling_layer;
-    euclideanloss_layer = L.euclideanloss_layer;
-    shortcut_layer = L.shortcut_layer;
-    lrelu_layer = L.lrelu_layer;
-    sigmoid_layer = L.sigmoid_layer;
-    batchnorm_layer = L.batchnorm_layer;
-    upsample_layer = L.upsample_layer;
-    concat_layer = L.concat_layer;
-    yolov3_layer = L.yolov3_layer;
-    yolov4_layer = L.yolov4_layer;
-    mish_layer = L.mish_layer;
-    swish_layer = L.swish_layer;
-    dropout_layer = L.dropout_layer;
-    avgpooling_layer = L.avgpooling_layer;
-    L.input_layer = nullptr;
-    L.fullyconnected_layer = nullptr;
-    L.relu_layer = nullptr;
-    L.prelu_layer = nullptr;
-    L.softmax_layer = nullptr;
-    L.convolution_layer = nullptr;
-    L.pooling_layer = nullptr;
-    L.euclideanloss_layer = nullptr;
-    L.shortcut_layer = nullptr;
-    L.lrelu_layer = nullptr;
-    L.sigmoid_layer = nullptr;
-    L.batchnorm_layer = nullptr;
-    L.upsample_layer = nullptr;
-    L.concat_layer = nullptr;
-    L.yolov3_layer = nullptr;
-    L.yolov4_layer = nullptr;
-    L.mish_layer = nullptr;
-    L.swish_layer = nullptr;
-    L.dropout_layer = nullptr;
-    L.avgpooling_layer = nullptr;
-}
-
-Model_Layer& Model_Layer::operator=(const Model_Layer &L) {
-    input_layer = nullptr;
-    fullyconnected_layer = nullptr;
-    relu_layer = nullptr;
-    prelu_layer = nullptr;
-    softmax_layer = nullptr;
-    convolution_layer = nullptr;
-    pooling_layer = nullptr;
-    euclideanloss_layer = nullptr;
-    shortcut_layer = nullptr;
-    lrelu_layer = nullptr;
-    sigmoid_layer = nullptr;
-    batchnorm_layer = nullptr;
-    upsample_layer = nullptr;
-    concat_layer = nullptr;
-    yolov3_layer = nullptr;
-    yolov4_layer = nullptr;
-    mish_layer = nullptr;
-    swish_layer = nullptr;
-    dropout_layer = nullptr;
-    avgpooling_layer = nullptr;
-    if (this != &L) {
-        type = L.type;
-        switch (type) {
-            case LayerType::Input:
-                input_layer = new InputLayer(*L.input_layer);
-                break;
-            case LayerType::Fullyconnected:
-                fullyconnected_layer = new FullyConnectedLayer(*L.fullyconnected_layer);
-                break;
-            case LayerType::Relu:
-                relu_layer = new ReluLayer(*L.relu_layer);
-                break;
-            case LayerType::Softmax:
-                softmax_layer = new SoftmaxLayer(*L.softmax_layer);
-                break;
-            case LayerType::Convolution:
-                convolution_layer = new ConvolutionLayer(*L.convolution_layer);
-                break;
-            case LayerType::Pooling:
-                pooling_layer = new PoolingLayer(*L.pooling_layer);
-                break;
-            case LayerType::EuclideanLoss:
-                euclideanloss_layer = new EuclideanLossLayer(*L.euclideanloss_layer);
-                break;
-            case LayerType::PRelu:
-                prelu_layer = new PReluLayer(*L.prelu_layer);
-                break;
-            case LayerType::ShortCut:
-                shortcut_layer = new ShortCutLayer(*L.shortcut_layer);
-                break;
-            case LayerType::LRelu:
-                lrelu_layer = new LReluLayer(*L.lrelu_layer);
-                break;
-            case LayerType::Sigmoid:
-                sigmoid_layer = new SigmoidLayer(*L.sigmoid_layer);
-                break;
-            case LayerType::BatchNormalization:
-                batchnorm_layer = new BatchNormalizationLayer(*L.batchnorm_layer);
-                break;
-            case LayerType::UpSample:
-                upsample_layer = new UpSampleLayer(*L.upsample_layer);
-                break;
-            case LayerType::Concat:
-                concat_layer = new ConcatLayer(*L.concat_layer);
-                break;
-            case LayerType::Yolov3:
-                yolov3_layer = new YOLOv3Layer(*L.yolov3_layer);
-                break;
-            case LayerType::Yolov4:
-                yolov4_layer = new YOLOv4Layer(*L.yolov4_layer);
-                break;
-            case LayerType::Mish:
-                mish_layer = new MishLayer(*L.mish_layer);
-                break;
-            case LayerType::Swish:
-                swish_layer = new SwishLayer(*L.swish_layer);
-                break;
-            case LayerType::Dropout:
-                dropout_layer = new DropoutLayer(*L.dropout_layer);
-                break;
-            case LayerType::AvgPooling:
-                avgpooling_layer = new AvgPoolingLayer(*L.avgpooling_layer);
-                break;
-            default:
-                break;
-        }
-    }
-    return *this;
-}
-
-Model_Layer::Model_Layer(LayerOption opt_) {
-    input_layer = nullptr;
-    fullyconnected_layer = nullptr;
-    relu_layer = nullptr;
-    prelu_layer = nullptr;
-    softmax_layer = nullptr;
-    convolution_layer = nullptr;
-    pooling_layer = nullptr;
-    euclideanloss_layer = nullptr;
-    shortcut_layer = nullptr;
-    lrelu_layer = nullptr;
-    sigmoid_layer = nullptr;
-    batchnorm_layer = nullptr;
-    upsample_layer = nullptr;
-    concat_layer = nullptr;
-    yolov3_layer = nullptr;
-    yolov4_layer = nullptr;
-    mish_layer = nullptr;
-    swish_layer = nullptr;
-    dropout_layer = nullptr;
-    avgpooling_layer = nullptr;
-    type = string_to_type(opt_["type"]);
-    
-    switch (type) {
-        case LayerType::Input:
-            input_layer = new InputLayer(opt_); break;
-        case LayerType::Fullyconnected:
-            fullyconnected_layer = new FullyConnectedLayer(opt_); break;
-        case LayerType::Relu:
-            relu_layer = new ReluLayer(opt_); break;
-        case LayerType::Softmax:
-            softmax_layer = new SoftmaxLayer(opt_); break;
-        case LayerType::Convolution:
-            convolution_layer = new ConvolutionLayer(opt_); break;
-        case LayerType::Pooling:
-            pooling_layer = new PoolingLayer(opt_); break;
-        case LayerType::EuclideanLoss:
-            euclideanloss_layer = new EuclideanLossLayer(opt_); break;
-        case LayerType::PRelu:
-            prelu_layer = new PReluLayer(opt_); break;
-        case LayerType::ShortCut:
-            shortcut_layer = new ShortCutLayer(opt_); break;
-        case LayerType::LRelu:
-            lrelu_layer = new LReluLayer(opt_); break;
-        case LayerType::Sigmoid:
-            sigmoid_layer = new SigmoidLayer(opt_); break;
-        case LayerType::BatchNormalization:
-            batchnorm_layer = new BatchNormalizationLayer(opt_); break;
-        case LayerType::UpSample:
-            upsample_layer = new UpSampleLayer(opt_); break;
-        case LayerType::Concat:
-            concat_layer = new ConcatLayer(opt_); break;
-        case LayerType::Yolov3:
-            yolov3_layer = new YOLOv3Layer(opt_); break;
-        case LayerType::Yolov4:
-            yolov4_layer = new YOLOv4Layer(opt_); break;
-        case LayerType::Mish:
-            mish_layer = new MishLayer(opt_); break;
-        case LayerType::Swish:
-            swish_layer = new SwishLayer(opt_); break;
-        case LayerType::Dropout:
-            dropout_layer = new DropoutLayer(opt_); break;
-        case LayerType::AvgPooling:
-            avgpooling_layer = new AvgPoolingLayer(opt_); break;
-        default:
-            fprintf(stderr, "[Model_Layer] Name: %s Type: %s\n", opt_["name"].c_str(), opt_["type"].c_str()); break;
-    }
-}
-
-LayerType Model_Layer::string_to_type(string type) {
-    if (type == "Input") {
-        return LayerType::Input;
-    } else if (type == "Fullyconnected") {
-        return LayerType::Fullyconnected;
-    } else if (type == "Relu") {
-        return LayerType::Relu;
-    } else if (type == "PRelu") {
-        return LayerType::PRelu;
-    } else if (type == "Softmax") {
-        return LayerType::Softmax;
-    } else if (type == "Convolution") {
-        return LayerType::Convolution;
-    } else if (type == "Pooling") {
-        return LayerType::Pooling;
-    } else if (type == "EuclideanLoss") {
-        return LayerType::EuclideanLoss;
-    } else if (type == "ShortCut") {
-        return LayerType::ShortCut;
-    } else if (type == "LRelu") {
-        return LayerType::LRelu;
-    } else if (type == "Sigmoid") {
-        return LayerType::Sigmoid;
-    } else if (type == "BatchNormalization") {
-        return LayerType::BatchNormalization;
-    } else if (type == "UpSample") {
-        return LayerType::UpSample;
-    } else if (type == "Concat") {
-        return LayerType::Concat;
-    } else if (type == "YOLOv3") {
-        return LayerType::Yolov3;
-    } else if (type == "YOLOv4") {
-        return LayerType::Yolov4;
-    } else if (type == "Mish") {
-        return LayerType::Mish;
-    } else if (type == "Swish") {
-        return LayerType::Swish;
-    } else if (type == "Dropout") {
-        return LayerType::Dropout;
-    } else if (type == "AvgPooling") {
-        return LayerType::AvgPooling;
-    }
-    return LayerType::Error;
-}
-
-void Model_Layer::Forward(Tensor* input_tensor_, bool train) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->Forward();
-        case LayerType::Pooling:
-            return pooling_layer->Forward();
-        case LayerType::PRelu:
-            return prelu_layer->Forward();
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->Forward();
-        case LayerType::Relu:
-            return relu_layer->Forward();
-        case LayerType::ShortCut:
-            return shortcut_layer->Forward();
-        case LayerType::Softmax:
-            return softmax_layer->Forward();
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->Forward();
-        case LayerType::Input:
-            return input_layer->Forward(input_tensor_);
-        case LayerType::LRelu:
-            return lrelu_layer->Forward();
-        case LayerType::Sigmoid:
-            return sigmoid_layer->Forward();
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->Forward(train);
-        case LayerType::UpSample:
-            return upsample_layer->Forward();
-        case LayerType::Concat:
-            return concat_layer->Forward();
-        case LayerType::Yolov3:
-            return yolov3_layer->Forward(train);
-        case LayerType::Yolov4:
-            return yolov4_layer->Forward(train);
-        case LayerType::Mish:
-            return mish_layer->Forward();
-        case LayerType::Swish:
-            return swish_layer->Forward();
-        case LayerType::Dropout:
-            return dropout_layer->Forward();
-        case LayerType::AvgPooling:
-            return avgpooling_layer->Forward();
-        default:
-            break;
-    }
-}
-
-Tensor* Model_Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Pooling:
-            return pooling_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::PRelu:
-            return prelu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Relu:
-            return relu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::ShortCut:
-            return shortcut_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Softmax:
-            return softmax_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Input:
-            return input_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::LRelu:
-            return lrelu_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::UpSample:
-            return upsample_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Concat:
-            return concat_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Yolov3:
-            return yolov3_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Yolov4:
-            return yolov4_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Mish:
-            return mish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Swish:
-            return swish_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::Dropout:
-            return dropout_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->connectGraph(input_tensor_, extra_tensor_, workspace);
-        default:
-            break;
-    }
-    return nullptr;
-}
-
-float Model_Layer::Backward(Tensor *target) { 
-    switch (type) {
-        case LayerType::Softmax:
-            return softmax_layer->Backward(target);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->Backward(target);
-        case LayerType::Yolov3:
-            return yolov3_layer->Backward(target);
-        case LayerType::Yolov4:
-            return yolov4_layer->Backward(target);
-        case LayerType::Convolution:
-            convolution_layer->Backward(); break;
-        case LayerType::Pooling:
-            pooling_layer->Backward(); break;
-        case LayerType::PRelu:
-            prelu_layer->Backward(); break;
-        case LayerType::Input:
-            input_layer->Backward(); break;
-        case LayerType::Fullyconnected:
-            fullyconnected_layer->Backward(); break;
-        case LayerType::Relu:
-            relu_layer->Backward(); break;
-        case LayerType::ShortCut:
-            shortcut_layer->Backward(); break;
-        case LayerType::LRelu:
-            lrelu_layer->Backward(); break;
-        case LayerType::Sigmoid:
-            sigmoid_layer->Backward(); break;
-        case LayerType::BatchNormalization:
-            batchnorm_layer->Backward(); break;
-        case LayerType::UpSample:
-            upsample_layer->Backward(); break;
-        case LayerType::Concat:
-            concat_layer->Backward(); break;
-        case LayerType::Mish:
-            mish_layer->Backward(); break;
-        case LayerType::Swish:
-            swish_layer->Backward(); break;
-        case LayerType::Dropout:
-            dropout_layer->Backward(); break;
-        case LayerType::AvgPooling:
-            avgpooling_layer->Backward(); break;
-        default:
-            break;
-    }
-    return 0;
-}
-
-void Model_Layer::shape() {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->shape();
-        case LayerType::Pooling:
-            return pooling_layer->shape();
-        case LayerType::PRelu:
-            return prelu_layer->shape();
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->shape();
-        case LayerType::Relu:
-            return relu_layer->shape();
-        case LayerType::ShortCut:
-            return shortcut_layer->shape();
-        case LayerType::Softmax:
-            return softmax_layer->shape();
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->shape();
-        case LayerType::Input:
-            return input_layer->shape();
-        case LayerType::LRelu:
-            return lrelu_layer->shape();
-        case LayerType::Sigmoid:
-            return sigmoid_layer->shape();
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->shape();
-        case LayerType::UpSample:
-            return upsample_layer->shape();
-        case LayerType::Concat:
-            return concat_layer->shape();
-        case LayerType::Yolov3:
-            return yolov3_layer->shape();
-        case LayerType::Yolov4:
-            return yolov4_layer->shape();
-        case LayerType::Mish:
-            return mish_layer->shape();
-        case LayerType::Swish:
-            return swish_layer->shape();
-        case LayerType::Dropout:
-            return dropout_layer->shape();
-        case LayerType::AvgPooling:
-            return avgpooling_layer->shape();
-        default:
-            break;
-    }
-}
-
-void Model_Layer::show_detail() {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->show_detail();
-        case LayerType::Pooling:
-            return pooling_layer->show_detail();
-        case LayerType::PRelu:
-            return prelu_layer->show_detail();
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->show_detail();
-        case LayerType::Relu:
-            return relu_layer->show_detail();
-        case LayerType::ShortCut:
-            return shortcut_layer->show_detail();
-        case LayerType::Softmax:
-            return softmax_layer->show_detail();
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->show_detail();
-        case LayerType::Input:
-            return input_layer->show_detail();
-        case LayerType::LRelu:
-            return lrelu_layer->show_detail();
-        case LayerType::Sigmoid:
-            return sigmoid_layer->show_detail();
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->show_detail();
-        case LayerType::UpSample:
-            return upsample_layer->show_detail();
-        case LayerType::Concat:
-            return concat_layer->show_detail();
-        case LayerType::Yolov3:
-            return yolov3_layer->show_detail();
-        case LayerType::Yolov4:
-            return yolov4_layer->show_detail();
-        case LayerType::Mish:
-            return mish_layer->show_detail();
-        case LayerType::Swish:
-            return swish_layer->show_detail();
-        case LayerType::Dropout:
-            return dropout_layer->show_detail();
-        case LayerType::AvgPooling:
-            return avgpooling_layer->show_detail();
-        default:
-            break;
-    }
-}
-
-int Model_Layer::getParameter(int type_) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->getParameter(type_);
-        case LayerType::Pooling:
-            return pooling_layer->getParameter(type_);
-        case LayerType::PRelu:
-            return prelu_layer->getParameter(type_);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->getParameter(type_);
-        case LayerType::Relu:
-            return relu_layer->getParameter(type_);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->getParameter(type_);
-        case LayerType::Softmax:
-            return softmax_layer->getParameter(type_);
-        case LayerType::Input:
-            return input_layer->getParameter(type_);
-        case LayerType::ShortCut:
-            return shortcut_layer->getParameter(type_);
-        case LayerType::LRelu:
-            return lrelu_layer->getParameter(type_);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->getParameter(type_);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->getParameter(type_);
-        case LayerType::UpSample:
-            return upsample_layer->getParameter(type_);
-        case LayerType::Concat:
-            return concat_layer->getParameter(type_);
-        case LayerType::Yolov3:
-            return yolov3_layer->getParameter(type_);
-        case LayerType::Yolov4:
-            return yolov4_layer->getParameter(type_);
-        case LayerType::Mish:
-            return mish_layer->getParameter(type_);
-        case LayerType::Swish:
-            return swish_layer->getParameter(type_);
-        case LayerType::Dropout:
-            return dropout_layer->getParameter(type_);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->getParameter(type_);
-        default:
-            break;
-    }
-    return 0;
-}
-
-bool Model_Layer::save(FILE *f) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->save(f);
-        case LayerType::Pooling:
-            return pooling_layer->save(f);
-        case LayerType::PRelu:
-            return prelu_layer->save(f);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->save(f);
-        case LayerType::Relu:
-            return relu_layer->save(f);
-        case LayerType::ShortCut:
-            return shortcut_layer->save(f);
-        case LayerType::Softmax:
-            return softmax_layer->save(f);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->save(f);
-        case LayerType::Input:
-            return input_layer->save(f);
-        case LayerType::LRelu:
-            return lrelu_layer->save(f);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->save(f);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->save(f);
-        case LayerType::UpSample:
-            return upsample_layer->save(f);
-        case LayerType::Concat:
-            return concat_layer->save(f);
-        case LayerType::Yolov3:
-            return yolov3_layer->save(f);
-        case LayerType::Yolov4:
-            return yolov4_layer->save(f);
-        case LayerType::Mish:
-            return mish_layer->save(f);
-        case LayerType::Swish:
-            return swish_layer->save(f);
-        case LayerType::Dropout:
-            return dropout_layer->save(f);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->save(f);
-        default:
-            break;
-    }
-    return false;
-}
-
-bool Model_Layer::save_raw(FILE *f) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->save_raw(f);
-        case LayerType::Pooling:
-            return pooling_layer->save_raw(f);
-        case LayerType::PRelu:
-            return prelu_layer->save_raw(f);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->save_raw(f);
-        case LayerType::Relu:
-            return relu_layer->save_raw(f);
-        case LayerType::ShortCut:
-            return shortcut_layer->save_raw(f);
-        case LayerType::Softmax:
-            return softmax_layer->save_raw(f);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->save_raw(f);
-        case LayerType::Input:
-            return input_layer->save_raw(f);
-        case LayerType::LRelu:
-            return lrelu_layer->save_raw(f);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->save_raw(f);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->save_raw(f);
-        case LayerType::UpSample:
-            return upsample_layer->save_raw(f);
-        case LayerType::Concat:
-            return concat_layer->save_raw(f);
-        case LayerType::Yolov3:
-            return yolov3_layer->save_raw(f);
-        case LayerType::Yolov4:
-            return yolov4_layer->save_raw(f);
-        case LayerType::Mish:
-            return mish_layer->save_raw(f);
-        case LayerType::Swish:
-            return swish_layer->save_raw(f);
-        case LayerType::Dropout:
-            return dropout_layer->save_raw(f);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->save_raw(f);
-        default:
-            break;
-    }
-    return false;
-}
-
-bool Model_Layer::load(FILE *f) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->load(f);
-        case LayerType::Pooling:
-            return pooling_layer->load(f);
-        case LayerType::PRelu:
-            return prelu_layer->load(f);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->load(f);
-        case LayerType::Relu:
-            return relu_layer->load(f);
-        case LayerType::ShortCut:
-            return shortcut_layer->load(f);
-        case LayerType::Softmax:
-            return softmax_layer->load(f);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->load(f);
-        case LayerType::Input:
-            return input_layer->load(f);
-        case LayerType::LRelu:
-            return lrelu_layer->load(f);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->load(f);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->load(f);
-        case LayerType::UpSample:
-            return upsample_layer->load(f);
-        case LayerType::Concat:
-            return concat_layer->load(f);
-        case LayerType::Yolov3:
-            return yolov3_layer->load(f);
-        case LayerType::Yolov4:
-            return yolov4_layer->load(f);
-        case LayerType::Mish:
-            return mish_layer->load(f);
-        case LayerType::Swish:
-            return swish_layer->load(f);
-        case LayerType::Dropout:
-            return dropout_layer->load(f);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->load(f);
-        default:
-            break;
-    }
-    return false;
-}
-
-bool Model_Layer::load_raw(FILE *f) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->load_raw(f);
-        case LayerType::Pooling:
-            return pooling_layer->load_raw(f);
-        case LayerType::PRelu:
-            return prelu_layer->load_raw(f);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->load_raw(f);
-        case LayerType::Relu:
-            return relu_layer->load_raw(f);
-        case LayerType::ShortCut:
-            return shortcut_layer->load_raw(f);
-        case LayerType::Softmax:
-            return softmax_layer->load_raw(f);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->load_raw(f);
-        case LayerType::Input:
-            return input_layer->load_raw(f);
-        case LayerType::LRelu:
-            return lrelu_layer->load_raw(f);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->load_raw(f);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->load_raw(f);
-        case LayerType::UpSample:
-            return upsample_layer->load_raw(f);
-        case LayerType::Concat:
-            return concat_layer->load_raw(f);
-        case LayerType::Yolov3:
-            return yolov3_layer->load_raw(f);
-        case LayerType::Yolov4:
-            return yolov4_layer->load_raw(f);
-        case LayerType::Mish:
-            return mish_layer->load_raw(f);
-        case LayerType::Swish:
-            return swish_layer->load_raw(f);
-        case LayerType::Dropout:
-            return dropout_layer->load_raw(f);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->load_raw(f);
-        default:
-            break;
-    }
-    return false;
-}
-
-bool Model_Layer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table) {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Pooling:
-            return pooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::PRelu:
-            return prelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Relu:
-            return relu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::ShortCut:
-            return shortcut_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Softmax:
-            return softmax_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Input:
-            return input_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::LRelu:
-            return lrelu_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Sigmoid:
-            return sigmoid_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::UpSample:
-            return upsample_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Concat:
-            return concat_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Yolov3:
-            return yolov3_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Yolov4:
-            return yolov4_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Mish:
-            return mish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Swish:
-            return swish_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::Dropout:
-            return dropout_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        case LayerType::AvgPooling:
-            return avgpooling_layer->to_prototxt(f, refine_id, refine_struct, id_table);
-        default:
-            break;
-    }
-    return false;
-}
-
-void Model_Layer::ClearGrad() {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->ClearGrad();
-        case LayerType::Pooling:
-            return pooling_layer->ClearGrad();
-        case LayerType::PRelu:
-            return prelu_layer->ClearGrad();
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->ClearGrad();
-        case LayerType::Relu:
-            return relu_layer->ClearGrad();
-        case LayerType::EuclideanLoss:
-            return euclideanloss_layer->ClearGrad();
-        case LayerType::Softmax:
-            return softmax_layer->ClearGrad();
-        case LayerType::Input:
-            return input_layer->ClearGrad();
-        case LayerType::ShortCut:
-            return shortcut_layer->ClearGrad();
-        case LayerType::LRelu:
-            return lrelu_layer->ClearGrad();
-        case LayerType::Sigmoid:
-            return sigmoid_layer->ClearGrad();
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->ClearGrad();
-        case LayerType::UpSample:
-            return upsample_layer->ClearGrad();
-        case LayerType::Concat:
-            return concat_layer->ClearGrad();
-        case LayerType::Yolov3:
-            return yolov3_layer->ClearGrad();
-        case LayerType::Yolov4:
-            return yolov4_layer->ClearGrad();
-        case LayerType::Mish:
-            return mish_layer->ClearGrad();
-        case LayerType::Swish:
-            return swish_layer->ClearGrad();
-        case LayerType::Dropout:
-            return dropout_layer->ClearGrad();
-        case LayerType::AvgPooling:
-            return avgpooling_layer->ClearGrad();
-        default:
-            break;
-    }
-}
-
-Train_Args Model_Layer::getTrainArgs() {
-    switch (type) {
-        case LayerType::Convolution:
-            return convolution_layer->getTrainArgs();
-        case LayerType::PRelu:
-            return prelu_layer->getTrainArgs();
-        case LayerType::Fullyconnected:
-            return fullyconnected_layer->getTrainArgs();
-        case LayerType::BatchNormalization:
-            return batchnorm_layer->getTrainArgs();
-        case LayerType::Yolov3:
-            return yolov3_layer->getTrainArgs();
-        case LayerType::Yolov4:
-            return yolov4_layer->getTrainArgs();
-        default:
-            return Train_Args();
-    }
-    return Train_Args();
-}
-
-int Model_Layer::getWorkspaceSize() {
-    switch(type) {
-        case LayerType::Convolution:
-            return convolution_layer->info.workspace_size;
-        default:
-            return 0;
-    }
-    return 0;
-}
-
-Train_Args BaseLayer::getTrainArgs() {
-    switch(type) {
-        case LayerType::Convolution:
-            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
-        case LayerType::Fullyconnected:
-            return Train_Args(kernel, biases, info.input_number * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
-        case LayerType::PRelu:
-            return Train_Args(kernel, kernel, info.input_number, 1, 0, vfloat{0, 0});
-        case LayerType::BatchNormalization:
-            return Train_Args(kernel, biases, info.output_dimension, 3, info.output_dimension, vfloat{0, 0});
-        default:
-            return Train_Args();
-    }
-    return Train_Args();
-}
-
 BaseLayer::~BaseLayer() {
     if (output_tensor)
         delete output_tensor;
@@ -1047,6 +21,7 @@ BaseLayer::BaseLayer() {
     output_tensor = nullptr;
     kernel = nullptr;
     biases = nullptr;
+    memset(&info, 0, sizeof(Info));
 }
 
 BaseLayer::BaseLayer(const BaseLayer &L) {
@@ -1122,10 +97,36 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
     return *this;
 }
 
+int BaseLayer::getWorkspaceSize() {
+    switch(type) {
+        case LayerType::Convolution:
+            return info.workspace_size;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+Train_Args BaseLayer::getTrainArgs() {
+    switch(type) {
+        case LayerType::Convolution:
+            return Train_Args(kernel, biases, info.kernel_width * info.kernel_height * info.input_dimension * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
+        case LayerType::FullyConnected:
+            return Train_Args(kernel, biases, info.input_number * info.output_dimension, 1, (info.batchnorm) ? 0 : info.output_dimension, vfloat{0, 1});
+        case LayerType::PRelu:
+            return Train_Args(kernel, kernel, info.input_number, 1, 0, vfloat{0, 0});
+        case LayerType::BatchNormalization:
+            return Train_Args(kernel, biases, info.output_dimension, 3, info.output_dimension, vfloat{0, 0});
+        default:
+            return Train_Args();
+    }
+    return Train_Args();
+}
+
 string BaseLayer::type_to_string() {
     switch(type) {
         case Input: return "Input";
-        case Fullyconnected: return "Fullyconnected";
+        case FullyConnected: return "FullyConnected";
         case Relu: return "Relu";
         case PRelu: return "PRelu";
         case Softmax: return "Softmax";
@@ -1157,7 +158,7 @@ Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_,
 void BaseLayer::shape() {
     printf("%-17s%-13s %-13s  ", type_to_string().c_str(), name.c_str(), input_name.c_str());
     printf("(%d * %d * %d)\n", info.output_width, info.output_height, info.output_dimension);
-    //    if (type == LayerType::Convolution || type == LayerType::Fullyconnected) {
+    //    if (type == LayerType::Convolution || type == LayerType::FullyConnected) {
     //        for (int i = 0; i < info.output_dimension; ++i) {
     //            printf("Weight:\n%d: ", i);
     //            kernel[i].showWeight();
@@ -1229,7 +230,7 @@ long BaseLayer::getOperations() {
         case LayerType::Convolution: {
             return 2l * info.output_dimension * info.kernel_width * info.kernel_height * info.input_dimension * info.output_width * info.output_height;
         }
-        case LayerType::Fullyconnected: {
+        case LayerType::FullyConnected: {
             return 2l * info.input_number * info.output_number;
         }
         default:
@@ -1273,7 +274,7 @@ bool BaseLayer::save(FILE *f) {
         fwrite(&info.output_width, sizeof(int), 1, f);
         fwrite(&info.output_height, sizeof(int), 1, f);
         fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::Fullyconnected) {
+    } else if (type == LayerType::FullyConnected) {
         fwrite(&info.input_width, sizeof(int), 1, f);
         fwrite(&info.input_height, sizeof(int), 1, f);
         fwrite(&info.input_dimension, sizeof(int), 1, f);
@@ -1418,7 +419,7 @@ bool BaseLayer::save(FILE *f) {
 }
 
 bool BaseLayer::load(FILE *f) {
-    if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
+    if (type == LayerType::FullyConnected || type == LayerType::Convolution) {
         kernel[0].load(f);
         biases->load(f);
     } else if (type == LayerType::PRelu || type == LayerType::LRelu) {
@@ -1444,7 +445,7 @@ bool BaseLayer::load(FILE *f) {
 }
 
 bool BaseLayer::save_raw(FILE *f) {
-    if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
+    if (type == LayerType::FullyConnected || type == LayerType::Convolution) {
         if (!info.batchnorm) {
             biases->save_raw(f);
         }
@@ -1461,7 +462,7 @@ bool BaseLayer::save_raw(FILE *f) {
 }
 
 bool BaseLayer::load_raw(FILE *f) {
-    if (type == LayerType::Fullyconnected || type == LayerType::Convolution) {
+    if (type == LayerType::FullyConnected || type == LayerType::Convolution) {
         if (!info.batchnorm) {
             biases->load_raw(f);
         }
@@ -1496,7 +497,7 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
         fprintf(f, "  bottom: \"%s\"\n", refine_struct[refine_id]["input_name"].c_str());
         fprintf(f, "  top: \"%s\"\n", refine_struct[refine_id]["name"].c_str());
         
-        if (type == LayerType::Fullyconnected) {
+        if (type == LayerType::FullyConnected) {
             fprintf(f, "  connected_param {\n");
             fprintf(f, "    num_output: %d\n", info.output_dimension);
             fprintf(f, "  }\n");
@@ -1583,6 +584,8 @@ InputLayer::InputLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(Input);
+
 void InputLayer::Forward(Tensor *input_tensor_) {
     input_tensor = input_tensor_;
     copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
@@ -1635,13 +638,15 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(Convolution);
+
 Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_) {
     input_tensor = input_tensor_;
     workspace = workspace_;
     return output_tensor;
 }
 
-void ConvolutionLayer::Forward() {
+void ConvolutionLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float *weights = kernel->weight;
@@ -1690,7 +695,7 @@ void ConvolutionLayer::Forward() {
     }
 }
 
-void ConvolutionLayer::Backward() {
+void ConvolutionLayer::Backward(Tensor *none) {
     float *input = input_tensor->weight;
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
@@ -1782,7 +787,9 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void PoolingLayer::Forward() {
+REGISTER_LAYER_CLASS(Pooling);
+
+void PoolingLayer::Forward(bool train) {
     int stride = info.stride;
     
     float *input = input_tensor->weight;
@@ -1828,7 +835,7 @@ void PoolingLayer::Forward() {
     }
 }
 
-void PoolingLayer::Backward() {
+void PoolingLayer::Backward(Tensor *none) {
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
     float *indexes = kernel->weight;
@@ -1842,7 +849,7 @@ void PoolingLayer::Backward() {
 
 FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     opt = opt_;
-    type = LayerType::Fullyconnected;
+    type = LayerType::FullyConnected;
     name = (opt.find("name") == opt.end()) ? "fc" : opt["name"];
     input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
@@ -1874,7 +881,9 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void FullyConnectedLayer::Forward() {
+REGISTER_LAYER_CLASS(FullyConnected);
+
+void FullyConnectedLayer::Forward(bool train) {
     fill_cpu(info.output_dimension * info.batch_size, output_tensor->weight, 0);
     
     int m = info.batch_size;
@@ -1889,7 +898,7 @@ void FullyConnectedLayer::Forward() {
     }
 }
 
-void FullyConnectedLayer::Backward() {
+void FullyConnectedLayer::Backward(Tensor *none) {
     if(!info.batchnorm){
         backward_bias(biases->delta_weight, output_tensor->delta_weight, info.batch_size, info.output_dimension, 1);
     }
@@ -1911,6 +920,7 @@ void FullyConnectedLayer::Backward() {
     c = input_tensor->delta_weight;
     
     gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
+//    kernel->showDeltaWeight();
 }
 
 ReluLayer::ReluLayer(LayerOption opt_) {
@@ -1929,7 +939,9 @@ ReluLayer::ReluLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void ReluLayer::Forward() {
+REGISTER_LAYER_CLASS(Relu);
+
+void ReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float value;
@@ -1940,7 +952,7 @@ void ReluLayer::Forward() {
     }
 }
 
-void ReluLayer::Backward() {
+void ReluLayer::Backward(Tensor *none) {
     int one_batch_size = info.input_number;
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
@@ -1978,7 +990,9 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void PReluLayer::Forward() {
+REGISTER_LAYER_CLASS(PRelu);
+
+void PReluLayer::Forward(bool traiin) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
@@ -1992,7 +1006,7 @@ void PReluLayer::Forward() {
     }
 }
 
-void PReluLayer::Backward() {
+void PReluLayer::Backward(Tensor *none) {
     int one_batch_size = info.input_number;
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
@@ -2040,7 +1054,9 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void SoftmaxLayer::Forward() {
+REGISTER_LAYER_CLASS(Softmax);
+
+void SoftmaxLayer::Forward(bool train) {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
@@ -2068,7 +1084,7 @@ void SoftmaxLayer::Forward() {
     }
 }
 
-float SoftmaxLayer::Backward(Tensor *target) {
+void SoftmaxLayer::Backward(Tensor *target) {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
@@ -2087,13 +1103,13 @@ float SoftmaxLayer::Backward(Tensor *target) {
         input_delta += one_batch_input_size;
         expo_sum += one_batch_output_size;
     }
-    float loss = 0;
+    float &loss = info.loss; loss = 0;
     expo_sum = kernel->weight;
     for (int b = 0; b < info.batch_size; ++b) {
         loss += -log(expo_sum[(int)target_ptr[b]]);
         expo_sum += one_batch_output_size;
     }
-    return loss;
+//    return loss;
 }
 
 EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
@@ -2112,11 +1128,13 @@ EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void EuclideanLossLayer::Forward() {
+REGISTER_LAYER_CLASS(EuclideanLoss);
+
+void EuclideanLossLayer::Forward(bool train) {
     copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
 }
 
-float EuclideanLossLayer::Backward(Tensor *target) {
+void EuclideanLossLayer::Backward(Tensor *target) {
     int one_batch_size = info.output_dimension;
     
     float *input = input_tensor->weight;
@@ -2133,7 +1151,7 @@ float EuclideanLossLayer::Backward(Tensor *target) {
         input += one_batch_size;
         input_delta += one_batch_size;
     }
-    return loss;
+//    return loss;
 }
 
 ShortCutLayer::ShortCutLayer(LayerOption opt_) {
@@ -2155,13 +1173,15 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(ShortCut);
+
 Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     shortcut_tensor = extra_tensor_[0];
     return output_tensor;
 }
 
-void ShortCutLayer::Forward() {
+void ShortCutLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float *shortcut = shortcut_tensor->weight;
@@ -2180,7 +1200,7 @@ void ShortCutLayer::Forward() {
     }
 }
 
-void ShortCutLayer::Backward() {
+void ShortCutLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
@@ -2242,7 +1262,9 @@ LReluLayer::LReluLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void LReluLayer::Forward() {
+REGISTER_LAYER_CLASS(LRelu);
+
+void LReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float value, scale = kernel[0][0];
@@ -2252,7 +1274,7 @@ void LReluLayer::Forward() {
     }
 }
 
-void LReluLayer::Backward() {
+void LReluLayer::Backward(Tensor *none) {
     int one_batch_size = info.input_number;
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
@@ -2291,7 +1313,9 @@ SigmoidLayer::SigmoidLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void SigmoidLayer::Forward() {
+REGISTER_LAYER_CLASS(Sigmoid);
+
+void SigmoidLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     for (int i = info.input_number * info.batch_size; i--; ) {
@@ -2299,7 +1323,7 @@ void SigmoidLayer::Forward() {
     }
 }
 
-void SigmoidLayer::Backward() {
+void SigmoidLayer::Backward(Tensor *none) {
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
@@ -2343,6 +1367,8 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(BatchNormalization);
+
 void BatchNormalizationLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
@@ -2382,7 +1408,7 @@ void BatchNormalizationLayer::Forward(bool train) {
     add_bias(output, bias, batch_size, output_dimension, channel_size);
 }
 
-void BatchNormalizationLayer::Backward() {
+void BatchNormalizationLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     float *bias_delta = biases->delta_weight;
@@ -2540,7 +1566,9 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void UpSampleLayer::Forward() {
+REGISTER_LAYER_CLASS(UpSample);
+
+void UpSampleLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
@@ -2551,7 +1579,7 @@ void UpSampleLayer::Forward() {
     }
 }
 
-void UpSampleLayer::Backward() {
+void UpSampleLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     
@@ -2629,6 +1657,8 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(Concat);
+
 Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     for (int i = 0; i <= info.concat_num; ++i) {
@@ -2637,7 +1667,7 @@ Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor
     return output_tensor;
 }
 
-void ConcatLayer::Forward() {
+void ConcatLayer::Forward(bool train) {
     float *output = output_tensor->weight;
     
     int channel_size = info.input_width * info.input_height;
@@ -2654,7 +1684,7 @@ void ConcatLayer::Forward() {
     }
 }
 
-void ConcatLayer::Backward() {
+void ConcatLayer::Backward(Tensor *none) {
     float *output_delta = output_tensor->delta_weight;
     int check = output_tensor->size;
     
@@ -2699,7 +1729,9 @@ MishLayer::MishLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void MishLayer::Forward() {
+REGISTER_LAYER_CLASS(Mish);
+
+void MishLayer::Forward(bool train) {
     const float MISH_THRESHOLD = 20;
     float *input = input_tensor->weight;
     float *activation_input = kernel[0].weight;
@@ -2712,7 +1744,7 @@ void MishLayer::Forward() {
     }
 }
 
-void MishLayer::Backward() {
+void MishLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     float *activation_input = kernel[0].weight;
@@ -2758,7 +1790,9 @@ SwishLayer::SwishLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void SwishLayer::Forward() {
+REGISTER_LAYER_CLASS(Swish);
+
+void SwishLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *activation_input = kernel[0].weight;
     float *output = output_tensor->weight;
@@ -2773,7 +1807,7 @@ void SwishLayer::Forward() {
     }
 }
 
-void SwishLayer::Backward() {
+void SwishLayer::Backward(Tensor *none) {
     float *output = output_tensor->weight;
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
@@ -2816,6 +1850,8 @@ DropoutLayer::DropoutLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
+REGISTER_LAYER_CLASS(Dropout);
+
 void DropoutLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
@@ -2838,7 +1874,7 @@ void DropoutLayer::Forward(bool train) {
     }
 }
 
-void DropoutLayer::Backward() {
+void DropoutLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
     float *prob = kernel->weight;
@@ -2876,7 +1912,9 @@ AvgPoolingLayer::AvgPoolingLayer(LayerOption opt_) {
     output_tensor->extend();
 }
 
-void AvgPoolingLayer::Forward() {
+REGISTER_LAYER_CLASS(AvgPooling);
+
+void AvgPoolingLayer::Forward(bool train) {
     int batch_size = info.batch_size;
     int output_dimension = info.output_dimension;
     int channel_size = info.input_width * info.input_height;
@@ -2897,7 +1935,7 @@ void AvgPoolingLayer::Forward() {
     }
 }
 
-void AvgPoolingLayer::Backward() {
+void AvgPoolingLayer::Backward(Tensor *none) {
     int batch_size = info.batch_size;
     int output_dimension = info.output_dimension;
     int channel_size = info.input_width * info.input_height;
@@ -2975,6 +2013,8 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     detection = Tensor(1, 1, 1, 0);
 }
 
+REGISTER_LAYER_CLASS(YOLOv3);
+
 Tensor* YOLOv3Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     return &detection;
@@ -3014,7 +2054,7 @@ void YOLOv3Layer::Forward(bool train) {
     }
 }
 
-float YOLOv3Layer::Backward(Tensor *target) {
+void YOLOv3Layer::Backward(Tensor *target) {
     float ignore_iou_threshold = 0.7; // TODO: should be input
     float truth_iou_threshold = 1;
     
@@ -3126,7 +2166,7 @@ float YOLOv3Layer::Backward(Tensor *target) {
     }
     loss = pow(mag_array(delta, info.output_number * info.batch_size), 2);
     printf("Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(channel_size*anchor_num*info.batch_size), recall/count, recall75/count, count);
-    return loss;
+//    return loss;
 }
 
 void YOLOv3Layer::delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat) {
@@ -3336,6 +2376,8 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     detection = Tensor(1, 1, 1, 0);
 }
 
+REGISTER_LAYER_CLASS(YOLOv4);
+
 Tensor* YOLOv4Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     return &detection;
@@ -3383,7 +2425,7 @@ void YOLOv4Layer::Forward(bool train) {
     }
 }
 
-float YOLOv4Layer::Backward(Tensor *target) {
+void YOLOv4Layer::Backward(Tensor *target) {
     int width = info.input_width;
     int height = info.input_height;
     int net_width = info.net_width;
@@ -3657,7 +2699,7 @@ float YOLOv4Layer::Backward(Tensor *target) {
     
     fprintf(stderr, "v3 (%s loss, Normalizer: (iou: %.2f, obj: %.2f, cls: %.2f) Avg (IOU: %f, GIOU: %f), Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f, count: %d, total_loss = %f \n", (iou_loss == MSE ? "mse" : (iou_loss == GIOU ? "giou" : "iou")), iou_normalizer, obj_normalizer, cls_normalizer, tot_iou / count, tot_giou / count, avg_cat / class_count, avg_obj / count, avg_anyobj / (channel_size * anchor_num * batch_size), recall / count, recall75 / count, count, loss);
     
-    return loss;
+//    return loss;
 }
 
 void YOLOv4Layer::averages_yolo_deltas(int class_index, int box_index, int stride, int classes, float *delta) {

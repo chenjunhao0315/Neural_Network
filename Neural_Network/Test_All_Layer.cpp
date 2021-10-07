@@ -19,7 +19,7 @@ void test_all_layer(bool save) {
 //    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "pr_conv_2, upsample"}, {"splits", "2"}, {"split_id", "1"}, {"name", "concat"}});
 //    nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "1"}, {"name", "pool_2"}});
 //    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"name", "conv_5"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
+//    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "3"}, {"activation", "Softmax"}});
 //    nn.compile(8);
 //    nn.shape();
 //    nn.to_prototxt("test_all_layer.prototxt");
@@ -42,14 +42,14 @@ void test_all_layer(bool save) {
     nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "dropout"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat_3"}});
     nn.addLayer(LayerOption{{"type", "AvgPooling"}, {"name", "avg_pooling"}, {"input_name", "concat"}});
     nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "avg_pooling"}, {"name", "shortcut_3"}, {"input_name", "concat_3"}});
-    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "32"}, {"name", "connected"}, {"activation", "PRelu"}});
-    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"name", "connected_2"}});
+    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "32"}, {"name", "connected"}, {"activation", "PRelu"}});
+    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "3"}, {"name", "connected_2"}});
     nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
     nn.compile(8);
-//    nn.shape();
-    nn.show_detail();
+    nn.shape();
+//    nn.show_detail();
 //    nn.to_prototxt("test_all_layer.prototxt");
-    exit(1);
+//    exit(1);
     
     Data bee("bee.npy", 28, 28);
     vtensor data_bee = bee.get(500);

@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <cassert>
 #include <sstream>
-//#include <pthread.h>
 #include <cmath>
 
 #include "Tensor.hpp"
@@ -42,7 +41,7 @@ struct Train_Args {
 
 enum LayerType {
     Input,
-    Fullyconnected,
+    FullyConnected,
     Convolution,
     Relu,
     PRelu,
@@ -85,78 +84,32 @@ class SwishLayer;
 class DropoutLayer;
 class AvgPoolingLayer;
 
-// Top layer
-class Model_Layer {
-public:
-    ~Model_Layer();
-    Model_Layer();
-    Model_Layer(const Model_Layer &L);
-    Model_Layer(Model_Layer &&L);
-    Model_Layer& operator=(const Model_Layer &L);
-    Model_Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
-    void Forward(Tensor* input_tensor_, bool train = false);
-    float Backward(Tensor *target);
-    void ClearGrad();
-    void shape();
-    void show_detail();
-    int getParameter(int type_);
-    LayerType getType() {return type;}
-    LayerType string_to_type(string type);
-    bool save(FILE *f);
-    bool save_raw(FILE *f);
-    bool load(FILE *f);
-    bool load_raw(FILE *f);
-    bool to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table);
-    Train_Args getTrainArgs();
-    int getWorkspaceSize();
-private:
-    LayerType type;
-    InputLayer *input_layer;
-    FullyConnectedLayer *fullyconnected_layer;
-    ReluLayer *relu_layer;
-    PReluLayer *prelu_layer;
-    SoftmaxLayer *softmax_layer;
-    ConvolutionLayer *convolution_layer;
-    PoolingLayer *pooling_layer;
-    EuclideanLossLayer *euclideanloss_layer;
-    ShortCutLayer *shortcut_layer;
-    LReluLayer *lrelu_layer;
-    SigmoidLayer *sigmoid_layer;
-    BatchNormalizationLayer *batchnorm_layer;
-    UpSampleLayer *upsample_layer;
-    ConcatLayer *concat_layer;
-    YOLOv3Layer *yolov3_layer;
-    YOLOv4Layer *yolov4_layer;
-    MishLayer *mish_layer;
-    DropoutLayer *dropout_layer;
-    AvgPoolingLayer *avgpooling_layer;
-    SwishLayer *swish_layer;
-};
-
 // Base layer
 class BaseLayer {
 public:
     ~BaseLayer();
     BaseLayer();
-    BaseLayer(BaseLayer *L);
     BaseLayer(const BaseLayer &L);
     BaseLayer(BaseLayer &&L);
     BaseLayer& operator=(const BaseLayer &L);
+    virtual void Forward(Tensor *input_tensor = nullptr) {}
+    virtual void Forward(bool train = false) {}
+    virtual void Backward(Tensor *target = nullptr) {}
     void shape();
     void show_detail();
     long getOperations();
+    int getWorkspaceSize();
     string type_to_string();
     virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
-    int size() {return info.output_width * info.output_height * info.output_dimension;}
     bool save(FILE *f);
     bool save_raw(FILE *f);
     bool load(FILE *f);
     bool load_raw(FILE *f);
     bool to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table);
     Train_Args getTrainArgs();
+    float getLoss() {return info.loss;}
 //protected:
     LayerType type;
     string name;
@@ -210,6 +163,7 @@ public:
         float scale;
         bool reverse;
         bool batchnorm;
+        float loss;
     } info;
     LayerOption opt;
     Tensor* input_tensor;
@@ -218,12 +172,84 @@ public:
     Tensor* biases;
 };
 
+class LayerRegistry {
+public:
+    typedef BaseLayer* (*Creator)(const LayerOption&);
+    typedef map<string, Creator> CreatorRegistry;
+
+    static CreatorRegistry &Registry() {
+        static auto *g_registry_ = new CreatorRegistry();
+        return *g_registry_;
+    }
+
+    static void AddCreator(const string &type, Creator creator) {
+        CreatorRegistry &registry = Registry();
+        if (registry.count(type) == 1) {
+            cout << "BaseLayer type " << type << " already registered."<<endl;
+        }
+        registry[type] = creator;
+    }
+
+    static BaseLayer* CreateLayer(LayerOption& opt) {
+        string type = opt["type"];
+        CreatorRegistry &registry = Registry();
+        if (registry.count(type) == 0) {
+            cout << "Unknown layer type: " << type << " (known layer types: " << TypeListString() << ")" << endl;
+            exit(100);
+        }
+        return registry[type](opt);
+    }
+
+    static vector<string> TypeList() {
+        CreatorRegistry &registry = Registry();
+        vector<string> types;
+        for (typename CreatorRegistry::iterator iter = registry.begin();
+             iter != registry.end(); ++iter) {
+            types.push_back(iter->first);
+        }
+        return types;
+    }
+
+private:
+    LayerRegistry() {}
+
+    static string TypeListString() {
+        vector<string> types = TypeList();
+        string types_str;
+        for (auto iter = types.begin();
+             iter != types.end(); ++iter) {
+            if (iter != types.begin()) {
+                types_str += ", ";
+            }
+            types_str += *iter;
+        }
+        return types_str;
+    }
+};
+
+class LayerRegister {
+public:
+    LayerRegister(const string &type, BaseLayer* (*creator)(const LayerOption &)) {
+        LayerRegistry::AddCreator(type, creator);
+    }
+};
+
+#define REGISTER_LAYER_CREATOR(type, creator)                                   \
+  static LayerRegister g_creator_##type(#type, creator)                         \
+
+#define REGISTER_LAYER_CLASS(type)                                                 \
+  BaseLayer* Creator_##type##Layer(const LayerOption& param)            \
+  {                                                                               \
+    return new type##Layer(param);                             \
+  }                                                                               \
+  REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+
 // Input layer
 class InputLayer : public BaseLayer {
 public:
     InputLayer(LayerOption opt_);
     void Forward(Tensor *input_tensor_);
-    void Backward() {}
+    void Backward(Tensor *none = nullptr) {}
 };
 
 // Convolution layer
@@ -231,8 +257,8 @@ class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 private:
     float *workspace;
 };
@@ -241,40 +267,40 @@ private:
 class PoolingLayer : public BaseLayer {
 public:
     PoolingLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // FullyConnected layer
 class FullyConnectedLayer : public BaseLayer {
 public:
     FullyConnectedLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // Relu layer
 class ReluLayer : public BaseLayer {
 public:
     ReluLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // PRelu layer
 class PReluLayer : public BaseLayer {
 public:
     PReluLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // Softmax layer with cross entropy loss
 class SoftmaxLayer : public BaseLayer {
 public:
     SoftmaxLayer(LayerOption opt_);
-    void Forward();
-    float Backward(Tensor *target);
+    void Forward(bool train = false);
+    void Backward(Tensor *target);
 private:
 };
 
@@ -282,8 +308,8 @@ private:
 class EuclideanLossLayer : public BaseLayer {
 public:
     EuclideanLossLayer(LayerOption opt_);
-    void Forward();
-    float Backward(Tensor *target);
+    void Forward(bool train = false);
+    void Backward(Tensor *target);
 private:
 };
 
@@ -292,8 +318,8 @@ class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 private:
     void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
     Tensor *shortcut_tensor;
@@ -303,16 +329,16 @@ private:
 class LReluLayer : public BaseLayer {
 public:
     LReluLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // Sigmoid layer
 class SigmoidLayer : public BaseLayer {
 public:
     SigmoidLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // BatchNormalization layer
@@ -320,7 +346,7 @@ class BatchNormalizationLayer : public BaseLayer {
 public:
     BatchNormalizationLayer(LayerOption opt_);
     void Forward(bool train = false);
-    void Backward();
+    void Backward(Tensor *none = nullptr);
 private:
     void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
     void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
@@ -332,8 +358,8 @@ private:
 class UpSampleLayer : public BaseLayer {
 public:
     UpSampleLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 private:
     void upsample(float *in, int w, int h, int c, int batch, int stride, bool forward, float scale, float *out);
     void downsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
@@ -344,8 +370,8 @@ class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 private:
     vtensorptr concat_tensor;
 };
@@ -355,31 +381,31 @@ class DropoutLayer : public BaseLayer {
 public:
     DropoutLayer(LayerOption opt_);
     void Forward(bool train = false);
-    void Backward();
+    void Backward(Tensor *none = nullptr);
 };
 
 // Mish layer
 class MishLayer : public BaseLayer {
 public:
     MishLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // Swish layer
 class SwishLayer : public BaseLayer {
 public:
     SwishLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // AvgPooling layer
 class AvgPoolingLayer : public BaseLayer {
 public:
     AvgPoolingLayer(LayerOption opt_);
-    void Forward();
-    void Backward();
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
 };
 
 // YOLOv3 layer
@@ -388,7 +414,7 @@ public:
     YOLOv3Layer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
-    float Backward(Tensor *target);
+    void Backward(Tensor *target);
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
@@ -420,7 +446,7 @@ public:
     YOLOv4Layer(LayerOption opt_);
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
-    float Backward(Tensor *target);
+    void Backward(Tensor *target);
     
     enum NUM_KIND {
         DEFAULT_NMS,

@@ -53,7 +53,7 @@ private:
     string model;
     int layer_number;
     vector<LayerOption> opt_layer;
-    Model_Layer *layer;
+    BaseLayer **layer;
     vtensorptr output;
     vector<string> output_layer;
     unordered_map<string, Tensor*> terminal;

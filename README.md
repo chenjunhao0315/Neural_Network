@@ -1,17 +1,18 @@
 # Neural_Network
 
 ## Introduction
-This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1] and [Darknet][2].
+This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1], [Darknet][2] and [Caffe][4].
 
 ## Feature
 * C++14
 * Multi-thread support with Openmp
 * Run only on CPU
-* Structure visualization by [Netron][3] with Caffee2 like prototxt file
+* Structure visualization by [Netron][3] with Caffe2 like prototxt file
+* Easy to add customed layer
 
 ## Supported Layers
 * Input layer (data input)
-* Fullyconnected layer
+* FullyConnected layer
 * Convolution layer
 * BatchNormalization layer
 * Relu layer
@@ -40,18 +41,18 @@ This is a simple project to implement neural network in c++, the structure of ne
 #### Initialize network 
 Declear the nerual network. If the backpropagated path is special, you should name it and define the backpropagated path in `Neural_Network::Backward()` at `Neural_Network.cpp`.
 ```cpp
-Neural_Network nn("network_name");	// The default name is sequential
+Neural_Network nn("network_name");    // The default name is sequential
 ```
 #### Add layers
 It will add layer to neural network, checking the structure of input tensor at some layer, for instance, Concat layer, the input width and height should be the same at all input. **Note**: The **first** layer of network should be **Input layer**.
 ```cpp
-nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});	// The options are unordered
+nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});    // The options are unordered
 ```
 * Input layer options
 > **input_width** <br>
 > **input_height** <br>
 > **input_dimension**
-* Fullyconnected layer options
+* FullyConnected layer options
 > **number_neurons** <br>
 > batchnorm (none) <br>
 > activation (none)
@@ -74,7 +75,7 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 * Swish layer
 * Dropout layer
 > probability (0.5)
-* Pooling layer (output = (layer_size + padding - kernel_size) / stride + 1)
+* Pooling layer (output_size = (input_size + padding - kernel_size) / stride + 1)
 > **kernel_width** <br>
 > kernel_height ( = kernel_width) <br>
 > stride (1) <br>
@@ -90,7 +91,7 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > split_id (0)
 * Softmax layer
 * EuclideanLoss layer
-* Yolov3 layer
+* YOLOv3 layer
 > **total_anchor_num** <br>
 > **anchor_num** <br>
 > **classes** <br>
@@ -99,7 +100,7 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > mask <br>
 > ignore_iou_threshold (0.5) <br>
 > truth_iou_threshold (1)
-* Yolov4 layer
+* YOLOv4 layer
 > **total_anchor_num** <br>
 > **anchor_num** <br>
 > **classes** <br>
@@ -132,19 +133,19 @@ nn.addOutput("Layer_name");
 #### Construct network
 It will construct the computation graph of neural network automatically, but not checking is it reasonable or not.
 ```cpp
-nn.compile(mini_batch_size);	// The default mini_batch_size is 1
+nn.compile(mini_batch_size);    // The default mini_batch_size is 1
 ```
 
 #### Network shape
 Show the breif detail between layer and layer.
 ```cpp
-nn.shape();	// Show network shape
+nn.shape();    // Show network shape
 ```
 
 #### Visualization
-It will output a Caffee2 like network topology file, but it is not a converter to convert the model to Caffee2.
+It will output a Caffe2 like network topology file, but it is not a converter to convert the model to Caffe2.
 ```cpp
-nn.to_prototxt("output_filename.prototxt");	// The default name is model.prootxt
+nn.to_prototxt("output_filename.prototxt");    // The default name is model.prootxt
 ```
 Open the file at [Netron][3] to see the network structure.
 
@@ -170,8 +171,8 @@ nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsampl
 nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "dropout"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat_3"}});
 nn.addLayer(LayerOption{{"type", "AvgPooling"}, {"name", "avg_pooling"}, {"input_name", "concat"}});
 nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "avg_pooling"}, {"name", "shortcut_3"}, {"input_name", "concat_3"}});
-nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "32"}, {"name", "connected"}, {"activation", "PRelu"}});
-nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "3"}, {"name", "connected_2"}});
+nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "32"}, {"name", "connected"}, {"activation", "PRelu"}});
+nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "3"}, {"name", "connected_2"}});
 nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
 nn.compile();
 nn.to_prototxt();
@@ -180,17 +181,46 @@ The graph shown by Nerton.
 ![image](https://github.com/chenjunhao0315/Neural_Network/blob/main/Example_Network.png)
 
 #### Forward Propagation
-The data flow of network is based on **Tensor**. To forward propagation, just past the pointer of data to `network.Forward(POINTER_OF_DATA)` functioin. And it will return a **vector** of **Tensor pointer**, the **vtensorptr** is defined by `std::vecotr<Tensor*>`.
+The data flow of network is based on **Tensor**. To forward propagation, just past the pointer of data to `network.Forward(POINTER_OF_DATA)` function. And it will return a **vector** of **Tensor pointer**, the **vtensorptr** is defined by `std::vecotr<Tensor*>`.
 ```cpp
 Tensor data(28, 28, 3);
 vtensorptr output = nn.Forward(&data);
 ```
 
 #### Backward Propagation
-To backward propagation, just past the pointer of data to `network.Backward(POINTER_OF_LABEL)` functioin. And it will return the **loss** with floating point type.
+To backward propagation, just past the pointer of data to `network.Backward(POINTER_OF_LABEL)` function. And it will return the **loss** with floating point type.
 ```cpp
 Tensor label(1, 1, 3); label = {0, 1, 0};
 float loss = nn.Backward(&label);
+```
+
+#### Save model
+Ah, just save model.
+```cpp
+nn.save("model_name.bin");
+```
+
+#### Load model
+Ah, just load model.
+```cpp
+Neural_Network nn;
+nn.load("model_name.bin");
+```
+
+#### Add customed layer
+You can add the customed layer like [Caffe][4]. If you want to save customed layer, you should add some code at `Neural_Network::save()`, `Layer::save()` and `Neural_Network::load()`, it is not so hard, I'm trying to revise the network data structure to let it work automatically.
+```cpp
+#include "Layer.hpp"
+class CustomedLayer {
+public:
+    CustomedLayer(Layeroption opt);
+    void Forward(bool train);    // For normal layer
+    void Forward(Tensor *input);    // For input layer
+    void Backward(Tensor *target);
+private:
+    ...
+};
+REGISTER_LAYER_CLASS(Customed);
 ```
 
 #### Get training arguments
@@ -255,8 +285,8 @@ There are two method for training.
 * Method 1
 Put all data and label into **two vector of Tensor**, and past to the function `trainer.train_batch(DATA_SET, LABEL_SET, EPOCH)`, it will do everything automatically, such as shuffle the data, batch composition, etc. The **vtensor** is define by `std::vector<Tensor>`.
 ```cpp
-vtensor dataset;	// Add data with any way
-vtensor labelset;	// Add label with any way
+vtensor dataset;    // Add data with any way
+vtensor labelset;    // Add label with any way
 trainer.train_batch(dataset, labelset, EPOCH);
 ```
 * Method 2
@@ -301,7 +331,7 @@ Tensor t(v);
 You will get a **Tensor t** with the same value as the **array** you past in.
 ```cpp
 float f[3] = {1, 2, 3};
-Tensor t(f, 1, 1, 3);	// t = [1, 2, 3]
+Tensor t(f, 1, 1, 3);    // t = [1, 2, 3]
 ```
 
 #### Tensor extend
@@ -315,44 +345,44 @@ t.extend();
 * = (Tensor) <br>
 Deep copy from a to b, including extend.
 ```cpp
-Tensor a(1, 1, 2, 1);	// a = [1, 1]
+Tensor a(1, 1, 2, 1);    // a = [1, 1]
 Tensor b = a;   // b = [1, 1]
 ```
 * = (float) <br>
 Set all value to input
 ```cpp
-Tensor a(1, 1, 3, 0);	// a = [0, 0, 0]
+Tensor a(1, 1, 3, 0);    // a = [0, 0, 0]
 a = 1;  // a = [1, 1, 1]
 ```
 * = (initializer list) <br>
 Set the previous element to initialzer list
 ```cpp
-Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
+Tensor a(1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
 a = {1, 2, 4};  // a = [1, 2, 4, 3, 3]
 ```
 * [INDEX] <br>
 Revise or take the value at INDEX.
 ```cpp
-Tensor a(1, 1, 5, 3);	// a = [3, 3, 3, 3, 3]
+Tensor a(1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
 a[2] = 0;   // a = [3, 3, 0, 3, 3]
-float value = a[4]; // value = 4
+float value = a[4]; // value = 3
 ```
 * += (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);	// a = [1, 1]
-Tensor b(1, 1, 2, 2);	// b = [2, 2]
+Tensor a(1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 2, 2);    // b = [2, 2]
 a += b; // a = [3, 3] b = [2, 2]
 ```
 * -= (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);	// a = [1, 1]
-Tensor b(1, 1, 2, 2);	// b = [2, 2]
+Tensor a(1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 2, 2);    // b = [2, 2]
 a -= b; // a = [-1, -1] b = [2, 2]
 ```
 * \+ (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);	// a = [1, 1]
-Tensor b(1, 1, 2, 2);	// b = [2, 2]
+Tensor a(1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 2, 2);    // b = [2, 2]
 Tensor c = a + b;   // c = [3, 3]
 ```
 * \- (Tensor)
@@ -386,8 +416,8 @@ using namespace std;
 int main(int argc, const char * argv[]) {
     Neural_Network nn;
     nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
-    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "Relu"}});
-    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
+    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"activation", "Relu"}});
+    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
     nn.compile();
 
     Tensor a(1, 1, 2, 0);
@@ -416,3 +446,5 @@ int main(int argc, const char * argv[]) {
 [1]: https://cs.stanford.edu/people/karpathy/convnetjs/
 [2]: https://github.com/pjreddie/darknet
 [3]: https://netron.app
+[4]: https://github.com/BVLC/caffe
+

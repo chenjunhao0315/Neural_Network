@@ -50,8 +50,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_30016_v4_x5.bin");
-    IMG img("car.jpg");
+    YOLOv4 yolo("backup_50048_v4_x6.bin");
+    IMG img("kite.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -77,8 +77,8 @@ int main(int argc, const char * argv[]) {
     
 //    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "4"}, {"activation", "Relu"}});
-//    nn.addLayer(LayerOption{{"type", "Fullyconnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
+//    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"activation", "Mish"}});
+//    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
 //    nn.compile();
 //    nn.shape();
 //    nn.to_prototxt();

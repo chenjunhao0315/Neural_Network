@@ -37,7 +37,7 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
     fread(&layer_number, sizeof(int), 1, f);
     printf("Load %d layers\n", layer_number);
     
-    layer = new Model_Layer [layer_number];
+    layer = new BaseLayer* [layer_number];
     
     for (int i = 0; i < layer_number; ++i) {
         int temp;
@@ -65,7 +65,7 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             fread(&temp, sizeof(int), 1, f);
             opt["input_dimension"] = to_string(temp);
         } else if (type[0] == 'f' && type[1] == 'c') {
-            opt["type"] = "Fullyconnected";
+            opt["type"] = "FullyConnected";
             fread(&temp, sizeof(int), 1, f);
             opt["input_width"] = to_string(temp);
             fread(&temp, sizeof(int), 1, f);
@@ -323,8 +323,8 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
             fprintf(stderr, "[Neural_Network] Load unknown layer!\n");
         }
         opt_layer.push_back(opt);
-        layer[i] = Model_Layer(opt);
-        layer[i].load(f);
+        layer[i] = LayerRegistry::CreateLayer(opt);
+        layer[i]->load(f);
     }
     int output_number;
     fread(&output_number, sizeof(int), 1, f);
@@ -369,10 +369,11 @@ bool Neural_Network::save(const char *model_name) {
     printf("Save %d layers\n", layer_number);
     fwrite(&layer_number, sizeof(int), 1, f);
     for (int i = 0; i < layer_number; ++i) {
-        LayerType type = layer[i].getType();
+//        LayerType type = layer[i].getType();
+        LayerType type = layer[i]->type;
         if (type == LayerType::Input) {
             fwrite("in", 2, 1, f);
-        } else if (type == LayerType::Fullyconnected) {
+        } else if (type == LayerType::FullyConnected) {
             fwrite("fc", 2, 1, f);
         } else if (type == LayerType::Relu) {
             fwrite("re", 2, 1, f);
@@ -411,7 +412,7 @@ bool Neural_Network::save(const char *model_name) {
         } else if (type == LayerType::AvgPooling) {
             fwrite("ap", 2, 1, f);
         }
-        layer[i].save(f);
+        layer[i]->save(f);
     }
     int output_number = (int)output_layer.size();
     fwrite(&output_number, sizeof(int), 1, f);
@@ -449,9 +450,9 @@ bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
         LayerOption &opt = opt_layer[i];
         if (opt["type"] == "Convolution") {
             if (opt.find("batchnorm") != opt.end()) {
-                layer[i + 1].save_raw(f);
+                layer[i + 1]->save_raw(f);
             }
-            layer[i].save_raw(f);
+            layer[i]->save_raw(f);
         }
     }
     
@@ -487,9 +488,9 @@ bool Neural_Network::load_darknet(const char *weights_name) {
         cout << opt["name"] << ": " << check << " / " << test;
         if (opt["type"] == "Convolution") {
             if (opt.find("batchnorm") != opt.end()) {
-                layer[i + 1].load_raw(f);
+                layer[i + 1]->load_raw(f);
             }
-            layer[i].load_raw(f);
+            layer[i]->load_raw(f);
         }
         test = ftell(f);
         cout << " -> " << test << endl;
@@ -576,7 +577,7 @@ void Neural_Network::addLayer(LayerOption opt_) {
 void Neural_Network::compile(int batch_size_) {
     unordered_map<string, int> id_table;
     batch_size = batch_size_;
-    layer = new Model_Layer [opt_layer.size()];
+    layer = new BaseLayer* [opt_layer.size()];
     printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
         printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
@@ -588,9 +589,9 @@ void Neural_Network::compile(int batch_size_) {
         if (i > 0) {
             if (opt.find("input_name") == opt.end())
                 opt["input_name"] = (opt_layer[i - 1].find("name") == opt_layer[i - 1].end()) ? to_string(i - 1) : opt_layer[i - 1]["name"];
-            opt["input_width"] = to_string(layer[id_table[opt["input_name"]]].getParameter(0));
-            opt["input_height"] = to_string(layer[id_table[opt["input_name"]]].getParameter(1));
-            opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]].getParameter(2));
+            opt["input_width"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(0));
+            opt["input_height"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(1));
+            opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(2));
         }
         string bias = opt["bias"].c_str();
         
@@ -605,21 +606,21 @@ void Neural_Network::compile(int batch_size_) {
                     getline(concat_list, concat_name, ',');
                     concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
                     opt["concat_" + to_string(i) + "_name"] = concat_name;
-                    opt["concat_" + to_string(i) + "_width"] = to_string(layer[id_table[concat_name]].getParameter(0));
-                    opt["concat_" + to_string(i) + "_height"] = to_string(layer[id_table[concat_name]].getParameter(1));
-                    opt["concat_" + to_string(i) + "_dimension"] = to_string(layer[id_table[concat_name]].getParameter(2));
+                    opt["concat_" + to_string(i) + "_width"] = to_string(layer[id_table[concat_name]]->getParameter(0));
+                    opt["concat_" + to_string(i) + "_height"] = to_string(layer[id_table[concat_name]]->getParameter(1));
+                    opt["concat_" + to_string(i) + "_dimension"] = to_string(layer[id_table[concat_name]]->getParameter(2));
                 }
             }
             opt["concat_num"] = to_string(concat_num);
         } else if (opt["type"] == "YOLOv3" || opt["type"] == "YOLOv4") {
-            opt["net_width"] = to_string(layer[0].getParameter(0));
-            opt["net_height"] = to_string(layer[0].getParameter(1));
+            opt["net_width"] = to_string(layer[0]->getParameter(0));
+            opt["net_height"] = to_string(layer[0]->getParameter(1));
         } else if (opt["type"] == "ShortCut") {
-            opt["shortcut_width"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(0));
-            opt["shortcut_height"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(1));
-            opt["shortcut_dimension"] = to_string(layer[id_table[opt["shortcut"]]].getParameter(2));
+            opt["shortcut_width"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(0));
+            opt["shortcut_height"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(1));
+            opt["shortcut_dimension"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(2));
         }
-        layer[i] = Model_Layer(opt);
+        layer[i] = LayerRegistry::CreateLayer(opt);
         layer_number++;
     }
     printf("*****************************\n");
@@ -646,19 +647,20 @@ void Neural_Network::shape() {
     printf("Layer(type)      Name          Input          Output Shape\n");
     printf("=============================================================\n");
     for (int i = 0; i < layer_number; ++i) {
-        layer[i].shape();
+        layer[i]->shape();
     }
     printf("=============================================================\n");
 }
 
 void Neural_Network::show_detail() {
     for (int i = 0; i < layer_number; ++i) {
-        layer[i].show_detail();
+        layer[i]->show_detail();
     }
 }
 
 Neural_Network::nn_status Neural_Network::status() {
-    return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+//    return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+    return (layer_number > 0) ? ((layer[0]->type == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
 bool Neural_Network::to_prototxt(const char *filename) {
@@ -697,7 +699,7 @@ bool Neural_Network::to_prototxt(const char *filename) {
     }
     
     for (int i = 0; i < layer_number; ++i) {
-        layer[i].to_prototxt(f, i, refine_struct, id_table);
+        layer[i]->to_prototxt(f, i, refine_struct, id_table);
     }
     
     fclose(f);
@@ -725,7 +727,7 @@ void Neural_Network::constructGraph() {
                 }
             }
         }
-        Tensor *act = layer[i].connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
+        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
         terminal[opt["name"]] = act;
     }
     
@@ -738,8 +740,9 @@ void Neural_Network::constructGraph() {
 }
 
 vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
-    for (int i = 0; i < layer_number; ++i) {
-        layer[i].Forward(input_tensor_, train);
+    layer[0]->Forward(input_tensor_);
+    for (int i = 1; i < layer_number; ++i) {
+        layer[i]->Forward(train);
     }
     return output;
 }
@@ -752,16 +755,18 @@ float Neural_Network::Backward(Tensor *target) {
             Tensor cls_pos(1, 1, 1, 1);
             Tensor bbox_pos(1, 1, 4, 0);
             bbox_pos = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
-            float loss_cls = layer[path[0][0]].Backward(&cls_pos);
-            float loss_bbox = layer[path[1][0]].Backward(&bbox_pos);
+            layer[path[0][0]]->Backward(&cls_pos);
+            layer[path[1][0]]->Backward(&bbox_pos);
+            float loss_cls = layer[path[0][0]]->getLoss();
+            float loss_bbox = layer[path[1][0]]->getLoss();
             if (loss_cls > loss_bbox) {
                 for (int i = 1; i < path[0].size(); ++i) {
-                    layer[path[0][i]].Backward(&cls_pos);
+                    layer[path[0][i]]->Backward(&cls_pos);
                 }
             }
             else {
                 for (int i = 1; i < path[1].size(); ++i) {
-                    layer[path[1][i]].Backward(&bbox_pos);
+                    layer[path[1][i]]->Backward(&bbox_pos);
                 }
             }
             loss = loss_cls + loss_bbox * 0.5;
@@ -769,14 +774,14 @@ float Neural_Network::Backward(Tensor *target) {
         else if (target_ptr[0] == 0) {
             Tensor cls_neg(1, 1, 1, 0);
             for (int i = 0; i < path[0].size(); ++i) {
-                layer[path[0][i]].Backward(&cls_neg);
+                layer[path[0][i]]->Backward(&cls_neg);
             }
         }
         else if (target_ptr[0] == -1) {
             Tensor bbox_part(1, 1, 4, 0);
             bbox_part = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
             for (int i = 0; i < path[1].size(); ++i) {
-                layer[path[1][i]].Backward(&bbox_part);
+                layer[path[1][i]]->Backward(&bbox_part);
             }
             loss *= 0.5;
         }
@@ -787,17 +792,19 @@ float Neural_Network::Backward(Tensor *target) {
                 *(landmark_ptr++) = target_ptr[i];
             }
             for (int i = 0; i < path[2].size(); ++i) {
-                layer[path[2][i]].Backward(&landmark);
+                layer[path[2][i]]->Backward(&landmark);
             }
             loss *= 0.5;
         }
     } else if (model == "yolov3" || model == "yolov4") {
         for (int i = layer_number; i--; ) {
-            loss += layer[i].Backward(target);
+            layer[i]->Backward(target);
+            loss += layer[i]->getLoss();
         }
     } else {
         for (int i = layer_number; i--; ) {
-            loss += layer[i].Backward(target);
+            layer[i]->Backward(target);
+            loss += layer[i]->getLoss();
         }
     }
     return loss;
@@ -839,7 +846,7 @@ vector<Train_Args> Neural_Network::getTrainArgs() {
     vector<Train_Args> args_list;
     
     for (int i = 0; i < layer_number; ++i) {
-        Train_Args args = layer[i].getTrainArgs();
+        Train_Args args = layer[i]->getTrainArgs();
         if (args.valid)
             args_list.push_back(args);
     }
@@ -849,7 +856,7 @@ vector<Train_Args> Neural_Network::getTrainArgs() {
 void Neural_Network::alloc_workspace() {
     int max = 0, size;
     for (int i = 0; i < layer_number; ++i) {
-        size = layer[i].getWorkspaceSize();
+        size = layer[i]->getWorkspaceSize();
         if (size > max)
             max = size;
     }
@@ -863,7 +870,7 @@ void Neural_Network::alloc_workspace() {
 
 void Neural_Network::ClearGrad() {
     for (int i = 0; i < layer_number; ++i) {
-        layer[i].ClearGrad();
+        layer[i]->ClearGrad();
     }
 }
 

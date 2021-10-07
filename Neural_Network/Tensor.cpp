@@ -235,6 +235,15 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
     copy_cpu(n, pixelArray, weight);
 }
 
+void Tensor::one_of_n_encodinig(int index, int n) {
+    if (size != n) {
+        size = n;
+        delete [] weight;
+        weight = new float [size]();
+    }
+    weight[index] = 1;
+}
+
 Tensor Tensor::concate(const Tensor &T) {
     assert(same_plane(*this, T));
     Tensor result(width, height, dimension + T.dimension);

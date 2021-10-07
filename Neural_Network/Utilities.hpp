@@ -46,8 +46,6 @@ void scal_cpu(int size, float scale, float *src);
 void scal_add_cpu(int size, float scale, float bias, float *src);
 void axpy_cpu(int size, float scale, float *src, float *dst);
 
-void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);
-
 // ACTIVATION
 enum ACTIVATE_METHOD {
     LOGISTIC
@@ -64,7 +62,6 @@ static inline float softplus_activate(float x, float threshold) {
     else if (x < -threshold) return expf(x);
     return logf(expf(x) + 1);
 }
-
 // END ACTIVATION
 
 float constrain(float min, float max, float a);
@@ -88,6 +85,13 @@ void im2col_cpu(float* data_im,
 void col2im_cpu(float* data_col,
         int channels, int height, int width,
         int ksize, int stride, int pad, float* data_im);
+
+void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);
+template <typename srcType = float, typename dstType = float>
+void convert_channel_base_to_index_base(void *src, void *dst, int w, int h, int c) {
+    srcType *src_ptr = (srcType*)src, *channel_ptr = (srcType*)src;
+    dstType *dst_ptr = (dstType*)dst_ptr;
+}
 
 class Clock {
 public:

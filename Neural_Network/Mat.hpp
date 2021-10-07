@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <initializer_list>
+#include <iomanip>
 
 #include "Cast.hpp"
 
@@ -51,6 +52,7 @@ typedef Vec3<float> Vec3f;
 
 typedef void (*BinaryFunc)(void*, void*, int);
 typedef void (*TernaryFunc)(void*, void*, void*, int);
+typedef void (*MatrixFunc)(void*, void*, void*, int, int, int);
 
 class Mat {
 public:
@@ -80,6 +82,8 @@ public:
     Mat scale(float scale, MatType dstType = MAT_UNDEFINED);
     Mat addWeighted(float alpha, Mat &addend, float beta, float gamma, MatType dstType);
     Mat absScale(float scale = 1, float alpha = 0);
+    Mat transpose();
+    Mat dot(Mat &m);
     
     void scale_channel(int channel, float scale);
     
@@ -161,6 +165,11 @@ template <typename srcType, typename dstType>
 void multiplyMat(void *src1, void *src2, void *dst, int total_elements);
 
 TernaryFunc getmultiplyMatFunc(MatType srcType, MatType dstType);
+
+template <typename srcType, typename dstType>
+void dotMat(void *src1, void *src2, void *dst, int m, int n, int k);
+
+MatrixFunc getDotFunc(MatType srcType, MatType dstType);
 
 
 template <typename T>
@@ -285,6 +294,16 @@ void multiplyMat(void *src1, void *src2, void *dst, int total_elements) {
     for (int i = total_elements; i--; ) {
         *(dst_ptr++) = saturate_cast<dstType>(*(src1_ptr++) * *(src2_ptr++));
     }
+}
+
+// src2 needs to be transposed first
+template <typename srcType, typename dstType>
+void dotMat(void *src1, void *src2, void *dst, int m, int n, int k) {
+//    srcType *src1_ptr = (srcType*)src1;
+//    dstType *src2_ptr = (dstType*)src2;
+//    dstType *dst_ptr = (dstType*)dst;
+    
+    
 }
 
 // End Mat

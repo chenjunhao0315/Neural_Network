@@ -46,6 +46,7 @@ public:
     Tensor(int width_, int height_, int dimension_, float parameter);
     void extend();
     void copyTo(Tensor &T);
+    void one_of_n_encodinig(int index, int n);
     Tensor concate(const Tensor &T);
     void set(int width_, int height_, int dimension_, float value);
     float get(int width_, int height_, int dimension_);

@@ -45,13 +45,13 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-//    YOLOv3 yolo("backup_30016.bin");
-//    IMG img("person.jpg");
+//    YOLOv3 yolo("backup_115008_x7.bin");
+//    IMG img("house.jpg");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("yolov4.bin");
-    IMG img("dog.jpg");
+    YOLOv4 yolo("backup_30016_v4_x5.bin");
+    IMG img("car.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -61,7 +61,7 @@ int main(int argc, const char * argv[]) {
 //    c.stop_and_show();
 //    img.save("gaussian.jpg");
 
-//    Mtcnn mtcnn("1632205920_149_216519.000000.bin", "1630899594_119_16779.394531.bin", "1631183362_34_2583.320557.bin");
+//    Mtcnn mtcnn("1632205920_149_216519.000000.bin", "1630899594_119_16779.394531.bin", "1633381337_49_1781.699097.bin");
 //    mtcnn.min_face_size = 0;
 //    IMG img("target.jpg");
 //    Clock c;
@@ -72,8 +72,8 @@ int main(int argc, const char * argv[]) {
 //    mtcnn.layout(result);
     
 //    Neural_Network nn;
-//    nn.load("1631183863_35_2587.741699.bin");
-//    nn.to_prototxt();
+//    nn.load("yolov4-tiny.bin");
+//    nn.to_prototxt("yolov4-tiny.prototxt");
     
 //    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
@@ -101,6 +101,12 @@ int main(int argc, const char * argv[]) {
 //    printf("Input (0, 1) -> %.0f\n", nn.predict(&c)[0]);
 //    printf("Input (1, 0) -> %.0f\n", nn.predict(&d)[0]);
 //    printf("Input (1, 1) -> %.0f\n", nn.predict(&b)[0]);
+    
+//    Mat a(3, 4, MAT_32FC1);
+//    a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+//    cout << a;
+//    Mat b = a.transpose();
+//    cout << b;
     
     return 0;
 }

@@ -191,27 +191,52 @@ Mat& Mat::operator=(std::initializer_list<float> list) {
 }
 
 ostream& operator<<(ostream& os, Mat& m) {
-    int size = m.width * m.height * m.depth();
+    int depth = m.depth();
     if (m.type == MAT_8UC1 || m.type == MAT_8UC3) {
         unsigned char *ptr = m.ptr();
-        for (int i = size; i--; )
-            std::cout << *(ptr++) << " ";
+        for (int h = m.height; h--; ) {
+            for (int w = m.width; w--; ) {
+                for (int d = depth; d--; )
+                    os << int(*(ptr++)) << " ";
+            }
+            os << std::endl;
+        }
     } else if (m.type == MAT_8SC1 || m.type == MAT_8SC3) {
         char *ptr = (char*)m.ptr();
-        for (int i = size; i--; )
-            std::cout << *(ptr++) << " ";
+        for (int h = m.height; h--; ) {
+            for (int w = m.width; w--; ) {
+                for (int d = depth; d--; )
+                    os << int(*(ptr++)) << " ";
+            }
+            os << std::endl;
+        }
     } else if (m.type == MAT_32UC1 || m.type == MAT_32UC3) {
         unsigned int *ptr = (unsigned int *)m.ptr();
-        for (int i = size; i--; )
-            std::cout << *(ptr++) << " ";
+        for (int h = m.height; h--; ) {
+            for (int w = m.width; w--; ) {
+                for (int d = depth; d--; )
+                    os << *(ptr++) << " ";
+            }
+            os << std::endl;
+        }
     } else if (m.type == MAT_32SC1 || m.type == MAT_32SC3) {
         int *ptr = (int *)m.ptr();
-        for (int i = size; i--; )
-            std::cout << *(ptr++) << " ";
+        for (int h = m.height; h--; ) {
+            for (int w = m.width; w--; ) {
+                for (int d = depth; d--; )
+                    os << std::setprecision(2) << *(ptr++) << " ";
+            }
+            os << std::endl;
+        }
     } else if (m.type == MAT_32FC1 || m.type == MAT_32FC3) {
         float *ptr = (float *)m.ptr();
-        for (int i = size; i--; )
-            std::cout << *(ptr++) << " ";
+        for (int h = m.height; h--; ) {
+            for (int w = m.width; w--; ) {
+                for (int d = depth; d--; )
+                    os << std::setprecision(2) << *(ptr++) << " ";
+            }
+            os << std::endl;
+        }
     }
     return os;
 }
@@ -386,6 +411,39 @@ Mat Mat::absScale(float scale, float alpha) {
     return dst;
 }
 
+Mat Mat::transpose() {
+    Mat result(height, width, type);
+    unsigned char *src = data, *src_ptr = data;
+    unsigned char *dst = result.ptr();
+    
+    int elemsize = elemSize();
+    int src_offset = step[0] - elemSize();
+    
+    for (int dst_h = 0; dst_h < width; ++dst_h) {
+        src = src_ptr;
+        for (int dst_w = 0; dst_w < height; ++dst_w) {
+            for (int d = 0; d < elemsize; ++d) {
+                *(dst++) = *(src++);
+            }
+            src += src_offset;
+        }
+        src_ptr += elemsize;
+    }
+    
+    return result;
+}
+
+Mat Mat::dot(Mat &m) {
+    if (height != m.width) {
+        fprintf(stderr, "[Mat][Dot] Column and Row are unmatched!\n");
+        return Mat();
+    }
+    
+    Mat trans = m.transpose();
+    
+    return Mat();
+}
+
 void Mat::scale_channel(int channel, float scale) {
     Mat gain(1, 1, MAT_32FC1, Scalar(scale));
     ConvTool tool(type, type, gain);
@@ -482,6 +540,18 @@ TernaryFunc getmultiplyMatFunc(MatType srcType, MatType dstType) {
     };
     
     return multiplyTable[srcType >> 1][dstType >> 1];
+}
+
+MatrixFunc getDotFunc(MatType srcType, MatType dstType) {
+    static MatrixFunc dotTable[5][5] = {
+        {dotMat<unsigned char, unsigned char>, dotMat<unsigned char, char>, dotMat<unsigned char, unsigned int>, dotMat<unsigned char, int>, dotMat<unsigned char, float>},
+        {dotMat<char, unsigned char>, dotMat<char, char>, dotMat<char, unsigned int>, dotMat<char, int>, dotMat<char, float>},
+        {dotMat<unsigned int, unsigned char>, dotMat<unsigned int, char>, dotMat<unsigned int, unsigned int>, dotMat<unsigned int, int>, dotMat<unsigned int, float>},
+        {dotMat<int, unsigned char>, dotMat<int, char>, dotMat<int, unsigned int>, dotMat<int, int>, dotMat<int, float>},
+        {dotMat<float, unsigned char>, dotMat<float, char>, dotMat<float, unsigned int>, dotMat<float, int>, dotMat<float, float>}
+    };
+    
+    return dotTable[srcType >> 1][dstType >> 1];
 }
 
 int getDepth(MatType type) {

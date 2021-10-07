@@ -1181,7 +1181,7 @@ void BaseLayer::shape() {
 void BaseLayer::show_detail() {
     switch(type) {
         case LayerType::Convolution: {
-            printf("conv ");
+            printf("%-13s", name.c_str());
             printf("%4d ", info.output_dimension);
             printf("%2d x%2d /%2d (%2d) ", info.kernel_width, info.kernel_height, info.stride, info.padding);
             printf("%4d x%4d x%4d ->%4d x%4d x%4d ", info.input_width, info.input_height, info.input_dimension, info.output_width, info.output_height, info.output_dimension);
@@ -1194,6 +1194,30 @@ void BaseLayer::show_detail() {
                 printf("%5.3f BFlOPs", operations / 1000000000.0);
             }
             printf("\n");
+            break;
+        }
+        case LayerType::Pooling: {
+            printf("%-13s", name.c_str());
+            printf("     ");
+            printf("%2d x%2d /%2d (%2d) ", info.kernel_width, info.kernel_height, info.stride, info.padding);
+            printf("\n");
+            break;
+        }
+        case LayerType::UpSample: {
+            printf("%-13s", name.c_str());
+            printf("     ");
+            printf("%2d x%2d /%2d (%2d) ", 1, 1, info.stride, info.padding);
+            printf("\n");
+            break;
+        }
+        case LayerType::Concat: {
+            printf("%-13s", name.c_str());
+            printf("     ");
+            printf("%2d /%2d          ", info.splits, info.split_id);
+            printf("%4d x%4d x%4d ->%4d x%4d x%4d ", info.input_width, info.input_height, info.input_dimension, info.output_width, info.output_height, info.output_dimension);
+            printf("%s", (opt.find("concat") == opt.end()) ? "" : opt["concat"].c_str());
+            printf("\n");
+            break;
         }
         default:
             break;
@@ -2510,6 +2534,7 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
     }
     info.stride = stride;
     info.batch_size = atoi(opt["batch_size"].c_str());
+    info.scale = (opt.find("scale") == opt.end()) ? 1 : atof(opt["scale"].c_str());
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -2520,9 +2545,9 @@ void UpSampleLayer::Forward() {
     float *output = output_tensor->weight;
     
     if (info.reverse) {
-        
+        upsample(output, info.output_width, info.output_height, info.output_dimension, info.batch_size, info.stride, false, info.scale, input);
     } else {
-        upsample(input, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, true, 1, output);
+        upsample(input, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, true, info.scale, output);
     }
 }
 
@@ -2531,9 +2556,9 @@ void UpSampleLayer::Backward() {
     float *output_delta = output_tensor->delta_weight;
     
     if (info.reverse) {
-        
+        upsample(output_delta, info.output_width, info.output_height, info.output_dimension, info.batch_size, info.stride, true, info.scale, input_delta);
     } else {
-        upsample(input_delta, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, false, 1, output_delta);
+        upsample(input_delta, info.input_width, info.input_height, info.input_dimension, info.batch_size, info.stride, false, info.scale, output_delta);
     }
 }
 
@@ -3142,7 +3167,7 @@ int YOLOv3Layer::entry_index(int batch, int location, int entry) {
 }
 
 vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.05; // TODO: threshold input
+    float threshold = 0.24; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
@@ -3825,7 +3850,7 @@ int YOLOv4Layer::compare_yolo_class(float *output, int classes, int class_index,
 }
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
-    float threshold = 0.05; // TODO: threshold input
+    float threshold = 0.24; // TODO: threshold input
     float *feature = output_tensor->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;

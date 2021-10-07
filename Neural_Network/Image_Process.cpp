@@ -498,10 +498,10 @@ IMG IMG::filter(Mat kernel, MatType dstType) {
         fprintf(stderr, "[IMG][Filter] Unsupport kernel!\n");
         return IMG();
     }
-    if (mat.depth() != getDepth(dstType)) {
-        fprintf(stderr, "[IMG][Filter] Channel unmatched!\n");
-        return IMG();
-    }
+//    if (mat.depth() != getDepth(dstType)) {
+//        fprintf(stderr, "[IMG][Filter] Channel unmatched!\n");
+//        return IMG();
+//    }
     
     IMG result(width, height, (dstType == MAT_UNDEFINED) ? type : dstType);
     
@@ -1064,6 +1064,8 @@ void IMG::histogram(Size size, int resolution, const char *histogram_name) {
 }
 
 void IMG::drawPixel(Point p, Color color) {
+    if (p.x >= width || p.x < 0 || p.y >= height || p.y < 0)
+        return;
     unsigned char *px = mat.ptr() + (p.y * width + p.x) * 3;
     px[0] = color.R;
     px[1] = color.G;

@@ -7,6 +7,8 @@
 
 #include "Layer.hpp"
 
+static ParameterParser layerparameter("layer.txt");
+
 BaseLayer::~BaseLayer() {
     if (output_tensor)
         delete output_tensor;
@@ -567,6 +569,42 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
     }
     return true;
 }
+
+ParameterParser::ParameterParser(const char *param_filename) {
+    fstream param_file;
+    param_file.open(param_filename);
+    
+    while (!param_file.eof()) {
+        string param;
+        param_file >> param;
+        param_list.push_back(param);
+    }
+    
+    param_file.close();
+    this->parse();
+}
+
+void ParameterParser::parse() {
+    for (int i = 0; i < param_list.size(); ) {
+        CHECK_IF_QUIT(param_list[i], "{");
+        Parameter param(param_list[i++]);
+        CHECK_IFNOT_QUIT(param_list[i++], "{");
+        for ( ; param_list[i] != "}" && i < param_list.size(); ) {
+            if (param_list[i] == "REQUIRED") {
+                param.addParameter(ParameterData(REQUIRED, param_list[i + 1], param_list[i + 2], ""));
+                i += 3;
+            } else if (param_list[i] == "OPTION") {
+                param.addParameter(ParameterData(OPTION, param_list[i + 1], param_list[i + 2], param_list[i + 3]));
+                i += 4;
+            } else {
+                fprintf(stderr, "[ParameterParser] Syntax error!\n"); exit(1);
+            }
+        }
+        CHECK_IFNOT_QUIT(param_list[i++], "}");
+        LayerParameter::AddParameter(param);
+    }
+}
+
 
 InputLayer::InputLayer(LayerOption opt_) {
     opt = opt_;

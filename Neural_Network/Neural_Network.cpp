@@ -7,6 +7,13 @@
 
 #include "Neural_Network.hpp"
 
+Neural_Network::~Neural_Network() {
+    for (int i = layer_number; i--; )
+        delete layer[i];
+    delete [] layer;
+    delete [] workspace;
+}
+
 bool Neural_Network::load(const char *model_name, int batch_size_) {
     batch_size = batch_size_;
     FILE *f = fopen(model_name, "rb");
@@ -349,7 +356,7 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
         }
         path.push_back(route);
     }
-    return true;
+    return status();
 }
 
 bool Neural_Network::save(const char *model_name) {
@@ -498,6 +505,67 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     size_t end = ftell(f);
     printf("End: %zu %zu\n", check, end);
     return end == check;
+}
+
+bool Neural_Network::load_otter(const char *model_name) {
+    Otter_Leader leader;
+    leader.read_project(model_name);
+    
+    model = leader.getName();
+    for (int i = 0; i < leader.members(); ++i) {
+        vector<Stick> materials = leader.getMaterial(i);
+        string type = leader.getTeamName(i);
+        LayerOption opt;
+        opt["type"] = type;
+        for (int j = 0; j < materials.size(); ++j) {
+            Stick material = materials[j];
+            opt[material.type] = material.info;
+        }
+        this->addLayer(opt);
+    }
+    vector<Option> option = leader.getOption();
+    for (int i = 0; i < option.size(); ++i) {
+        if (option[i].type == "output")
+            this->addOutput(option[i].info);
+    }
+    this->compile();
+    return false;
+}
+
+bool Neural_Network::save_otter(const char *model_name) {
+    Otter_Leader leader(model);
+    for (int i = 0; i < output_layer.size(); ++i) {
+        leader.addOption(Option("output", output_layer[i]));
+    }
+    
+    for (int i = 0; i < layer_number; ++i) {
+        LayerOption &opt = opt_layer[i];
+        Otter team(opt["type"]), param("Param");
+        team.addMaterial(Stick("name", opt["name"]));
+        if (i) team.addMaterial(Stick("input_name", opt["input_name"]));
+        if (opt.find("batchnorm") != opt.end()) {
+            team.addMaterial(Stick("batchnorm", opt["batchnorm"]));
+            ++i;
+        }
+        if (opt.find("activation") != opt.end()) {
+            team.addMaterial(Stick("activation", opt["activation"]));
+            ++i;
+        }
+        // param
+        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
+        vector<ParameterData> data = layer_param.getParameter();
+        for (int j = 0; j < data.size(); ++j) {
+            ParameterData &par = data[j];
+            if (opt.find(par.name) != opt.end())
+                param.addMaterial(Stick(par.name, opt[par.name]));
+        }
+        
+        team.addPartner(param);
+        leader.addTeam(team);
+    }
+    
+    leader.save_project(model_name);
+    return true;
 }
 
 void Neural_Network::addOutput(string name) {

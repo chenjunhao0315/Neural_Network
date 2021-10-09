@@ -234,15 +234,87 @@ public:
     }
 };
 
-#define REGISTER_LAYER_CREATOR(type, creator)                                   \
-  static LayerRegister g_creator_##type(#type, creator)                         \
+#define REGISTER_LAYER_CREATOR(type, creator)   \
+    static LayerRegister g_creator_##type(#type, creator)
 
-#define REGISTER_LAYER_CLASS(type)                                                 \
-  BaseLayer* Creator_##type##Layer(const LayerOption& param)            \
-  {                                                                               \
-    return new type##Layer(param);                             \
-  }                                                                               \
-  REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+#define REGISTER_LAYER_CLASS(type)  \
+    BaseLayer* Creator_##type##Layer(const LayerOption& param) {    \
+        return new type##Layer(param);  \
+    }   \
+    REGISTER_LAYER_CREATOR(type, Creator_##type##Layer)
+
+enum STORE_TYPE {
+    OPTION,
+    REQUIRED
+};
+
+struct ParameterData {
+    ParameterData(STORE_TYPE store_, string type_, string name_, string data_) : store(store_), name(name_), type(type_), data(data_) {}
+    STORE_TYPE store;
+    string name;
+    string type;
+    string data;
+};
+
+class Parameter {
+public:
+    Parameter() {}
+    Parameter(string name_) : name(name_) {}
+    string getName() {return name;}
+    void addParameter(ParameterData param) {
+        parameter.push_back(param);
+    }
+    vector<ParameterData> getParameter() {return parameter;}
+private:
+    string name;
+    vector<ParameterData> parameter;
+};
+
+class LayerParameter {
+public:
+    typedef map<string, Parameter> ParameterPool;
+    
+    static ParameterPool& Pool() {
+        static auto *pool = new ParameterPool();
+        return *pool;
+    }
+    
+    static void AddParameter(Parameter param) {
+        ParameterPool &pool = Pool();
+        string name = param.getName();
+        if (pool.count(name) == 1) {
+            cout << "Layer type: [" << name << "] has been registered." << endl;
+//            exit(1);
+        }
+        pool[name] = param;
+    }
+    
+    static Parameter getParameter(string type) {
+        ParameterPool &pool = Pool();
+        if (pool.count(type) == 0) {
+            cout << "Unknown layers type: [" << type << "]" << endl;
+            exit(1);
+        }
+        return pool[type];
+    }
+private:
+    LayerParameter() {}
+};
+
+class ParameterParser {
+public:
+    ParameterParser();
+    ParameterParser(const char *param_filename);
+private:
+    void parse();
+    vector<string> param_list;
+};
+
+#define CHECK_IF_QUIT(str, cmp)  \
+if (str == cmp) fprintf(stderr, "[ParameterParser] Unexpected \"%s\"!\n", str.c_str());
+
+#define CHECK_IFNOT_QUIT(str, cmp)  \
+if (str != cmp) fprintf(stderr, "[ParameterParser] Expect '" cmp "'!\n");
 
 // Input layer
 class InputLayer : public BaseLayer {

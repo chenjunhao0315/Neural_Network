@@ -211,7 +211,7 @@ nn.load("model_name.bin");
 You can add the customed layer like [Caffe][4]. If you want to save customed layer, you should add some code at `Neural_Network::save()`, `Layer::save()` and `Neural_Network::load()`, it is not so hard, I'm trying to revise the network data structure to let it work automatically.
 ```cpp
 #include "Layer.hpp"
-class CustomedLayer {
+class CustomedLayer : public BaseLayer {
 public:
     CustomedLayer(Layeroption opt);
     void Forward(bool train);    // For normal layer
@@ -221,6 +221,44 @@ private:
     ...
 };
 REGISTER_LAYER_CLASS(Customed);
+```
+
+#### Save otter model &hearts;
+If you add some customed layer, remember to write the definition of layer prarmeter in `layer.txt`, the syntax is like below.
+```cpp
+Customed {
+    REQUIRED TYPE PARAMETER_NAME // for required parameter
+    OPTION TYPE PARAMETER_NAME DEFAULT_VALUE // for optional parameter
+}
+```
+Then, you can save the model without revise any code. The otter file is easy to read and revise but it is sensitive to **syntax**, edit it carefully. The **otter** model syntax is like below.
+```cpp
+name: "model_name"
+output: OUTPUT_LAYER_1_NAME    // optional, can more than one
+output: OUTPUT_LAYER_2_NAME
+LayerType {
+    name: LAYER_NAME    // optional
+    input_name: INPUT_LAYER_NAME    // optional
+    Param {
+        LAYER_PARAMETER: PARAMETER    // Look up the above layer option
+    }
+    batchnorm: BOOL    // optional
+    activation: ACTIVATION_LAYER    //optional
+}
+LayerType {
+    ...
+}
+...
+```
+Just type,
+```cpp
+nn.save_otter("model_name");
+```
+
+#### Load otter model
+```cpp
+Neural_Network nn;
+nn.load_otter("model_name");
 ```
 
 #### Get training arguments
@@ -447,4 +485,5 @@ int main(int argc, const char * argv[]) {
 [2]: https://github.com/pjreddie/darknet
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
+
 

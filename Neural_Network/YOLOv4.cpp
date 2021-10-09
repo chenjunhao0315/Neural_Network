@@ -603,12 +603,25 @@ void YOLOv4_Trainer::train(int epoch) {
 //    network.addOutput("yolo_small");
 //    network.addOutput("yolo_big");
 //    network.compile(batch_size);
-////    network.load_darknet("yolov4-tiny.weights");
-//    network.load_darknet("yolov4-tiny.conv.29");
+//    network.load_darknet("yolov4-tiny.weights");
+////    network.load_darknet("yolov4-tiny.conv.29");
 //    network.shape();
 ////    network.save("yolov4-tiny.bin");
 ////    network.save_darknet("yolov4-tiny.conv.29", 64);
 //    network.to_prototxt("yolov4-tiny.prototxt");
+//}
+
+//YOLOv4::YOLOv4(int classes_, int batch_size) {
+//    classes = classes_;
+//    label = get_yolo_label("labelstr.txt", classes);
+//    net_width = 416;
+//    net_height = 416;
+//    threshold = 0.45;
+//    network = Neural_Network();
+//    network.load_otter("yolov4-tiny.otter");
+//    network.load_darknet("yolov4-tiny.weights");
+//    network.shape();
+////    network.save_otter("test.otter");
 //}
 
 YOLOv4::YOLOv4(int classes_, int batch_size) {
@@ -1166,6 +1179,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
 //    network.show_detail();
 //    network.save("yolov4.bin");
     network.to_prototxt("yolov4.prototxt");
+    network.save_otter("yolov4.otter");
 }
 
 unsigned long custom_hash(const char *str) {

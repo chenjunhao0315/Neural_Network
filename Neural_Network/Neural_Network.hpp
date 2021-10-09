@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "Layer.hpp"
+#include "Otter.hpp"
 
 typedef map<string, float> TrainerOption;
 
@@ -27,7 +28,7 @@ public:
         OK,
         ERROR
     };
-    ~Neural_Network() {delete [] layer; delete [] workspace;}
+    ~Neural_Network();
     Neural_Network(string model_ = "sequential");
     void addLayer(LayerOption opt_);
     void addOutput(string name);
@@ -40,8 +41,10 @@ public:
     void ClearGrad();
     bool save(const char *model_name);
     bool save_darknet(const char *weights_name, int cut_off = -1);
+    bool save_otter(const char *model_name);
     bool load(const char *model_name, int batch_size_ = 1);
     bool load_darknet(const char *weights_name);
+    bool load_otter(const char *model_name);
     bool to_prototxt(const char *filename = "model.prototxt");
     void alloc_workspace();
     void constructGraph();

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7605471A26BC17F900909C8B /* Mat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7605471826BC17F900909C8B /* Mat.cpp */; };
 		760C6CA226696CED0098007D /* Data_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 760C6CA026696CED0098007D /* Data_Process.cpp */; };
+		761AB9952711C75C00779088 /* Otter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 761AB9932711C75C00779088 /* Otter.cpp */; };
 		76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E5C26F9C845008E30A8 /* YOLOv4.cpp */; };
 		76208E6426FE340C008E30A8 /* Box.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E6226FE340C008E30A8 /* Box.cpp */; };
 		76390E742666B3D000FFA5EC /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E732666B3D000FFA5EC /* main.cpp */; };
@@ -42,6 +43,8 @@
 		7605471F26BDE05A00909C8B /* Cast.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Cast.hpp; sourceTree = "<group>"; };
 		760C6CA026696CED0098007D /* Data_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_Process.cpp; sourceTree = "<group>"; };
 		760C6CA126696CED0098007D /* Data_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_Process.hpp; sourceTree = "<group>"; };
+		761AB9932711C75C00779088 /* Otter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Otter.cpp; sourceTree = "<group>"; };
+		761AB9942711C75C00779088 /* Otter.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Otter.hpp; sourceTree = "<group>"; };
 		761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = Neural_Network.profdata; sourceTree = "<group>"; };
 		76208E5C26F9C845008E30A8 /* YOLOv4.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = YOLOv4.cpp; sourceTree = "<group>"; };
 		76208E5D26F9C845008E30A8 /* YOLOv4.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = YOLOv4.hpp; sourceTree = "<group>"; };
@@ -139,6 +142,8 @@
 				76208E5D26F9C845008E30A8 /* YOLOv4.hpp */,
 				76208E6226FE340C008E30A8 /* Box.cpp */,
 				76208E6326FE340C008E30A8 /* Box.hpp */,
+				761AB9932711C75C00779088 /* Otter.cpp */,
+				761AB9942711C75C00779088 /* Otter.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -221,6 +226,7 @@
 				76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */,
 				76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */,
 				76208E6426FE340C008E30A8 /* Box.cpp in Sources */,
+				761AB9952711C75C00779088 /* Otter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

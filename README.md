@@ -208,7 +208,7 @@ nn.load("model_name.bin");
 ```
 
 #### Add customed layer
-You can add the customed layer like [Caffe][4]. If you want to save customed layer, you should add some code at `Neural_Network::save()`, `Layer::save()` and `Neural_Network::load()`, it is not so hard, I'm trying to revise the network data structure to let it work automatically.
+You can add the customed layer like [Caffe][4]. If you want to save customed layer, you should add some code at `Neural_Network::save()`, `Layer::save()` and `Neural_Network::load()`, it is not so hard. Or you can try to save model as **otter** model like below!
 ```cpp
 #include "Layer.hpp"
 class CustomedLayer : public BaseLayer {
@@ -241,6 +241,7 @@ LayerType {
     input_name: INPUT_LAYER_NAME    // optional
     Param {
         LAYER_PARAMETER: PARAMETER    // Look up the above layer option
+        LAYER_PARAMETER: "PARAMETER"    // It the parameter contain space, remember to add quotation mark
     }
     batchnorm: BOOL    // optional
     activation: ACTIVATION_LAYER    //optional
@@ -485,5 +486,6 @@ int main(int argc, const char * argv[]) {
 [2]: https://github.com/pjreddie/darknet
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
+
 
 

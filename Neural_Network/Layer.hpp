@@ -292,8 +292,7 @@ public:
     static Parameter getParameter(string type) {
         ParameterPool &pool = Pool();
         if (pool.count(type) == 0) {
-            cout << "Unknown layers type: [" << type << "]" << endl;
-            exit(1);
+            return Parameter();
         }
         return pool[type];
     }

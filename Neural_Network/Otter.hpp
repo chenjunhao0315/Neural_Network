@@ -38,6 +38,7 @@ public:
     void addMaterial(Stick element) {material.push_back(element);}
     string getName() {return name;}
     vector<Stick> getMaterial();
+    bool idle() {return material.empty();}
 private:
     string name;
     vector<Otter> partner;

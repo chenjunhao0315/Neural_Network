@@ -559,8 +559,8 @@ bool Neural_Network::save_otter(const char *model_name) {
             if (opt.find(par.name) != opt.end())
                 param.addMaterial(Stick(par.name, opt[par.name]));
         }
-        
-        team.addPartner(param);
+        if (!param.idle())
+            team.addPartner(param);
         leader.addTeam(team);
     }
     

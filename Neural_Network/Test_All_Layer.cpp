@@ -47,6 +47,7 @@ void test_all_layer(bool save) {
     nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
     nn.compile(8);
     nn.shape();
+    nn.save_otter("test_all_layer.otter");
 //    nn.show_detail();
 //    nn.to_prototxt("test_all_layer.prototxt");
 //    exit(1);

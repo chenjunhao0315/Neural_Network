@@ -109,27 +109,6 @@ bool Otter_Leader::save_project(const char *project_file) {
     return true;
 }
 
-bool Otter_Leader::find_team(fstream &project, string &team_name) {
-    if (project.eof()) return false;
-    
-    project >> team_name;
-    if (team_name.find('{') != string::npos) {
-        EARSE_CHARACTER(team_name, '{');
-        return true;
-    }
-    if (project.eof()) return false;
-    string find_brace;
-    project >> find_brace;
-    if (find_brace.find('{') != string::npos) {
-        return true;
-    } else {
-        fprintf(stderr, "[Otter_Leader] Syntax error!\n");
-        return false;
-    }
-    
-    return false;
-}
-
 bool Otter::parse_blueprint(fstream &blueprint) {
     Stick element = parse_option(blueprint);
     while (element.type != "End") {

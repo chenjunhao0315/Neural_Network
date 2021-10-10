@@ -61,7 +61,7 @@ int main(int argc, const char * argv[]) {
 //    c.stop_and_show();
 //    img.save("gaussian.jpg");
 
-//    Mtcnn mtcnn("1632205920_149_216519.000000.bin", "1630899594_119_16779.394531.bin", "1633381337_49_1781.699097.bin");
+//    Mtcnn mtcnn("pnet_default.bin", "rnet_default.bin", "onet_default.bin");
 //    mtcnn.min_face_size = 0;
 //    IMG img("target.jpg");
 //    Clock c;

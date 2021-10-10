@@ -434,8 +434,6 @@ bool BaseLayer::load(FILE *f) {
         // Test
         kernel[3].copyTo(kernel[1]);
         kernel[4].copyTo(kernel[2]);
-//        kernel[1] = kernel[3];
-//        kernel[2] = kernel[4];
     } else if (type == LayerType::Yolov3) {
         kernel[0].load(f);
         biases->load(f);
@@ -479,8 +477,6 @@ bool BaseLayer::load_raw(FILE *f) {
         // Test
         kernel[3].copyTo(kernel[1]);
         kernel[4].copyTo(kernel[2]);
-//        kernel[1] = kernel[3];
-//        kernel[2] = kernel[4];
     }
     return true;
 }
@@ -958,7 +954,6 @@ void FullyConnectedLayer::Backward(Tensor *none) {
     c = input_tensor->delta_weight;
     
     gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
-//    kernel->showDeltaWeight();
 }
 
 ReluLayer::ReluLayer(LayerOption opt_) {
@@ -1258,8 +1253,6 @@ void ShortCutLayer::Backward(Tensor *none) {
 void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out) {
     int stride = w1 / w2;
     int sample = w2 / w1;
-    //    assert(stride == h1 / h2);
-    //    assert(sample == h2 / h1);
     if(stride < 1) stride = 1;
     if(sample < 1) sample = 1;
     int minw = (w1 < w2) ? w1 : w2;

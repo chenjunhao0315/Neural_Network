@@ -50,7 +50,6 @@ public:
     Otter_Leader(string name = "") : project_name(name) {}
     bool read_project(const char *project_name);
     bool save_project(const char *project_name);
-    bool find_team(fstream &project, string &team_name);
     void addTeam(Otter team) {teams.push_back(team);}
     void addOption(Option opt) {option.push_back(opt);}
     string getName() {return project_name;}

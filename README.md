@@ -241,7 +241,7 @@ LayerType {
     input_name: INPUT_LAYER_NAME    // optional
     Param {
         LAYER_PARAMETER: PARAMETER    // Look up the above layer option
-        LAYER_PARAMETER: "PARAMETER"    // It the parameter contain space, remember to add quotation mark
+        LAYER_PARAMETER: "PARAMETER"    // If the parameter contain space, remember to add quotation mark
     }
     batchnorm: BOOL    // optional
     activation: ACTIVATION_LAYER    //optional
@@ -251,15 +251,25 @@ LayerType {
 }
 ...
 ```
-Just type,
+Just type this command, it will generate two file `mode_name.otter` and `model_name.dam`, first is the network structure file, second is the network weights file.
 ```cpp
-nn.save_otter("model_name");
+nn.save_otter("model_name.otter");
+```
+Or you can just save the network weights, by typing this command,
+```cpp
+nn.save_dam("weights_name.dam");
 ```
 
 #### Load otter model
+You can load the model with just network sturcture or with weights. **Note**: the weights should be cooresponded to the network strueture.
 ```cpp
 Neural_Network nn;
-nn.load_otter("model_name");
+nn.load_otter("model_name.otter");    // Just network structure
+nn.load_otter("model_name.otter", "mode_weight.dam");    // Network structure with weights
+```
+Or just load the weights, by typing this command,
+```cpp
+nn.load_dam("weight_name.dam");
 ```
 
 #### Get training arguments
@@ -388,7 +398,7 @@ Tensor a(1, 1, 2, 1);    // a = [1, 1]
 Tensor b = a;   // b = [1, 1]
 ```
 * = (float) <br>
-Set all value to input
+Set all value as input
 ```cpp
 Tensor a(1, 1, 3, 0);    // a = [0, 0, 0]
 a = 1;  // a = [1, 1, 1]
@@ -431,7 +441,7 @@ Tensor b(1, 1, 2, 2);   // b = [2, 2]
 Tensor c = a - b;   // c = [-1,-1]
 ```
 * << <br>
-Print all **weighs** in Tensor.
+Print all **weights** in Tensor.
 
 ## Build and run
 If the project doesn't include YOLOv4 layer, you can build with
@@ -486,6 +496,7 @@ int main(int argc, const char * argv[]) {
 [2]: https://github.com/pjreddie/darknet
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
+
 
 
 

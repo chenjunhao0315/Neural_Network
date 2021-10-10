@@ -47,7 +47,6 @@ void test_all_layer(bool save) {
     nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
     nn.compile(8);
     nn.shape();
-    nn.save_otter("test_all_layer.otter");
 //    nn.show_detail();
 //    nn.to_prototxt("test_all_layer.prototxt");
 //    exit(1);
@@ -84,9 +83,6 @@ void test_all_layer(bool save) {
         label_valid.push_back(label_fish[i]);
     }
     
-    
-//    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
-    
     Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"sub_division", 2}, {"warmup", 40}, {"steps", 1}, {"steps_1", 200}, {"scale_1", 0.5}});
 
     Clock c;
@@ -94,11 +90,12 @@ void test_all_layer(bool save) {
     c.stop_and_show();
 
     printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
-//    nn.save("test.bin");
     if (save) {
-        nn.save("test.bin");
+//        nn.save("test.bin");
+        nn.save_otter("test_all_layer.otter");
         Neural_Network test;
-        test.load("test.bin");
+//        test.load("test.bin");
+        test.load_otter("test_all_layer.otter", "test_all_layer.dam");
         test.shape();
         test.to_prototxt("test.prototxt");
 //        Trainer trainer_test(&test, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"sub_division", 2}, {"warmup", 40}, {"steps", 1}, {"steps_1", 200}, {"scale_1", 0.5}});

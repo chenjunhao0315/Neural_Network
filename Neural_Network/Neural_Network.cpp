@@ -24,14 +24,17 @@ bool Neural_Network::load(const char *model_name, int batch_size_) {
     fread(&check_major, sizeof(int), 1, f);
     fread(&check_minor, sizeof(int), 1, f);
     if (check_major != version_major) {
-        printf("Neural Network: v%d.%d\n", version_major, version_minor);
-        printf("Model: v%d.%d\n", check_major, check_minor);
-        printf("There are significant change in weight arrangement, model can not be used!\n");
+        fprintf(stderr, "Neural Network: v%d.%d\n", version_major, version_minor);
+        fprintf(stderr, "Model: v%d.%d\n", check_major, check_minor);
+        fprintf(stderr, "There are significant change in weight arrangement, model can not be used!\n");
+        if (check_major == 3 && version_major == 4)
+            fprintf(stderr, "Please use the model converter to convert the model from v3 to v4!\n");
+        exit(-100);
         return false;
     } else if (check_major == version_major && check_minor > version_minor) {
-        printf("Neural Network: v%d.%d\n", version_major, version_minor);
-        printf("Model: v%d.%d\n", check_major, check_minor);
-        printf("There are maybe existed unsupport layer!\n");
+        fprintf(stderr, "Neural Network: v%d.%d\n", version_major, version_minor);
+        fprintf(stderr, "Model: v%d.%d\n", check_major, check_minor);
+        fprintf(stderr, "There are maybe existed unsupport layer!\n");
     }
     
     int type_len;
@@ -376,7 +379,6 @@ bool Neural_Network::save(const char *model_name) {
     printf("Save %d layers\n", layer_number);
     fwrite(&layer_number, sizeof(int), 1, f);
     for (int i = 0; i < layer_number; ++i) {
-//        LayerType type = layer[i].getType();
         LayerType type = layer[i]->type;
         if (type == LayerType::Input) {
             fwrite("in", 2, 1, f);
@@ -507,9 +509,9 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     return end == check;
 }
 
-bool Neural_Network::load_otter(const char *model_name) {
+bool Neural_Network::load_otter(const char *model_structure, const char *model_weight) {
     Otter_Leader leader;
-    leader.read_project(model_name);
+    leader.read_project(model_structure);
     
     model = leader.getName();
     for (int i = 0; i < leader.members(); ++i) {
@@ -529,7 +531,37 @@ bool Neural_Network::load_otter(const char *model_name) {
             this->addOutput(option[i].info);
     }
     this->compile();
-    return false;
+    if (model_weight)
+        this->load_dam(model_weight);
+    return true;
+}
+
+bool Neural_Network::load_dam(const char *model_weight) {
+    FILE *weights = fopen(model_weight, "r");
+    
+    int check_major, check_minor;
+    fread(&check_major, sizeof(int), 1, weights);
+    fread(&check_minor, sizeof(int), 1, weights);
+    if (check_major != version_major) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are significant change in weight arrangement, model can not be used!\n");
+        if (check_major == 3 && version_major == 4)
+            fprintf(stderr, "Please use the model converter to convert the model from v3 to v4!\n");
+        exit(-100);
+        return false;
+    } else if (check_major == version_major && check_minor > version_minor) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are maybe existed unsupport layer!\n");
+    }
+    
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->load_raw(weights);
+    }
+    
+    fclose(weights);
+    return true;
 }
 
 bool Neural_Network::save_otter(const char *model_name) {
@@ -563,8 +595,26 @@ bool Neural_Network::save_otter(const char *model_name) {
             team.addPartner(param);
         leader.addTeam(team);
     }
-    
     leader.save_project(model_name);
+    
+    string weights(model_name);
+    size_t pos = weights.find('.');
+    weights = weights.substr(0, pos);
+    weights.append(".dam");
+    this->save_dam(weights.c_str());
+    return true;
+}
+
+bool Neural_Network::save_dam(const char *model_name) {
+    FILE *weights = fopen(model_name, "wb");
+    fwrite(&version_major, sizeof(int), 1, weights);
+    fwrite(&version_minor, sizeof(int), 1, weights);
+    
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->save_raw(weights);
+    }
+    
+    fclose(weights);
     return true;
 }
 
@@ -692,8 +742,8 @@ void Neural_Network::compile(int batch_size_) {
         layer_number++;
     }
     printf("*****************************\n");
-    if (output_layer.empty())
-        output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
+//    if (output_layer.empty())
+//        output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
     constructGraph();
     
     for (int i = 0; i < output_layer.size(); ++i) {
@@ -727,7 +777,6 @@ void Neural_Network::show_detail() {
 }
 
 Neural_Network::nn_status Neural_Network::status() {
-//    return (layer_number > 0) ? ((layer[0].getType() == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
     return (layer_number > 0) ? ((layer[0]->type == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
 }
 
@@ -800,10 +849,14 @@ void Neural_Network::constructGraph() {
     }
     
     int output_size = (int)output_layer.size();
-    output.reserve(output_size);
-    output.push_back(terminal[output_layer[0]]);
-    for (int i = 1; i < output_size; ++i) {
-        output.push_back(terminal[output_layer[i]]);
+    if (output_size) {
+        output.reserve(output_size);
+        output.push_back(terminal[output_layer[0]]);
+        for (int i = 1; i < output_size; ++i) {
+            output.push_back(terminal[output_layer[i]]);
+        }
+    } else {
+        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
     }
 }
 

@@ -40,6 +40,11 @@ Option parse_option(fstream &f) {
         return Option("Partner", type);
     } else if ((mark = type.find('}')) != string::npos) {
         return Option("End", type);
+    } else if (type[0] == '#') {
+        getline(f, type, '\n');
+        return Option("Comment", type);
+    } else if (type[0] == '$') {
+        return Option("End", "End of otter syntax");
     } else {
         string find_colon;
         f >> find_colon;
@@ -79,6 +84,8 @@ bool Otter_Leader::read_project(const char *project_file) {
             Otter team_leader(segment.info);
             team_leader.parse_blueprint(project);
             teams.push_back(team_leader);
+        } else if (segment.type == "Comment") {
+            // skip
         } else {
             option.push_back(segment);
         }
@@ -109,6 +116,24 @@ bool Otter_Leader::save_project(const char *project_file) {
     return true;
 }
 
+bool Otter_Leader::save_raw(const char *project_file) {
+    FILE *project = fopen(project_file, "w");
+    
+    fprintf(project, "name: \"%s\" ", project_name.c_str());
+    for (int i = 0; i < option.size(); ++i) {
+        if (option[i].info.find(' ') == string::npos)
+            fprintf(project, "%s: %s ", option[i].type.c_str(), option[i].info.c_str());
+        else
+            fprintf(project, "%s: \"%s\" ", option[i].type.c_str(), option[i].info.c_str());
+    }
+    for (int i = 0; i < teams.size(); ++i) {
+        teams[i].save_raw(project);
+    }
+    fprintf(project, "$\n");
+    fclose(project);
+    return true;
+}
+
 bool Otter::parse_blueprint(fstream &blueprint) {
     Stick element = parse_option(blueprint);
     while (element.type != "End") {
@@ -116,6 +141,8 @@ bool Otter::parse_blueprint(fstream &blueprint) {
             Otter team_leader(element.info);
             team_leader.parse_blueprint(blueprint);
             partner.push_back(team_leader);
+        } else if (element.type == "Comment") {
+            // skip
         } else {
             material.push_back(Stick(element.type, element.info));
         }
@@ -142,6 +169,23 @@ void Otter::save_blueprint(FILE *project, int format) {
     
     WRITE_SPACE(project, format);
     fprintf(project, "}\n");
+}
+
+void Otter::save_raw(FILE *project) {
+    fprintf(project, "%s { ", name.c_str());
+    
+    for (int i = 0; i < material.size(); ++i) {
+        if (material[i].info.find(' ') != string::npos)
+            fprintf(project, "%s: \"%s\" ", material[i].type.c_str(), material[i].info.c_str());
+        else
+            fprintf(project, "%s: %s ", material[i].type.c_str(), material[i].info.c_str());
+    }
+    
+    for (int i = 0; i < partner.size(); ++i) {
+        partner[i].save_raw(project);
+    }
+
+    fprintf(project, "} ");
 }
 
 vector<Stick> Otter::getMaterial() {

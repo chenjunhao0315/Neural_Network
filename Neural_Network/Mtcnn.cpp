@@ -11,7 +11,8 @@ PNet::PNet(const char *model_name) {
     scale_factor = 0.709;
     threshold[0] = 0.97;
     pnet = Neural_Network("mtcnn");
-    pnet.load(model_name);
+//    pnet.load(model_name);
+    pnet.load_ottermodel(model_name);
 //    pnet.shape();
 }
 
@@ -230,6 +231,39 @@ vector<Bbox> calibrate_box(vector<Bbox> &Bbox_list) {
     return bbox_c;
 }
 
+RNet::RNet(const char *model_name) {
+    rnet = Neural_Network("mtcnn");
+//    rnet.load(model_name);
+    rnet.load_ottermodel(model_name);
+//    rnet.shape();
+}
+
+RNet::RNet() {
+    threshold[0] = 0.9;
+    rnet = Neural_Network("mtcnn");
+    rnet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "24"}, {"input_height", "24"}, {"input_dimension", "3"}, {"name", "input"}});
+    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "28"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
+    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_1"}});
+    rnet.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "3"}, {"stride", "2"}, {"name", "pool_1"}, {"padding", "1"}});
+    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "48"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_2"}});
+    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_2"}});
+    rnet.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "3"}, {"stride", "2"}, {"name", "pool_2"}});
+    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "2"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_3"}});
+    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_3"}});
+    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "128"}, {"name", "fc_1"}});
+    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"name", "fc_cls"}});
+    rnet.addLayer(LayerOption{{"type", "Softmax"}, {"name", "cls_prob"}});
+    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"name", "fc_bbox"}, {"input_name", "fc_1"}});
+    rnet.addLayer(LayerOption {{"type", "EuclideanLoss"}, {"name", "bbox_pred"}, {"input_name", "fc_bbox"}});
+    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "10"}, {"name", "fc_land"}, {"input_name", "fc_1"}});
+    rnet.addLayer(LayerOption {{"type", "EuclideanLoss"}, {"name", "land_pred"}, {"input_name", "fc_land"}});
+    rnet.addOutput("cls_prob");
+    rnet.addOutput("bbox_pred");
+    rnet.addOutput("land_pred");
+    rnet.compile();
+    rnet.shape();
+}
+
 vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
     vector<Bbox> square_bbox = convert_to_square(pnet_bbox);
     vector<Bbox> rnet_bbox;
@@ -269,36 +303,11 @@ bool RNet::ready() {
     return (rnet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
-RNet::RNet() {
-    threshold[0] = 0.9;
-    rnet = Neural_Network("mtcnn");
-    rnet.addLayer(LayerOption{{"type", "Input"}, {"input_width", "24"}, {"input_height", "24"}, {"input_dimension", "3"}, {"name", "input"}});
-    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "28"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_1"}});
-    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_1"}});
-    rnet.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "3"}, {"stride", "2"}, {"name", "pool_1"}, {"padding", "1"}});
-    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "48"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_2"}});
-    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_2"}});
-    rnet.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "3"}, {"stride", "2"}, {"name", "pool_2"}});
-    rnet.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "64"}, {"kernel_width", "2"}, {"stride", "1"}, {"padding", "0"}, {"name", "conv_3"}});
-    rnet.addLayer(LayerOption{{"type", "PRelu"}, {"name", "prelu_3"}});
-    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "128"}, {"name", "fc_1"}});
-    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"name", "fc_cls"}});
-    rnet.addLayer(LayerOption{{"type", "Softmax"}, {"name", "cls_prob"}});
-    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"name", "fc_bbox"}, {"input_name", "fc_1"}});
-    rnet.addLayer(LayerOption {{"type", "EuclideanLoss"}, {"name", "bbox_pred"}, {"input_name", "fc_bbox"}});
-    rnet.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "10"}, {"name", "fc_land"}, {"input_name", "fc_1"}});
-    rnet.addLayer(LayerOption {{"type", "EuclideanLoss"}, {"name", "land_pred"}, {"input_name", "fc_land"}});
-    rnet.addOutput("cls_prob");
-    rnet.addOutput("bbox_pred");
-    rnet.addOutput("land_pred");
-    rnet.compile();
-    rnet.shape();
-}
-
-RNet::RNet(const char *model_name) {
-    rnet = Neural_Network("mtcnn");
-    rnet.load(model_name);
-//    rnet.shape();
+ONet::ONet(const char *model_name) {
+    onet = Neural_Network("mtcnn");
+//    onet.load(model_name);
+    onet.load_ottermodel(model_name);
+//    onet.shape();
 }
 
 ONet::ONet() {
@@ -328,12 +337,6 @@ ONet::ONet() {
     onet.addOutput("land_pred");
     onet.compile();
     onet.shape();
-}
-
-ONet::ONet(const char *model_name) {
-    onet = Neural_Network("mtcnn");
-    onet.load(model_name);
-//    onet.shape();
 }
 
 vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
@@ -392,86 +395,6 @@ bool ONet::ready() {
     return (onet.status() == Neural_Network::nn_status::OK) ? true : false;
 }
 
-void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vtensor &label_set, int width, int size) {
-    FILE *img = fopen(data_path, "rb");
-    FILE *label = fopen(label_path, "rb");
-    
-    for (int i = 0; i < size; ++i) {
-        int cls;
-        float bbox[4];
-        float landmark[10];
-        fread(&cls, sizeof(int), 1, label);
-        fread(bbox, sizeof(float), 4, label);
-        fread(landmark, sizeof(float), 10, label);
-        Tensor label_data;
-        float *label_data_ptr = label_data.weight;
-        *(label_data_ptr++) = ((float)cls);
-        for (int i = 0; i < 4; ++i) {
-            *(label_data_ptr++) = (bbox[i]);
-        }
-        for (int i = 0; i < 10; ++i) {
-            *(label_data_ptr++) = (landmark[i]);
-        }
-        label_set.push_back(label_data);
-        
-        unsigned char pixel[3 * width * width];
-        fread(pixel, sizeof(unsigned char), 3 * width * width, img);
-        
-        if (i < 0) {
-            unsigned char pixel_R[width * width];
-            unsigned char pixel_G[width * width];
-            unsigned char pixel_B[width * width];
-            for (int i = 0; i < width * width; ++i) {
-                pixel_R[i] = pixel[i * 3  +  0];
-                pixel_G[i] = pixel[i * 3  +  1];
-                pixel_B[i] = pixel[i * 3  +  2];
-            }
-            
-            string file_name = to_string(i);
-            FILE *f = fopen(file_name.c_str(), "wb");
-            fprintf(f, "P6\n%d %d\n255\n", width, width);
-            fwrite(pixel, sizeof(unsigned char), 3 * width * width, f);
-            fclose(f);
-        }
-        float normal_pixel[3 * width * width];
-        int index = 0;
-        for (int d = 0; d < 3; ++d) {
-            for (int h = 0; h < width; ++h) {
-                for (int w = 0; w < width; ++w) {
-                    normal_pixel[index++] = ((float)pixel[((h * width) + w) * 3 + d] - 127.5) / 128.0;
-                }
-            }
-        }
-        data_set.push_back(Tensor(normal_pixel, width, width, 3));
-    }
-    fclose(img);
-    fclose(label);
-}
-
-void mtcnn_evaluate(Neural_Network *nn, vtensor &data_set, vector<vfloat> &label_set) {
-    int count = 0;
-    int correct = 0;
-    int pos = 0;
-    int neg = 0;
-    for (int i = 0; i < data_set.size(); ++i) {
-        vfloat out = nn->Forward(&data_set[i])[0]->toVector();
-        if (label_set[i][0] == 1) {
-            if (out[1] > out[0]) {
-                correct++;
-                pos++;
-            }
-            count++;
-        } else if (label_set[i][0] == 0) {
-            if (out[0] > out[1]) {
-                correct++;
-                neg++;
-            }
-            count++;
-        }
-    }
-    printf("Acc: %.2f%% pos: %d neg: %d count: %d\n", (float)correct / count * 100, pos, neg, count);
-}
-
 Mtcnn::~Mtcnn() {
     delete pnet;
     delete rnet;
@@ -482,6 +405,10 @@ Mtcnn::Mtcnn(const char *model_pnet, const char *model_rnet, const char *model_o
     pnet = new PNet(model_pnet);
     rnet = new RNet(model_rnet);
     onet = new ONet(model_onet);
+    if ((pnet->ready() && rnet->ready() && onet->ready()))
+        printf("[Mtcnn] Network Ready!\n");
+    else
+        return;
     pnet->threshold[0] = 0.9;
     rnet->threshold[0] = 0.7;
     onet->threshold[0] = 0.8;
@@ -623,28 +550,92 @@ MtcnnLoader::MtcnnLoader(const char *img, const char *label, string net_name) {
     }
 }
 
+void mtcnn_data_loader(const char *data_path, const char *label_path, vtensor &data_set, vtensor &label_set, int width, int size) {
+    FILE *img = fopen(data_path, "rb");
+    FILE *label = fopen(label_path, "rb");
+    
+    for (int i = 0; i < size; ++i) {
+        int cls;
+        float bbox[4];
+        float landmark[10];
+        fread(&cls, sizeof(int), 1, label);
+        fread(bbox, sizeof(float), 4, label);
+        fread(landmark, sizeof(float), 10, label);
+        Tensor label_data;
+        float *label_data_ptr = label_data.weight;
+        *(label_data_ptr++) = ((float)cls);
+        for (int i = 0; i < 4; ++i) {
+            *(label_data_ptr++) = (bbox[i]);
+        }
+        for (int i = 0; i < 10; ++i) {
+            *(label_data_ptr++) = (landmark[i]);
+        }
+        label_set.push_back(label_data);
+        
+        unsigned char pixel[3 * width * width];
+        fread(pixel, sizeof(unsigned char), 3 * width * width, img);
+        
+        if (i < 0) {
+            unsigned char pixel_R[width * width];
+            unsigned char pixel_G[width * width];
+            unsigned char pixel_B[width * width];
+            for (int i = 0; i < width * width; ++i) {
+                pixel_R[i] = pixel[i * 3  +  0];
+                pixel_G[i] = pixel[i * 3  +  1];
+                pixel_B[i] = pixel[i * 3  +  2];
+            }
+            
+            string file_name = to_string(i);
+            FILE *f = fopen(file_name.c_str(), "wb");
+            fprintf(f, "P6\n%d %d\n255\n", width, width);
+            fwrite(pixel, sizeof(unsigned char), 3 * width * width, f);
+            fclose(f);
+        }
+        float normal_pixel[3 * width * width];
+        int index = 0;
+        for (int d = 0; d < 3; ++d) {
+            for (int h = 0; h < width; ++h) {
+                for (int w = 0; w < width; ++w) {
+                    normal_pixel[index++] = ((float)pixel[((h * width) + w) * 3 + d] - 127.5) / 128.0;
+                }
+            }
+        }
+        data_set.push_back(Tensor(normal_pixel, width, width, 3));
+    }
+    fclose(img);
+    fclose(label);
+}
+
+void mtcnn_evaluate(Neural_Network *nn, vtensor &data_set, vector<vfloat> &label_set) {
+    int count = 0;
+    int correct = 0;
+    int pos = 0;
+    int neg = 0;
+    for (int i = 0; i < data_set.size(); ++i) {
+        vfloat out = nn->Forward(&data_set[i])[0]->toVector();
+        if (label_set[i][0] == 1) {
+            if (out[1] > out[0]) {
+                correct++;
+                pos++;
+            }
+            count++;
+        } else if (label_set[i][0] == 0) {
+            if (out[0] > out[1]) {
+                correct++;
+                neg++;
+            }
+            count++;
+        }
+    }
+    printf("Acc: %.2f%% pos: %d neg: %d count: %d\n", (float)correct / count * 100, pos, neg, count);
+}
+
 Tensor MtcnnLoader::getImg(int index) {
     fseek(img_ptr, index * image_step, SEEK_SET);
     unsigned char pixel[image_step];
     fread(pixel, 1, image_step, img_ptr);
     float normal_pixel[image_step];
     
-//    if (0) {
-//        unsigned char pixel_R[net_size * net_size];
-//        unsigned char pixel_G[net_size * net_size];
-//        unsigned char pixel_B[net_size * net_size];
-//        for (int i = 0; i < net_size * net_size; ++i) {
-//            pixel_R[i] = pixel[i * 3  +  0];
-//            pixel_G[i] = pixel[i * 3  +  1];
-//            pixel_B[i] = pixel[i * 3  +  2];
-//        }
-//        
-//        string file_name = to_string(index);
-//        FILE *f = fopen(file_name.c_str(), "wb");
-//        fprintf(f, "P6\n%d %d\n255\n", net_size, net_size);
-//        fwrite(pixel, sizeof(unsigned char), 3 * net_size * net_size, f);
-//        fclose(f);
-//    }
     index = 0;
     for (int d = 0; d < 3; ++d) {
         for (int h = 0; h < net_size; ++h) {

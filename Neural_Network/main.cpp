@@ -45,8 +45,8 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-//    YOLOv3 yolo("backup_115008_x7.bin");
-//    IMG img("house.jpg");
+//    YOLOv3 yolo("backup_15008_x11.bin");
+//    IMG img("33_Running_Running_33_156.jpg");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
@@ -61,7 +61,7 @@ int main(int argc, const char * argv[]) {
 //    c.stop_and_show();
 //    img.save("gaussian.jpg");
 
-//    Mtcnn mtcnn("pnet_default.bin", "rnet_default.bin", "onet_default.bin");
+//    Mtcnn mtcnn("pnet_default.ottermodel", "rnet_default.ottermodel", "onet_default.ottermodel");
 //    mtcnn.min_face_size = 0;
 //    IMG img("target.jpg");
 //    Clock c;
@@ -72,16 +72,13 @@ int main(int argc, const char * argv[]) {
 //    mtcnn.layout(result);
     
 //    Neural_Network nn;
-//    nn.load("yolov4-tiny.bin");
-//    nn.to_prototxt("yolov4-tiny.prototxt");
-    
-//    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
 //    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"activation", "Mish"}});
 //    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
 //    nn.compile();
 //    nn.shape();
 //    nn.to_prototxt();
+//    nn.save_otter("test.otter");
 //
 //    Tensor a(1, 1, 2, 0);
 //    Tensor b(1, 1, 2, 1);

@@ -92,10 +92,13 @@ void test_all_layer(bool save) {
     printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
     if (save) {
 //        nn.save("test.bin");
-        nn.save_otter("test_all_layer.otter");
+//        nn.save_otter("test_all_layer.otter");
+        nn.save_ottermodel("test_all_layer.ottermodel");
+        printf("Save model finish!\n");
         Neural_Network test;
 //        test.load("test.bin");
-        test.load_otter("test_all_layer.otter", "test_all_layer.dam");
+//        test.load_otter("test_all_layer.otter", "test_all_layer.dam");
+        test.load_ottermodel("test_all_layer.ottermodel");
         test.shape();
         test.to_prototxt("test.prototxt");
 //        Trainer trainer_test(&test, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"sub_division", 2}, {"warmup", 40}, {"steps", 1}, {"steps_1", 200}, {"scale_1", 0.5}});

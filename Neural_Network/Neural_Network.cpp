@@ -509,6 +509,26 @@ bool Neural_Network::load_darknet(const char *weights_name) {
     return end == check;
 }
 
+bool Neural_Network::check_version(FILE *model) {
+    int check_major, check_minor;
+    fread(&check_major, sizeof(int), 1, model);
+    fread(&check_minor, sizeof(int), 1, model);
+    if (check_major != version_major) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are significant change in weight arrangement, model can not be used!\n");
+        if (check_major == 3 && version_major == 4)
+            fprintf(stderr, "Please use the model converter to convert the model from v3 to v4!\n");
+        exit(-100);
+        return false;
+    } else if (check_major == version_major && check_minor > version_minor) {
+        printf("Neural Network: v%d.%d\n", version_major, version_minor);
+        printf("Model: v%d.%d\n", check_major, check_minor);
+        printf("There are maybe existed unsupport layer!\n");
+    }
+    return true;
+}
+
 bool Neural_Network::load_otter(const char *model_structure, const char *model_weight) {
     Otter_Leader leader;
     leader.read_project(model_structure);
@@ -539,22 +559,7 @@ bool Neural_Network::load_otter(const char *model_structure, const char *model_w
 bool Neural_Network::load_dam(const char *model_weight) {
     FILE *weights = fopen(model_weight, "r");
     
-    int check_major, check_minor;
-    fread(&check_major, sizeof(int), 1, weights);
-    fread(&check_minor, sizeof(int), 1, weights);
-    if (check_major != version_major) {
-        printf("Neural Network: v%d.%d\n", version_major, version_minor);
-        printf("Model: v%d.%d\n", check_major, check_minor);
-        printf("There are significant change in weight arrangement, model can not be used!\n");
-        if (check_major == 3 && version_major == 4)
-            fprintf(stderr, "Please use the model converter to convert the model from v3 to v4!\n");
-        exit(-100);
-        return false;
-    } else if (check_major == version_major && check_minor > version_minor) {
-        printf("Neural Network: v%d.%d\n", version_major, version_minor);
-        printf("Model: v%d.%d\n", check_major, check_minor);
-        printf("There are maybe existed unsupport layer!\n");
-    }
+    this->check_version(weights);
     
     for (int i = 0; i < layer_number; ++i) {
         layer[i]->load_raw(weights);
@@ -564,7 +569,7 @@ bool Neural_Network::load_dam(const char *model_weight) {
     return true;
 }
 
-bool Neural_Network::save_otter(const char *model_name) {
+Otter_Leader Neural_Network::convert_to_otter() {
     Otter_Leader leader(model);
     for (int i = 0; i < output_layer.size(); ++i) {
         leader.addOption(Option("output", output_layer[i]));
@@ -595,8 +600,14 @@ bool Neural_Network::save_otter(const char *model_name) {
             team.addPartner(param);
         leader.addTeam(team);
     }
+    return leader;
+}
+
+bool Neural_Network::save_otter(const char *model_name, bool save_weight) {
+    Otter_Leader leader = convert_to_otter();
     leader.save_project(model_name);
     
+    if (!save_weight) return true;
     string weights(model_name);
     size_t pos = weights.find('.');
     weights = weights.substr(0, pos);
@@ -618,6 +629,36 @@ bool Neural_Network::save_dam(const char *model_name) {
     return true;
 }
 
+bool Neural_Network::save_ottermodel(const char *model_name) {
+    Otter_Leader leader = convert_to_otter();
+    leader.save_raw(model_name);
+    
+    FILE *ottermodel = fopen(model_name, "a");
+    fwrite(&version_major, sizeof(int), 1, ottermodel);
+    fwrite(&version_minor, sizeof(int), 1, ottermodel);
+
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->save_raw(ottermodel);
+    }
+    fclose(ottermodel);
+    return true;
+}
+
+bool Neural_Network::load_ottermodel(const char *model_name) {
+    this->load_otter(model_name);
+    
+    FILE *ottermodel = fopen(model_name, "r");
+    char skip; while((skip = getc(ottermodel)) != '\n');
+    
+    this->check_version(ottermodel);
+    
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->load_raw(ottermodel);
+    }
+    
+    return true;
+}
+
 void Neural_Network::addOutput(string name) {
     output_layer.push_back(name);
 }
@@ -631,6 +672,10 @@ void Neural_Network::addLayer(LayerOption opt_) {
         }
     }
     string bias = opt_["bias"].c_str();
+    
+    if (opt_.find("name") == opt_.end()) {
+        opt_["name"] = to_string(opt_layer.size());
+    }
     
     opt_layer.push_back(opt_);
     
@@ -696,13 +741,11 @@ void Neural_Network::compile(int batch_size_) {
     unordered_map<string, int> id_table;
     batch_size = batch_size_;
     layer = new BaseLayer* [opt_layer.size()];
-    printf("******Constructe Network******\n");
+//    printf("******Constructe Network******\n");
     for (int i = 0; i < opt_layer.size(); ++i) {
-        printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
+//        printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
         LayerOption &opt = opt_layer[i];
         opt["batch_size"] = to_string(batch_size);
-        if (opt.find("name") == opt.end())
-            opt["name"] = to_string(i);
         id_table[opt["name"]] = i;
         if (i > 0) {
             if (opt.find("input_name") == opt.end())
@@ -741,9 +784,7 @@ void Neural_Network::compile(int batch_size_) {
         layer[i] = LayerRegistry::CreateLayer(opt);
         layer_number++;
     }
-    printf("*****************************\n");
-//    if (output_layer.empty())
-//        output_layer.push_back(opt_layer[opt_layer.size() - 1]["name"]);
+//    printf("*****************************\n");
     constructGraph();
     
     for (int i = 0; i < output_layer.size(); ++i) {

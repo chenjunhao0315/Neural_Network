@@ -10,6 +10,7 @@
 YOLOv4::YOLOv4(const char *model_name, int classes_, int batch_size) {
     network = Neural_Network("yolov4");
     network.load(model_name, batch_size);
+//    network.load_ottermodel(model_name);
     network.shape();
     classes = classes_;
     label = get_yolo_label("labelstr.txt", classes);
@@ -1088,7 +1089,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
     // End Conv_sbox
 
     // YOLO small
-    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "0, 1, 2"}, {"max_boxes", "90"}, {"scale_x_y", "1.2"}, {"name", "yolo_small"}});
+    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "0, 1, 2"}, {"max_boxes", "200"}, {"scale_x_y", "1.2"}, {"cls_normalizer", "1.0"}, {"iou_normalizer", "0.07"}, {"iou_loss", "ciou"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"iou_thresh", "0.213"}, {"beta_nms", "0.6"}, {"max_delta", "5"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"name", "yolo_small"}});
     // End YOLO small
 
 
@@ -1127,7 +1128,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
     // End Conv_mbox
 
     // YOLO middle
-    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "3, 4, 5"}, {"max_boxes", "90"}, {"scale_x_y", "1.1"}, {"name", "yolo_middle"}});
+    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "3, 4, 5"}, {"max_boxes", "200"}, {"scale_x_y", "1.1"}, {"cls_normalizer", "1.0"}, {"iou_normalizer", "0.07"}, {"iou_loss", "ciou"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"iou_thresh", "0.213"}, {"beta_nms", "0.6"}, {"max_delta", "5"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"name", "yolo_middle"}});
     // End YOLO middle
 
 
@@ -1166,7 +1167,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
     // End Conv_bbox
 
     // YOLO big
-    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "6, 7, 8"}, {"max_boxes", "90"}, {"scale_x_y", "1.05"}, {"name", "yolo_big"}});
+    network.addLayer(LayerOption{{"type", "YOLOv4"}, {"classes", to_string(classes)}, {"anchor_num", "3"}, {"total_anchor_num", "9"}, {"anchor", "12,16 19,36 40,28 36,75 76,55 72,146 142,110 192,243 459,401"}, {"mask", "6, 7, 8"}, {"max_boxes", "200"}, {"scale_x_y", "1.05"}, {"cls_normalizer", "1.0"}, {"iou_normalizer", "0.07"}, {"iou_loss", "ciou"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"iou_thresh", "0.213"}, {"beta_nms", "0.6"}, {"max_delta", "5"}, {"ignore_thresh", "0.7"}, {"truth_thresh", "1"}, {"name", "yolo_big"}});
     // End YOLO big
 
     network.addOutput("yolo_small");
@@ -1179,7 +1180,8 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
 //    network.show_detail();
 //    network.save("yolov4.bin");
     network.to_prototxt("yolov4.prototxt");
-    network.save_otter("yolov4.otter");
+//    network.save_otter("yolov4.otter");
+//    network.save_ottermodel("yolov4.ottermodel");
 }
 
 unsigned long custom_hash(const char *str) {

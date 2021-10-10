@@ -44,7 +44,7 @@ Declear the nerual network. If the backpropagated path is special, you should na
 Neural_Network nn("network_name");    // The default name is sequential
 ```
 #### Add layers
-It will add layer to neural network, checking the structure of input tensor at some layer, for instance, Concat layer, the input width and height should be the same at all input. **Note**: The **first** layer of network should be **Input layer**.
+It will add layer to neural network, checking the structure of input tensor at some layer, for instance, Concat layer, the input width and height should be the same as all input. **Note**: The **first** layer of network should be **Input layer** or customed **Data layer**.
 ```cpp
 nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});    // The options are unordered
 ```
@@ -194,13 +194,13 @@ Tensor label(1, 1, 3); label = {0, 1, 0};
 float loss = nn.Backward(&label);
 ```
 
-#### Save model
+#### Save model (Last version, will be removed at next version)
 Ah, just save model.
 ```cpp
 nn.save("model_name.bin");
 ```
 
-#### Load model
+#### Load model (Last version, will be removed at next version)
 Ah, just load model.
 ```cpp
 Neural_Network nn;
@@ -208,7 +208,7 @@ nn.load("model_name.bin");
 ```
 
 #### Add customed layer
-You can add the customed layer like [Caffe][4]. If you want to save customed layer, you should add some code at `Neural_Network::save()`, `Layer::save()` and `Neural_Network::load()`, it is not so hard. Or you can try to save model as **otter** model like below!
+You can add the customed layer like [Caffe][5]. Save model as **otter** model like below! If defined correctly, it will save everything automatically.
 ```cpp
 #include "Layer.hpp"
 class CustomedLayer : public BaseLayer {
@@ -227,8 +227,8 @@ REGISTER_LAYER_CLASS(Customed);
 If you add some customed layer, remember to write the definition of layer prarmeter in `layer.txt`, the syntax is like below.
 ```cpp
 Customed {
-    REQUIRED TYPE PARAMETER_NAME // for required parameter
-    OPTION TYPE PARAMETER_NAME DEFAULT_VALUE // for optional parameter
+    REQUIRED TYPE PARAMETER_NAME // for required parameter (three parameters with two spaces)
+    OPTION TYPE PARAMETER_NAME DEFAULT_VALUE // for optional parameter (four parameters with three spaces)
 }
 ```
 Then, you can save the model without revise any code. The otter file is easy to read and revise but it is sensitive to **syntax**, edit it carefully. The **otter** model syntax is like below.
@@ -236,6 +236,7 @@ Then, you can save the model without revise any code. The otter file is easy to 
 name: "model_name"
 output: OUTPUT_LAYER_1_NAME    // optional, can more than one
 output: OUTPUT_LAYER_2_NAME
+# you can write comment in one line after hash mark
 LayerType {
     name: LAYER_NAME    // optional
     input_name: INPUT_LAYER_NAME    // optional
@@ -251,13 +252,17 @@ LayerType {
 }
 ...
 ```
-Just type this command, it will generate two file `mode_name.otter` and `model_name.dam`, first is the network structure file, second is the network weights file.
+Just type this command, it will generate one or two file `mode_name.otter`, `model_name.dam`, first is the network structure file, second is the network weights file.
 ```cpp
-nn.save_otter("model_name.otter");
+nn.save_otter("model_name.otter", BOOL);    // true for saving .dam file
 ```
 Or you can just save the network weights, by typing this command,
 ```cpp
 nn.save_dam("weights_name.dam");
+```
+**New!!** Save network structure and weights into one file!!
+```cpp
+nn.save_ottermodel("model_name.ottermodel");
 ```
 
 #### Load otter model
@@ -270,6 +275,10 @@ nn.load_otter("model_name.otter", "mode_weight.dam");    // Network structure wi
 Or just load the weights, by typing this command,
 ```cpp
 nn.load_dam("weight_name.dam");
+```
+**New!!** Load network structure and weights from one file!!
+```cpp
+nn.load_ottermodel("model_name.ottermodel");
 ```
 
 #### Get training arguments
@@ -404,7 +413,7 @@ Tensor a(1, 1, 3, 0);    // a = [0, 0, 0]
 a = 1;  // a = [1, 1, 1]
 ```
 * = (initializer list) <br>
-Set the previous element to initialzer list
+Set the previous elements as initialzer list
 ```cpp
 Tensor a(1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
 a = {1, 2, 4};  // a = [1, 2, 4, 3, 3]
@@ -496,6 +505,8 @@ int main(int argc, const char * argv[]) {
 [2]: https://github.com/pjreddie/darknet
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
+[5]: https://chrischoy.github.io/research/making-caffe-layer/
+
 
 
 

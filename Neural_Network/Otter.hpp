@@ -34,6 +34,7 @@ public:
     Otter(string name_) : name(name_) {}
     bool parse_blueprint(fstream &blueprint);
     void save_blueprint(FILE *project, int format = 0);
+    void save_raw(FILE *project);
     void addPartner(Otter partner_) {partner.push_back(partner_);}
     void addMaterial(Stick element) {material.push_back(element);}
     string getName() {return name;}
@@ -50,6 +51,7 @@ public:
     Otter_Leader(string name = "") : project_name(name) {}
     bool read_project(const char *project_name);
     bool save_project(const char *project_name);
+    bool save_raw(const char *project_name);
     void addTeam(Otter team) {teams.push_back(team);}
     void addOption(Option opt) {option.push_back(opt);}
     string getName() {return project_name;}

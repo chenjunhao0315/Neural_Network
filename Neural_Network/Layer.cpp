@@ -1669,8 +1669,12 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     for (int i = 1; i <= info.concat_num; ++i) {
         int width_check = atoi(opt[("concat_" + to_string(i) + "_width")].c_str());
         int height_check = atoi(opt[("concat_" + to_string(i) + "_height")].c_str());
-        assert(width_check == info.input_width);
-        assert(height_check == info.input_height);
+        if (width_check != info.input_width || height_check != info.input_height) {
+            fprintf(stderr, "[ConcatLayer] Concat shape error!\n");
+            fprintf(stderr, "[ConcatLayer] Concat list: %s\n", opt["concat"].c_str());
+            fprintf(stderr, "[ConcatLayer] Error index: %d concat(%d * %d) != layer(%d * %d)\n", i - 1, width_check, height_check, info.input_width, info.input_height);
+            exit(-100);
+        }
         int concat_dimension = kernel[0][i] = atoi(opt[("concat_" + to_string(i) + "_dimension")].c_str());
         info.output_dimension += concat_dimension;
     }
@@ -1681,7 +1685,6 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     info.output_dimension /= info.splits;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    //    concat_tensor = new Tensor* [info.concat_num + 1];  // Concat tensor store
     concat_tensor.resize(info.concat_num + 1);
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
@@ -2323,7 +2326,7 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     info.total_anchor_num = atoi(opt["total_anchor_num"].c_str());
     info.anchor_num = atoi(opt["anchor_num"].c_str());
     info.classes = atoi(opt["classes"].c_str());
-    info.max_boxes = atoi(opt["max_boxes"].c_str());
+    info.max_boxes = (opt.find("max_boxes") == opt.end()) ? 200 : atoi(opt["max_boxes"].c_str());
     info.net_width = atoi(opt["net_width"].c_str());
     info.net_height = atoi(opt["net_height"].c_str());
     info.ignore_iou_threshold = (opt.find("ignore_iou_threshold") == opt.end()) ? 0.5 : atof(opt["ignore_iou_threshold"].c_str());

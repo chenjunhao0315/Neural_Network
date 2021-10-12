@@ -28,9 +28,12 @@ int main(int argc, const char * argv[]) {
 //
 //    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 100}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}});
 //
-//    yolo_train_args_v4 test = loader.get_train_arg(0);
-//    for (int i = 0; i < 100; ++i)
-//        trainer.train_batch(test.data, test.label);
+////    yolo_train_args_v4 test = loader.get_train_arg(0);
+////    for (int i = 0; i < 100; ++i)
+////        trainer.train_batch(test.data, test.label);
+//
+//    YOLOv4_Trainer t(&nn.network, &trainer, &loader);
+//    t.train(1);
 
 //    IMG img = loader.get_img(0);
 //    nn.detect(img);
@@ -45,13 +48,13 @@ int main(int argc, const char * argv[]) {
 //    test.detect(img);
 //    img.save("test_train.jpg");
     
-//    YOLOv3 yolo("backup_15008_x11.bin");
+//    YOLOv3 yolo("backup_15008_x11.ottermodel");
 //    IMG img("33_Running_Running_33_156.jpg");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_65024_v4_x7.bin");
-    IMG img("5D4A1809.JPG");
+    YOLOv4 yolo("backup_60032_v4_x8.ottermodel");
+    IMG img("sheep.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     

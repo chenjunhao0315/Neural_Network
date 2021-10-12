@@ -9,7 +9,8 @@
 
 YOLOv3::YOLOv3(const char *model_name, int classes_, int batch_size) {
     network = Neural_Network("yolov3");
-    network.load(model_name, batch_size);
+//    network.load(model_name, batch_size);
+    network.load_ottermodel(model_name, batch_size);
     network.shape();
     classes = classes_;
     label = get_yolo_label("labelstr.txt", classes);
@@ -470,7 +471,7 @@ void YOLOv3_Trainer::train(int epoch) {
             loss = loss * 0.9 + batch_loss * 0.1;
             printf("avg_loss: %f batch_loss: %f\n", loss, batch_loss);
             if (j % 5000 >= 0 && j % 5000 < batch_size) {
-                network->save(("./backup/backup_" + to_string(j) + ".bin").c_str());
+                network->save_ottermodel(("./backup/backup_" + to_string(j) + ".ottermodel").c_str());
             }
         }
         printf("] ");
@@ -543,10 +544,11 @@ YOLOv3::YOLOv3(int classes_, int batch_size) {
     network.addOutput("yolo_small");
     network.addOutput("yolo_big");
     network.compile(batch_size);
-    network.load_darknet("yolov3-tiny.conv.15");
-//    network.load_darknet("yolov3-tiny.weights");
+//    network.load_darknet("yolov3-tiny.conv.15");
+    network.load_darknet("yolov3-tiny.weights");
     network.shape();
 //    network.save("yolov3-tiny.bin");
+//    network.save_otter("yolov3-tiny.otter");
 }
 
 
@@ -930,5 +932,6 @@ YOLOv3::YOLOv3(int classes_, int batch_size) {
 //    network.load_darknet("yolov3.weights");
 ////    network.load_darknet("darknet53.conv.74");
 //    network.shape();
-//    network.save("yolov3.bin");
+////    network.save("yolov3.bin");
+//    network.save_otter("yolov3.otter");
 //}

@@ -255,195 +255,6 @@ void BaseLayer::ClearGrad() {
     output_tensor->clearDeltaWeight();
 }
 
-bool BaseLayer::save(FILE *f) {
-    int y = 1, n = 0;
-    
-    int len = (int)strlen(name.c_str());
-    char *name_ = new char [len];
-    fwrite(&len, sizeof(int), 1, f);
-    strcpy(name_, name.c_str());
-    fwrite(name_, sizeof(char), len, f);
-    delete [] name_;
-    
-    len = (int)strlen(input_name.c_str());
-    char *input_name_ = new char [len];
-    fwrite(&len, sizeof(int), 1, f);
-    strcpy(input_name_, input_name.c_str());
-    fwrite(input_name_, sizeof(char), len, f);
-    delete [] input_name_;
-    
-    if (type == LayerType::Input) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::FullyConnected) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        fwrite((info.batchnorm) ? &y : &n, sizeof(int), 1, f);
-        kernel[0].save(f);
-        biases->save(f);
-    } else if (type == LayerType::Softmax) {
-        int input_number = info.input_number / info.output_dimension;
-        fwrite(&input_number, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::Convolution) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        fwrite(&info.kernel_width, sizeof(int), 1, f);
-        fwrite(&info.kernel_height, sizeof(int), 1, f);
-        fwrite(&info.stride, sizeof(int), 1, f);
-        fwrite(&info.padding, sizeof(int), 1, f);
-        fwrite((info.batchnorm) ? &y : &n, sizeof(int), 1, f);
-        kernel[0].save(f);
-        biases->save(f);
-    } else if (type == LayerType::Relu) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::Pooling) {
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.kernel_width, sizeof(int), 1, f);
-        fwrite(&info.kernel_height, sizeof(int), 1, f);
-        fwrite(&info.stride, sizeof(int), 1, f);
-        fwrite(&info.padding, sizeof(int), 1, f);
-    } else if (type == LayerType::EuclideanLoss) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::PRelu) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        kernel->save(f);
-    } else if (type == LayerType::ShortCut) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        fwrite(&info.shortcut_width, sizeof(int), 1, f);
-        fwrite(&info.shortcut_height, sizeof(int), 1, f);
-        fwrite(&info.shortcut_dimension, sizeof(int), 1, f);
-        int len = (int)strlen(opt["shortcut"].c_str());
-        fwrite(&len, sizeof(int), 1, f);
-        char *output = new char [len];
-        strcpy(output, opt["shortcut"].c_str());
-        fwrite(output, sizeof(char), len, f);
-    } else if (type == LayerType::LRelu) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        kernel[0].save(f);
-    } else if (type == LayerType::Sigmoid) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::BatchNormalization) {
-        fwrite(&info.output_width, sizeof(int), 1, f);
-        fwrite(&info.output_height, sizeof(int), 1, f);
-        fwrite(&info.output_dimension, sizeof(int), 1, f);
-        kernel[0].save(f);
-        kernel[3].save(f);
-        kernel[4].save(f);
-        biases->save(f);
-    } else if (type == LayerType::UpSample) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.stride, sizeof(int), 1, f);
-        fwrite((info.reverse) ? &y : &n, sizeof(int), 1, f);
-    } else if (type == LayerType::Concat) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.concat_num, sizeof(int), 1, f);
-        for (int i = 1; i <= info.concat_num; ++i) {
-            int concat_dim = kernel[0][i];
-            fwrite(&info.input_width, sizeof(int), 1, f);
-            fwrite(&info.input_height, sizeof(int), 1, f);
-            fwrite(&concat_dim, sizeof(int), 1, f);
-        }
-        fwrite(&info.splits, sizeof(int), 1, f);
-        fwrite(&info.split_id, sizeof(int), 1, f);
-        int len = (int)strlen(opt["concat"].c_str());
-        fwrite(&len, sizeof(int), 1, f);
-        char output[len];
-        strcpy(output, opt["concat"].c_str());
-        fwrite(output, sizeof(char), len, f);
-    } else if (type == LayerType::Yolov3) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.total_anchor_num, sizeof(int), 1, f);
-        fwrite(&info.anchor_num, sizeof(int), 1, f);
-        fwrite(&info.classes, sizeof(int), 1, f);
-        fwrite(&info.max_boxes, sizeof(int), 1, f);
-        fwrite(&info.net_width, sizeof(int), 1, f);
-        fwrite(&info.net_height, sizeof(int), 1, f);
-        kernel[0].save(f);
-        biases->save(f);
-    } else if (type == LayerType::Yolov4) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.total_anchor_num, sizeof(int), 1, f);
-        fwrite(&info.anchor_num, sizeof(int), 1, f);
-        fwrite(&info.classes, sizeof(int), 1, f);
-        fwrite(&info.max_boxes, sizeof(int), 1, f);
-        fwrite(&info.net_width, sizeof(int), 1, f);
-        fwrite(&info.net_height, sizeof(int), 1, f);
-        fwrite(&info.scale_x_y, sizeof(float), 1, f);
-        kernel[0].save(f);
-        biases->save(f);
-    } else if (type == LayerType::Mish) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::Swish) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-    } else if (type == LayerType::Dropout) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-        fwrite(&info.probability, sizeof(float), 1, f);
-    } else if (type == LayerType::AvgPooling) {
-        fwrite(&info.input_width, sizeof(int), 1, f);
-        fwrite(&info.input_height, sizeof(int), 1, f);
-        fwrite(&info.input_dimension, sizeof(int), 1, f);
-    }
-    return true;
-}
-
-bool BaseLayer::load(FILE *f) {
-    if (type == LayerType::FullyConnected || type == LayerType::Convolution) {
-        kernel[0].load(f);
-        biases->load(f);
-    } else if (type == LayerType::PRelu || type == LayerType::LRelu) {
-        kernel->load(f);
-    } else if (type == LayerType::BatchNormalization) {
-        kernel[0].load(f);
-        kernel[3].load(f);
-        kernel[4].load(f);
-        biases->load(f);
-        // Test
-        kernel[3].copyTo(kernel[1]);
-        kernel[4].copyTo(kernel[2]);
-    } else if (type == LayerType::Yolov3) {
-        kernel[0].load(f);
-        biases->load(f);
-    } else if (type == LayerType::Yolov4) {
-        kernel[0].load(f);
-        biases->load(f);
-    }
-    return true;
-}
-
 bool BaseLayer::save_raw(FILE *f) {
     if (type == LayerType::FullyConnected || type == LayerType::Convolution) {
         if (!info.batchnorm) {
@@ -1142,7 +953,6 @@ void SoftmaxLayer::Backward(Tensor *target) {
         loss += -log(expo_sum[(int)target_ptr[b]]);
         expo_sum += one_batch_output_size;
     }
-//    return loss;
 }
 
 EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
@@ -1173,7 +983,7 @@ void EuclideanLossLayer::Backward(Tensor *target) {
     float *input = input_tensor->weight;
     float *input_delta = input_tensor->delta_weight;
     float *target_ptr = target->weight;
-    float loss = 0;
+    float &loss = info.loss; loss = 0;
     
     for (int b = 0; b < info.batch_size; ++b) {
         for (int i = 0; i < info.output_dimension; ++i) {
@@ -1184,7 +994,6 @@ void EuclideanLossLayer::Backward(Tensor *target) {
         input += one_batch_size;
         input_delta += one_batch_size;
     }
-//    return loss;
 }
 
 ShortCutLayer::ShortCutLayer(LayerOption opt_) {
@@ -2044,6 +1853,7 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
     detection = Tensor(1, 1, 1, 0);
 }
 
@@ -2118,7 +1928,7 @@ void YOLOv3Layer::Backward(Tensor *target) {
     int count = 0;
     int class_count = 0;
     
-    float loss = 0;
+    float &loss = info.loss; loss = 0;
     
     #pragma omp parallel for num_threads(4)
     for (int b = 0; b < info.batch_size; ++b) {
@@ -2200,7 +2010,6 @@ void YOLOv3Layer::Backward(Tensor *target) {
     }
     loss = pow(mag_array(delta, info.output_number * info.batch_size), 2);
     printf("Avg IOU: %f, Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f,  count: %d\n", avg_iou/count, avg_cat/class_count, avg_obj/count, avg_anyobj/(channel_size*anchor_num*info.batch_size), recall/count, recall75/count, count);
-//    return loss;
 }
 
 void YOLOv3Layer::delta_yolo_class(float *output, float *delta, int index, int cls, int classes, int stride, float *avg_cat) {
@@ -2407,6 +2216,7 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     }
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
     detection = Tensor(1, 1, 1, 0);
 }
 
@@ -2517,7 +2327,7 @@ void YOLOv4Layer::Backward(Tensor *target) {
     int count = 0;
     int class_count = 0;
     
-    float loss = 0;
+    float &loss = info.loss; loss = 0;
     
     #pragma omp parallel for num_threads(4)
     for (int b = 0; b < batch_size; ++b) {
@@ -2732,8 +2542,6 @@ void YOLOv4Layer::Backward(Tensor *target) {
 //    fprintf(stderr, "v3 (%s loss, Normalizer: (iou: %.2f, obj: %.2f, cls: %.2f) Avg (IOU: %f), count: %d, total_loss = %f \n", (iou_loss == MSE ? "mse" : (iou_loss == GIOU ? "giou" : "iou")), iou_normalizer, obj_normalizer, cls_normalizer, tot_iou / count, count, loss);
     
     fprintf(stderr, "v3 (%s loss, Normalizer: (iou: %.2f, obj: %.2f, cls: %.2f) Avg (IOU: %f, GIOU: %f), Class: %f, Obj: %f, No Obj: %f, .5R: %f, .75R: %f, count: %d, total_loss = %f \n", (iou_loss == MSE ? "mse" : (iou_loss == GIOU ? "giou" : "iou")), iou_normalizer, obj_normalizer, cls_normalizer, tot_iou / count, tot_giou / count, avg_cat / class_count, avg_obj / count, avg_anyobj / (channel_size * anchor_num * batch_size), recall / count, recall75 / count, count, loss);
-    
-//    return loss;
 }
 
 void YOLOv4Layer::averages_yolo_deltas(int class_index, int box_index, int stride, int classes, float *delta) {

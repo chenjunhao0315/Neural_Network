@@ -8,7 +8,7 @@ This is a simple project to implement neural network in c++, the structure of ne
 * Multi-thread support with Openmp
 * Run only on CPU
 * Structure visualization by [Netron][3] with Caffe2 like prototxt file
-* Easy to add customed layer
+* Easy to add custom layer
 
 ## Supported Layers
 * Input layer (data input)
@@ -44,7 +44,7 @@ Declear the nerual network. If the backpropagated path is special, you should na
 Neural_Network nn("network_name");    // The default name is sequential
 ```
 #### Add layers
-It will add layer to neural network, checking the structure of input tensor at some layer, for instance, Concat layer, the input width and height should be the same as all input. **Note**: The **first** layer of network should be **Input layer** or customed **Data layer**.
+It will add layer to neural network, checking the structure of input tensor at some layer, for instance, Concat layer, the input width and height should be the same as all input. **Note**: The **first** layer of network should be **Input layer** or custom **Data layer**.
 ```cpp
 nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});    // The options are unordered
 ```
@@ -194,21 +194,8 @@ Tensor label(1, 1, 3); label = {0, 1, 0};
 float loss = nn.Backward(&label);
 ```
 
-#### Save model (Last version, will be removed at next version)
-Ah, just save model.
-```cpp
-nn.save("model_name.bin");
-```
-
-#### Load model (Last version, will be removed at next version)
-Ah, just load model.
-```cpp
-Neural_Network nn;
-nn.load("model_name.bin");
-```
-
-#### Add customed layer
-You can add the customed layer like [Caffe][5]. Save model as **otter** model like below! If defined correctly, it will save everything automatically.
+#### Add custom layer
+You can add the custom layer like [Caffe][5]. Save model as **otter** model like below! If defined correctly, it will save everything automatically.
 ```cpp
 #include "Layer.hpp"
 class CustomedLayer : public BaseLayer {
@@ -216,15 +203,16 @@ public:
     CustomedLayer(Layeroption opt);
     void Forward(bool train);    // For normal layer
     void Forward(Tensor *input);    // For input layer
-    void Backward(Tensor *target);
+    void Backward(Tensor *target);    // The output tensor should be extended! Or it will cause segmentation fault when clearing gradient (maybe fix at next version)
 private:
     ...
 };
 REGISTER_LAYER_CLASS(Customed);
 ```
+Remeber to add enum at `Layer.hpp` and write the display name at `Layer.cpp` `BaseLayer::type_to_string()`to make sure it can display correctly when using `Neural_Network::shape()` command but without that it should can work fine too.
 
 #### Save otter model &hearts;
-If you add some customed layer, remember to write the definition of layer prarmeter in `layer.txt`, the syntax is like below.
+If you add some custom layer, remember to write the definition of layer prarmeter in `layer.txt`, the syntax is like below.
 ```cpp
 Customed {
     REQUIRED TYPE PARAMETER_NAME // for required parameter (three parameters with two spaces)
@@ -266,11 +254,10 @@ nn.save_ottermodel("model_name.ottermodel");
 ```
 
 #### Load otter model
-You can load the model with just network sturcture or with weights. **Note**: the weights should be cooresponded to the network strueture.
+You can load the model with different way, structure only`.otter`file, weights only`.dam`file, or structure with weights`.ottermodel`file.
 ```cpp
 Neural_Network nn;
-nn.load_otter("model_name.otter");    // Just network structure
-nn.load_otter("model_name.otter", "mode_weight.dam");    // Network structure with weights
+nn.load_otter("model_name.otter", BATCH_SIZE);    
 ```
 Or just load the weights, by typing this command,
 ```cpp
@@ -278,7 +265,7 @@ nn.load_dam("weight_name.dam");
 ```
 **New!!** Load network structure and weights from one file!!
 ```cpp
-nn.load_ottermodel("model_name.ottermodel");
+nn.load_ottermodel("model_name.ottermodel", BATCH_SIZE);
 ```
 
 #### Get training arguments
@@ -506,6 +493,7 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
+
 
 
 

@@ -103,9 +103,7 @@ public:
     virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
-    bool save(FILE *f);
     bool save_raw(FILE *f);
-    bool load(FILE *f);
     bool load_raw(FILE *f);
     bool to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table);
     Train_Args getTrainArgs();

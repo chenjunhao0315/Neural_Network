@@ -71,6 +71,10 @@ Option parse_option(fstream &f) {
 bool Otter_Leader::read_project(const char *project_file) {
     fstream project;
     project.open(project_file);
+    if (!project.is_open()) {
+        fprintf(stderr, "[Otter_Leader] Open file fail!\n");
+        exit(-1);
+    }
     
     Stick project_title = parse_option(project);
     if (project_title.type == "name")

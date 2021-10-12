@@ -41,16 +41,14 @@ public:
     void ClearGrad();
     Otter_Leader convert_to_otter();
     bool check_version(FILE *model);
-    bool save(const char *model_name);
     bool save_darknet(const char *weights_name, int cut_off = -1);
     bool save_otter(const char *model_name, bool save_weight = false);
     bool save_dam(const char *model_name);
     bool save_ottermodel(const char *model_name);
-    bool load(const char *model_name, int batch_size_ = 1);
     bool load_darknet(const char *weights_name);
-    bool load_otter(const char *model_structure, const char *model_weight = nullptr);
+    bool load_otter(const char *model_structure, int batch_size = 1);
     bool load_dam(const char *model_weight);
-    bool load_ottermodel(const char *model_name);
+    bool load_ottermodel(const char *model_name, int batch_size = 1);
     bool to_prototxt(const char *filename = "model.prototxt");
     void alloc_workspace();
     void constructGraph();

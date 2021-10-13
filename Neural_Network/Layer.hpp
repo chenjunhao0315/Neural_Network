@@ -21,6 +21,10 @@
 
 #include "Tensor.hpp"
 
+#ifndef OMP_THREADS
+#define OMP_THREADS 4
+#endif
+
 using namespace std;
 
 typedef vector<Tensor> vtensor;
@@ -43,6 +47,7 @@ enum LayerType {
     Input,
     FullyConnected,
     Convolution,
+    BatchNormalization,
     Relu,
     PRelu,
     LRelu,
@@ -55,7 +60,7 @@ enum LayerType {
     UpSample,
     ShortCut,
     Concat,
-    BatchNormalization,
+    ScaleChannel,
     Softmax,
     EuclideanLoss,
     Yolov3,
@@ -83,6 +88,20 @@ class MishLayer;
 class SwishLayer;
 class DropoutLayer;
 class AvgPoolingLayer;
+class ScaleChannelLayer;
+
+#define opt_find(opt, type) \
+    (opt.find(type) != opt.end())
+#define opt_get_int(opt, type) \
+    atoi(opt[type].c_str());
+#define opt_get_float(opt, type) \
+    atof(opt[type].c_str());
+#define opt_find_int(opt, type, default) \
+    (opt.find(type) == opt.end()) ? default : opt_get_int(opt, type)
+#define opt_find_float(opt, type, default) \
+    (opt.find(type) == opt.end()) ? default : opt_get_float(opt, type)
+#define opt_find_string(opt, type, default) \
+    (opt.find(type) == opt.end()) ? default : opt[type];
 
 // Base layer
 class BaseLayer {
@@ -131,6 +150,8 @@ public:
         int kernel_height;
         int stride;
         int padding;
+        int groups;
+        int nweights;
         int workspace_size;
         int batch_size;
         int kernel_num;
@@ -159,6 +180,7 @@ public:
         bool yolov4_new_coordinate;
         float probability;
         float scale;
+        bool scale_wh;
         bool reverse;
         bool batchnorm;
         float loss;
@@ -247,6 +269,7 @@ enum STORE_TYPE {
 };
 
 struct ParameterData {
+    ParameterData() {}
     ParameterData(STORE_TYPE store_, string type_, string name_, string data_) : store(store_), name(name_), type(type_), data(data_) {}
     STORE_TYPE store;
     string name;
@@ -263,6 +286,20 @@ public:
         parameter.push_back(param);
     }
     vector<ParameterData> getParameter() {return parameter;}
+    bool check(string param) {
+        for (int i = 0; i < parameter.size(); ++i) {
+            if (parameter[i].name == param)
+                return true;
+        }
+        return false;
+    }
+    ParameterData get(string param) {
+        for (int i = 0; i < parameter.size(); ++i) {
+            if (parameter[i].name == param)
+                return parameter[i];
+        }
+        return ParameterData();
+    }
 private:
     string name;
     vector<ParameterData> parameter;
@@ -443,6 +480,17 @@ public:
     void Backward(Tensor *none = nullptr);
 private:
     vtensorptr concat_tensor;
+};
+
+// ScaleChannel layer
+class ScaleChannelLayer : public BaseLayer {
+public:
+    ScaleChannelLayer(LayerOption opt_);
+    Tensor *connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+private:
+    Tensor *scalechannel_tensor;
 };
 
 // Dropout layer

@@ -53,8 +53,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_60032_v4_x8.ottermodel");
-    IMG img("sheep.jpg");
+    YOLOv4 yolo("backup_95040_v4_x10.ottermodel");
+    IMG img("dog.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -76,12 +76,12 @@ int main(int argc, const char * argv[]) {
     
 //    Neural_Network nn;
 //    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "1"}, {"input_height", "1"}, {"input_dimension", "2"}, {"name", "data"}});
-//    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"activation", "Mish"}});
+//    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "4"}, {"activation", "Sigmoid"}});
 //    nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
 //    nn.compile();
 //    nn.shape();
-//    nn.to_prototxt();
-//    nn.save_otter("test.otter");
+////    nn.to_prototxt();
+////    nn.save_otter("test.otter");
 //
 //    Tensor a(1, 1, 2, 0);
 //    Tensor b(1, 1, 2, 1);
@@ -97,16 +97,26 @@ int main(int argc, const char * argv[]) {
 //    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.1}, {"warmup", 5}});
 //    trainer.train_batch(data, label, 100);
 //
-//    printf("Input (0, 0) -> %.0f\n", nn.predict(&a)[0]);
-//    printf("Input (0, 1) -> %.0f\n", nn.predict(&c)[0]);
-//    printf("Input (1, 0) -> %.0f\n", nn.predict(&d)[0]);
-//    printf("Input (1, 1) -> %.0f\n", nn.predict(&b)[0]);
+//    printf("Input (0, 0) -> %.0f(%f)\n", nn.predict(&a)[0], nn.predict(&a)[1]);
+//    printf("Input (0, 1) -> %.0f(%f)\n", nn.predict(&c)[0], nn.predict(&c)[1]);
+//    printf("Input (1, 0) -> %.0f(%f)\n", nn.predict(&d)[0], nn.predict(&d)[1]);
+//    printf("Input (1, 1) -> %.0f(%f)\n", nn.predict(&b)[0], nn.predict(&b)[1]);
     
 //    Mat a(3, 4, MAT_32FC1);
 //    a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 //    cout << a;
 //    Mat b = a.transpose();
 //    cout << b;
+    
+//    Neural_Network nn;
+//    nn.load_otter("yoloface.otter");
+//    nn.shape();
+//    nn.to_prototxt("yoloface.prototxt");
+    
+//    YOLOv4 yolo("backup_50048_v4_x10.ottermodel");
+//    IMG img("nthuee.jpg");
+//    yolo.detect(img);
+//    img.save("detected.jpg", 100);
     
     return 0;
 }

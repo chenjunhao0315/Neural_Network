@@ -16,6 +16,8 @@
 #include "Box.hpp"
 #include "omp.h"
 
+#define OMP_THREADS 4
+
 using namespace std::chrono;
 using std::vector;
 

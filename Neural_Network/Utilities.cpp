@@ -223,7 +223,7 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, f
 }
 
 void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i) {
         for(int k = 0; k < K; ++k) {
             float A_PART = ALPHA * A[i * lda + k];
@@ -235,7 +235,7 @@ void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;
@@ -248,7 +248,7 @@ void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int k = 0; k < K; ++k){
             float A_PART = ALPHA * A[k * lda + i];
@@ -260,7 +260,7 @@ void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;

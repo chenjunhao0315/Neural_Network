@@ -35,13 +35,15 @@ void test_all_layer(bool save) {
     nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "mi_conv_5"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat"}});
     nn.addLayer(LayerOption{{"type", "Concat"}, {"splits", "2"}, {"split_id", "1"}, {"name", "concat_4"}});
     nn.addLayer(LayerOption{{"type", "Dropout"}, {"probability", "0.2"}, {"name", "dropout"}});
-    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "Swish"}, {"name", "conv_7"}, {"input_name", "concat"}});
+    nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"groups", "16"}, {"batchnorm", "true"}, {"activation", "Swish"}, {"name", "conv_7"}, {"input_name", "concat"}});
     nn.addLayer(LayerOption{{"type", "Pooling"}, {"kernel_width", "2"}, {"stride", "2"}, {"name", "pool_1"}, {"input_name", "concat"}});
     nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "sw_conv_7"}, {"name", "shortcut_2"}});
     nn.addLayer(LayerOption{{"type", "UpSample"}, {"stride", "2"}, {"name", "upsample"}});
     nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "dropout"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat_3"}});
     nn.addLayer(LayerOption{{"type", "AvgPooling"}, {"name", "avg_pooling"}, {"input_name", "concat"}});
+    nn.addLayer(LayerOption{{"type", "ScaleChannel"}, {"scalechannel", "upsample"}, {"name", "scalechannel"}});
     nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "avg_pooling"}, {"name", "shortcut_3"}, {"input_name", "concat_3"}});
+    nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "scalechannel, concat_3"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat_5"}});
     nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "32"}, {"name", "connected"}, {"activation", "PRelu"}});
     nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "3"}, {"name", "connected_2"}});
     nn.addLayer(LayerOption{{"type", "Softmax"}, {"name", "softmax"}});
@@ -90,9 +92,10 @@ void test_all_layer(bool save) {
     c.stop_and_show();
 
     printf("Accuracy: %.2f%%\n", nn.evaluate(data_valid, label_valid) * 100);
+//    printf("Accuracy: %.2f%%\n", nn.evaluate(data_train, data_label) * 100);
     if (save) {
 //        nn.save("test.bin");
-//        nn.save_otter("test_all_layer.otter");
+        nn.save_otter("test_all_layer.otter");
         nn.save_ottermodel("test_all_layer.ottermodel");
         printf("Save model finish!\n");
         Neural_Network test;

@@ -247,7 +247,6 @@ void Neural_Network::addLayer(LayerOption opt_) {
             opt_["bias"] = "0.1";
         }
     }
-    string bias = opt_["bias"].c_str();
     
     if (opt_.find("name") == opt_.end()) {
         opt_["name"] = to_string(opt_layer.size());
@@ -330,33 +329,37 @@ void Neural_Network::compile(int batch_size_) {
             opt["input_height"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(1));
             opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(2));
         }
-        string bias = opt["bias"].c_str();
         
-        if (opt["type"] == "Concat") {
-            int concat_num = 0;
-            if (opt.find("concat") != opt.end()) {
-                concat_num = (int)count(opt["concat"].begin(), opt["concat"].end(), ',') + 1;
-                stringstream concat_list(opt["concat"]);
-                
-                for (int i = 1; i <= concat_num; ++i) {
-                    string concat_name;
-                    getline(concat_list, concat_name, ',');
-                    concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
-                    opt["concat_" + to_string(i) + "_name"] = concat_name;
-                    opt["concat_" + to_string(i) + "_width"] = to_string(layer[id_table[concat_name]]->getParameter(0));
-                    opt["concat_" + to_string(i) + "_height"] = to_string(layer[id_table[concat_name]]->getParameter(1));
-                    opt["concat_" + to_string(i) + "_dimension"] = to_string(layer[id_table[concat_name]]->getParameter(2));
+        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
+        if (layer_param.check("connect")) {
+            ParameterData par = layer_param.get("connect");
+            if (par.type == "single") {
+                opt[par.data + "_width"] = opt[par.data + "_width"] = to_string(layer[id_table[opt[par.data]]]->getParameter(0));
+                opt[par.data + "_height"] = to_string(layer[id_table[opt[par.data]]]->getParameter(1));
+                opt[par.data + "_dimension"] = to_string(layer[id_table[opt[par.data]]]->getParameter(2));
+            } else if (par.type == "multi") {
+                int connect_num = 0;
+                if (opt.find(par.data) != opt.end()) {
+                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                    stringstream connect_list(opt[par.data]);
+                    
+                    for (int i = 1; i <= connect_num; ++i) {
+                        string connect_name;
+                        getline(connect_list, connect_name, ',');
+                        connect_name.erase(std::remove_if(connect_name.begin(), connect_name.end(), [](unsigned char x) { return std::isspace(x); }), connect_name.end());
+                        opt[par.data + "_" + to_string(i) + "_name"] = connect_name;
+                        opt[par.data + "_" + to_string(i) + "_width"] = to_string(layer[id_table[connect_name]]->getParameter(0));
+                        opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
+                        opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
+                    }
                 }
+                opt[par.data + "_num"] = to_string(connect_num);
             }
-            opt["concat_num"] = to_string(concat_num);
-        } else if (opt["type"] == "YOLOv3" || opt["type"] == "YOLOv4") {
+        } else if (layer_param.check("net")) {
             opt["net_width"] = to_string(layer[0]->getParameter(0));
             opt["net_height"] = to_string(layer[0]->getParameter(1));
-        } else if (opt["type"] == "ShortCut") {
-            opt["shortcut_width"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(0));
-            opt["shortcut_height"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(1));
-            opt["shortcut_dimension"] = to_string(layer[id_table[opt["shortcut"]]]->getParameter(2));
         }
+        
         layer[i] = LayerRegistry::CreateLayer(opt);
         layer_number++;
     }
@@ -373,6 +376,49 @@ void Neural_Network::compile(int batch_size_) {
             }
         }
         path.push_back(route);
+    }
+}
+
+void Neural_Network::constructGraph() {
+    alloc_workspace();
+    for (int i = 0; i < layer_number; ++i) {
+        LayerOption &opt = opt_layer[i];
+        vtensorptr extra_tensor;
+        
+        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
+        if (layer_param.check("connect")) {
+            ParameterData par = layer_param.get("connect");
+            if (par.type == "single") {
+                extra_tensor.push_back(terminal[opt[par.data]]);
+            } else if (par.type == "multi") {
+                extra_tensor.push_back(terminal[opt["input_name"]]);
+                int connect_num = 0;
+                if (opt.find(par.data) != opt.end()) {
+                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                    stringstream connect_list(opt[par.data]);
+                    for (int i = 1; i <= connect_num; ++i) {
+                        string connect_name;
+                        getline(connect_list, connect_name, ',');
+                        connect_name.erase(std::remove_if(connect_name.begin(), connect_name.end(), [](unsigned char x) { return std::isspace(x); }), connect_name.end());
+                        extra_tensor.push_back(terminal[connect_name]);
+                    }
+                }
+            }
+        }
+
+        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
+        terminal[opt["name"]] = act;
+    }
+    
+    int output_size = (int)output_layer.size();
+    if (output_size) {
+        output.reserve(output_size);
+        output.push_back(terminal[output_layer[0]]);
+        for (int i = 1; i < output_size; ++i) {
+            output.push_back(terminal[output_layer[i]]);
+        }
+    } else {
+        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
     }
 }
 
@@ -438,43 +484,6 @@ bool Neural_Network::to_prototxt(const char *filename) {
     
     fclose(f);
     return true;
-}
-
-void Neural_Network::constructGraph() {
-    alloc_workspace();
-    for (int i = 0; i < layer_number; ++i) {
-        LayerOption &opt = opt_layer[i];
-        vtensorptr extra_tensor;
-        if (opt["type"] == "ShortCut") {
-            extra_tensor.push_back(terminal[opt["shortcut"]]);
-        } else if (opt["type"] == "Concat") {
-            extra_tensor.push_back(terminal[opt["input_name"]]);
-            int concat_num = 0;
-            if (opt.find("concat") != opt.end()) {
-                concat_num = (int)count(opt["concat"].begin(), opt["concat"].end(), ',') + 1;
-                stringstream concat_list(opt["concat"]);
-                for (int i = 1; i <= concat_num; ++i) {
-                    string concat_name;
-                    getline(concat_list, concat_name, ',');
-                    concat_name.erase(std::remove_if(concat_name.begin(), concat_name.end(), [](unsigned char x) { return std::isspace(x); }), concat_name.end());
-                    extra_tensor.push_back(terminal[concat_name]);
-                }
-            }
-        }
-        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
-        terminal[opt["name"]] = act;
-    }
-    
-    int output_size = (int)output_layer.size();
-    if (output_size) {
-        output.reserve(output_size);
-        output.push_back(terminal[output_layer[0]]);
-        for (int i = 1; i < output_size; ++i) {
-            output.push_back(terminal[output_layer[i]]);
-        }
-    } else {
-        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
-    }
 }
 
 vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {

@@ -13,7 +13,7 @@ This is a simple project to implement neural network in c++, the structure of ne
 ## Supported Layers
 * Input layer (data input)
 * FullyConnected layer
-* Convolution layer
+* Convolution layer (depth-wise support)
 * BatchNormalization layer
 * Relu layer
 * PRelu layer
@@ -27,6 +27,7 @@ This is a simple project to implement neural network in c++, the structure of ne
 * UpSample layer
 * ShortCut layer (single layer)
 * Concat layer (multi layers)
+* ScaleChannel layer
 * Softmax layer
 * EuclideanLoss layer
 * Yolov3 layer
@@ -62,6 +63,7 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > kernel_height ( = kernel_width) <br>
 > stride (1) <br>
 > padding (0) <br>
+> groups (1) <br>
 > batchnorm (none) <br>
 > actiivation (none)
 * BatchNormalization layer
@@ -89,6 +91,8 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > concat (none) <br>
 > splits (1) <br>
 > split_id (0)
+* ScaleChannel layer
+> **scalechannel**
 * Softmax layer
 * EuclideanLoss layer
 * YOLOv3 layer
@@ -217,6 +221,8 @@ If you add some custom layer, remember to write the definition of layer prarmete
 Customed {
     REQUIRED TYPE PARAMETER_NAME // for required parameter (three parameters with two spaces)
     OPTION TYPE PARAMETER_NAME DEFAULT_VALUE // for optional parameter (four parameters with three spaces)
+    OPTION multi/single connect PARAMETER    // If layer need extra input
+    REQUIRED int net    // If layer need network input size
 }
 ```
 Then, you can save the model without revise any code. The otter file is easy to read and revise but it is sensitive to **syntax**, edit it carefully. The **otter** model syntax is like below.
@@ -493,6 +499,7 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
+
 
 
 

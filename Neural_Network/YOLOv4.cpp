@@ -10,12 +10,14 @@
 YOLOv4::YOLOv4(const char *model_name, int classes_, int batch_size) {
     network = Neural_Network("yolov4");
     network.load_ottermodel(model_name, batch_size);
+//    network.load_otter("yoloface.otter");
+//    network.load_darknet("yoloface-500k-v2.weights");
     network.shape();
     classes = classes_;
     label = get_yolo_label("labelstr.txt", classes);
     net_width = 416;
     net_height = 416;
-    threshold = 0.45;
+    threshold = 0.24;
 }
 
 vector<Detection> YOLOv4::detect(IMG &input) {
@@ -34,7 +36,7 @@ vector<Detection> YOLOv4::detect(IMG &input) {
     }
     
     yolo_nms(dets, classes, threshold);
-    yolov4_mark(dets, input, 80, 0.24, label);
+    yolov4_mark(dets, input, classes, threshold, label);
     
     return vector<Detection>();
 }
@@ -483,7 +485,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
     label = get_yolo_label("labelstr.txt", classes);
     net_width = 416;
     net_height = 416;
-    threshold = 0.45;
+    threshold = 0.24;
 
     network = Neural_Network("yolov4");
     network.addLayer(LayerOption{{"type", "Input"}, {"input_width", "416"}, {"input_height", "416"}, {"input_dimension", "3"}, {"name", "Input"}});
@@ -630,7 +632,7 @@ YOLOv4::YOLOv4(int classes_, int batch_size) {
 //    label = get_yolo_label("labelstr.txt", classes);
 //    net_width = 608;
 //    net_height = 608;
-//    threshold = 0.45;
+//    threshold = 0.24;
 //
 //    network = Neural_Network("yolov4");
 //    network.addLayer(LayerOption{{"type", "Input"}, {"input_width", to_string(net_width)}, {"input_height", to_string(net_height)}, {"input_dimension", "3"}, {"name", "Input"}});

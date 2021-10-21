@@ -177,6 +177,16 @@ void fill_cpu(int size, float *src, float parameter) {
         *(src++) = parameter;
 }
 
+void mul_cpu(int size, float *src1, float *src2, float *dst) {
+    for (int i = size; i--; )
+        *(dst++) = *(src1++) * *(src2++);
+}
+
+void div_cpu(int size, float *src1, float *src2, float *dst) {
+    for (int i = size; i--; )
+        *(dst++) = *(src1++) / *(src2++);
+}
+
 float sum_array(float *a, int n) {
     float sum = 0;
     for(int i = 0; i < n; ++i) sum += a[i];
@@ -290,7 +300,7 @@ void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int ld
     else                // A, B transpose
         gemm_tt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
     
-//    #pragma omp parallel for
+//    #pragma omp parallel for num_threads(OMP_THREADS)
 //    for (int t = 0; t < M; ++t) {
 //        if (!TA && !TB)
 //            gemm_nn(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
@@ -315,10 +325,10 @@ float im2col_get_pixel(float *im, int height, int width, int channels, int row, 
 //From Berkeley Vision's Caffe!
 //https://github.com/BVLC/caffe/blob/master/LICENSE
 void im2col_cpu(float* data_im, int channels, int height, int width, int ksize,  int stride, int pad, float* data_col) {
-    int height_col = (height + 2 * pad - ksize) / stride + 1;
-    int width_col = (width + 2 * pad - ksize) / stride + 1;
+    const int height_col = (height + 2 * pad - ksize) / stride + 1;
+    const int width_col = (width + 2 * pad - ksize) / stride + 1;
 
-    int channels_col = channels * ksize * ksize;
+    const int channels_col = channels * ksize * ksize;
     for (int c = 0; c < channels_col; ++c) {
         int w_offset = c % ksize;
         int h_offset = (c / ksize) % ksize;
@@ -343,8 +353,8 @@ void col2im_add_pixel(float *im, int height, int width, int channels, int row, i
 }
 
 void col2im_cpu(float* data_col, int channels,  int height,  int width, int ksize,  int stride, int pad, float* data_im) {
-    int height_col = (height + 2 * pad - ksize) / stride + 1;
-    int width_col = (width + 2 * pad - ksize) / stride + 1;
+    const int height_col = (height + 2 * pad - ksize) / stride + 1;
+    const int width_col = (width + 2 * pad - ksize) / stride + 1;
 
     int channels_col = channels * ksize * ksize;
     for (int c = 0; c < channels_col; ++c) {

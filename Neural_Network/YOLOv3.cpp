@@ -14,8 +14,9 @@ YOLOv3::YOLOv3(const char *model_name, int classes_, int batch_size) {
     network.shape();
     classes = classes_;
     label = get_yolo_label("labelstr.txt", classes);
-    net_width = 416;
-    net_height = 416;
+    network_structure net = network.getStructure();
+    net_width = net.width;
+    net_height = net.height;
     threshold = 0.45;
 }
 

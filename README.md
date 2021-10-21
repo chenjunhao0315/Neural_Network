@@ -4,7 +4,7 @@
 This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1], [Darknet][2] and [Caffe][4].
 
 ## Feature
-* C++14
+* C++11
 * Multi-thread support with Openmp
 * Run only on CPU
 * Structure visualization by [Netron][3] with Caffe2 like prototxt file
@@ -28,6 +28,7 @@ This is a simple project to implement neural network in c++, the structure of ne
 * ShortCut layer (single layer)
 * Concat layer (multi layers)
 * ScaleChannel layer
+* Eltwise layer
 * Softmax layer
 * EuclideanLoss layer
 * Yolov3 layer
@@ -37,6 +38,15 @@ This is a simple project to implement neural network in c++, the structure of ne
 * SGD
 * ADADELTA
 * ADAM
+
+## Supported Model
+* MTCNN
+* YOLOv3
+* YOLOv3-tiny
+* YOLOv3-openimage
+* YOLOv4
+* YOLOv4-tiny
+* YOLOv4-csp
 
 ## Construct network
 #### Initialize network 
@@ -86,13 +96,18 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 * UpSample layer
 > **stride**
 * ShortCut layer (single layer)
-> **shortcut**
+> **shortcut** <br>
+> alpha (1) <br>
+> beta (1)
 * Concat layer (multi layers)
 > concat (none) <br>
 > splits (1) <br>
 > split_id (0)
 * ScaleChannel layer
 > **scalechannel**
+* Eltwise layer
+> **eltwise** <br>
+> eltwise_op (prod, sum, max)
 * Softmax layer
 * EuclideanLoss layer
 * YOLOv3 layer
@@ -202,18 +217,47 @@ float loss = nn.Backward(&label);
 You can add the custom layer like [Caffe][5]. Save model as **otter** model like below! If defined correctly, it will save everything automatically.
 ```cpp
 #include "Layer.hpp"
-class CustomedLayer : public BaseLayer {
+class CustomLayer : public BaseLayer {
 public:
-    CustomedLayer(Layeroption opt);
+    CustomLayer(Layeroption opt);
     void Forward(bool train);    // For normal layer
     void Forward(Tensor *input);    // For input layer
     void Backward(Tensor *target);    // The output tensor should be extended! Or it will cause segmentation fault when clearing gradient (maybe fix at next version)
 private:
     ...
 };
-REGISTER_LAYER_CLASS(Customed);
+REGISTER_LAYER_CLASS(Custom);
 ```
 Remeber to add enum at `Layer.hpp` and write the display name at `Layer.cpp` `BaseLayer::type_to_string()`to make sure it can display correctly when using `Neural_Network::shape()` command but without that it should can work fine too.
+
+In the constrctor of custom layer, you can use ask space for storing data, for example
+```cpp
+CustomLayer::CustomLayer(Layeroption opt) {
+    this->applyKernel(NUM);    // ask for kernel space to store data
+    kernel[0] = Tensor(WIDTH, HEIGHT, DIMENSION, PARAMETER);
+    kernel[0].extend();    // If the kernel parameter can be updated
+    kernel[1] = ...
+}
+```
+If the layer can be trained, you need to pass train arguments to trainer, you need to add code at `BaseLayer::getTrainArgs()`, return the traing arguments, the traing arguments is defined by, 
+```cpp
+struct Train_Args {
+    bool valid;
+    Tensor *kernel;
+    Tensor *biases;
+    int kernel_size;
+    int kernel_list_size;
+    int biases_size;
+    vfloat ln_decay_list;
+};
+```
+
+#### Get training arguments
+If you want to train with your own method, you can use this command to get the whole **weights** and **delta weights** in network, if the layer is trainable. It will return a **vector** of **Train_Args**.
+```cpp
+vector<Train_Args> args_list = network.getTrainArgs();
+```
+You can update the weight by your own method, or just use the **Trainer** below to update the network weight automatically.
 
 #### Save otter model &hearts;
 If you add some custom layer, remember to write the definition of layer prarmeter in `layer.txt`, the syntax is like below.
@@ -273,24 +317,6 @@ nn.load_dam("weight_name.dam");
 ```cpp
 nn.load_ottermodel("model_name.ottermodel", BATCH_SIZE);
 ```
-
-#### Get training arguments
-If you want to train with your own method, you can use this command to get the whole **weights** and **delta weights** in network, if the layer is trainable. It will return a **vector** of **Train_Args**. The **Train_Args** is defined by,
-```cpp
-struct Train_Args {
-    bool valid;
-    Tensor *kernel;
-    Tensor *biases;
-    int kernel_size;
-    int kernel_list_size;
-    int biases_size;
-    vfloat ln_decay_list;
-};
-```
-```cpp
-vector<Train_Args> args_list = network.getTrainArgs();
-```
-You can update the weight by your own method, or just use the **Trainer** below to update the network weight automatically.
 
 ## Construct trainer
 #### Initialze the trainer
@@ -499,6 +525,7 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
+
 
 
 

@@ -24,25 +24,25 @@ void Mat::copyFrom(void *src) {
 unsigned char * Mat::allocData(int width, int height, MatType type) {
     switch (type) {
         case MAT_8UC1:
-            return new unsigned char [width * height]; break;
+            return new unsigned char [width * height](); break;
         case MAT_8UC3:
-            return (unsigned char *)(new Vec3b [width * height]); break;
+            return (unsigned char *)(new unsigned char [3 * width * height]()); break;
         case MAT_8SC1:
-            return (unsigned char *)(new char [width * height]); break;
+            return (unsigned char *)(new char [width * height]()); break;
         case MAT_8SC3:
-            return (unsigned char *)(new Vec3c [width * height]); break;
+            return (unsigned char *)(new char [3 * width * height]()); break;
         case MAT_32UC1:
-            return (unsigned char *)(new unsigned int [width * height]); break;
+            return (unsigned char *)(new unsigned int [width * height]()); break;
         case MAT_32UC3:
-            return (unsigned char *)(new Vec3u [width * height]); break;
+            return (unsigned char *)(new unsigned int [3 * width * height]()); break;
         case MAT_32SC1:
-            return (unsigned char *)(new int [width * height]); break;
+            return (unsigned char *)(new int [width * height]()); break;
         case MAT_32SC3:
-            return (unsigned char *)(new Vec3i [width * height]); break;
+            return (unsigned char *)(new int [3 * width * height]()); break;
         case MAT_32FC1:
-            return (unsigned char *)(new float [width * height]); break;
+            return (unsigned char *)(new float [width * height]()); break;
         case MAT_32FC3:
-            return (unsigned char *)(new Vec3f [width * height]); break;
+            return (unsigned char *)(new float [3 * width * height]()); break;
         default:
             return nullptr;
     }

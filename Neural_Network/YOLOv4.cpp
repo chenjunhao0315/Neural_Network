@@ -10,13 +10,19 @@
 YOLOv4::YOLOv4(const char *model_name, int classes_, int batch_size) {
     network = Neural_Network("yolov4");
     network.load_ottermodel(model_name, batch_size);
-//    network.load_otter("yoloface.otter");
-//    network.load_darknet("yoloface-500k-v2.weights");
+//    network.load_otter("yolov4-csp.otter");
+//    network.load_darknet("yolov4-csp.weights");
+//    network.load_otter("yolov4-p6.otter");
+//    network.load_darknet("yolov4-p6.weights");
+//    network.load_otter("yolov3-openimages.otter");
+//    network.load_darknet("yolov3-openimages.weights");
     network.shape();
-    classes = classes_;
-    label = get_yolo_label("labelstr.txt", classes);
-    net_width = 416;
-    net_height = 416;
+//    network.show_detail();
+    classes = 80;
+    label = get_yolo_label("coco.txt", classes);
+    network_structure net = network.getStructure();
+    net_width = net.width;
+    net_height = net.height;
     threshold = 0.24;
 }
 
@@ -177,7 +183,7 @@ vector<string> YOLOv4::get_yolo_label(const char *labelstr, int classes) {
     vector<string> label; label.reserve(classes);
     for (int i = 0; i < classes; ++i) {
         string str;
-        f >> str;
+        getline(f, str, '\n');
         label.push_back(str);
     }
     return label;

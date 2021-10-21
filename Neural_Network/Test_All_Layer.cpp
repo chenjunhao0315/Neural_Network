@@ -29,7 +29,8 @@ void test_all_layer(bool save) {
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "8"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_4"}});
-    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_2"}, {"name", "shortcut_1"}});
+//    nn.addLayer(LayerOption{{"type", "ShortCut"}, {"shortcut", "lr_conv_2"}, {"name", "shortcut_1"}});
+    nn.addLayer(LayerOption{{"type", "Eltwise"}, {"eltwise", "lr_conv_2"}, {"eltwise_op", "prod"}, {"name", "eltwise_1"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "8"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "Mish"}, {"name", "conv_5"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "8"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "Mish"}, {"name", "conv_6"}, {"input_name", "re_conv_1"}});
     nn.addLayer(LayerOption{{"type", "Concat"}, {"concat", "mi_conv_5"}, {"splits", "1"}, {"split_id", "0"}, {"name", "concat"}});
@@ -50,16 +51,16 @@ void test_all_layer(bool save) {
     nn.compile(8);
     nn.shape();
 //    nn.show_detail();
-//    nn.to_prototxt("test_all_layer.prototxt");
+    nn.to_prototxt("test_all_layer.prototxt");
 //    exit(1);
     
-    Data bee("bee.npy", 28, 28);
+    Data bee("bee.npy", 28, 28, 3, 80);
     vtensor data_bee = bee.get(500);
     vtensor label_bee(500, Tensor(1, 1, 1, 0));
-    Data cat("cat.npy", 28, 28);
+    Data cat("cat.npy", 28, 28, 3, 80);
     vtensor data_cat = cat.get(500);
     vtensor label_cat(500, Tensor(1, 1, 1, 1));
-    Data fish("fish.npy", 28, 28);
+    Data fish("fish.npy", 28, 28, 3, 80);
     vtensor data_fish = fish.get(500);
     vtensor label_fish(500, Tensor(1, 1, 1, 2));
     

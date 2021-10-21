@@ -343,7 +343,10 @@ void Tensor::load(FILE *f) {
 }
 
 void Tensor::load_raw(FILE *f) {
-    fread(weight, sizeof(float), size, f);
+    size_t check = fread(weight, sizeof(float), size, f);
+    if (check != size) {
+        fprintf(stderr, "[Tensor] Unexpected end!\n");
+    }
 }
 
 vfloat Tensor::toVector() {

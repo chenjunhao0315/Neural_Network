@@ -14,6 +14,7 @@
 #include "YOLOv3.hpp"
 #include "YOLOv4.hpp"
 #include "Test_All_Layer.hpp"
+#include "Machine_Learning.hpp"
 
 using namespace std;
 
@@ -53,8 +54,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_95040_v4_x10.ottermodel");
-    IMG img("dog.jpg");
+    YOLOv4 yolo("backup_55040_v4_x15.ottermodel");
+    IMG img("5D4A1809.JPG");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -109,14 +110,17 @@ int main(int argc, const char * argv[]) {
 //    cout << b;
     
 //    Neural_Network nn;
-//    nn.load_otter("yoloface.otter");
+//    nn.load_otter("yolov4-p6.otter");
 //    nn.shape();
-//    nn.to_prototxt("yoloface.prototxt");
+//    nn.to_prototxt("yolov4-p6.prototxt");
     
-//    YOLOv4 yolo("backup_50048_v4_x10.ottermodel");
-//    IMG img("nthuee.jpg");
+//    YOLOv4 yolo("backup_25024_v4_x13.ottermodel");
+//    IMG img("5D4A1809.JPG");
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
+    
+//    Mat a(3, 3, MAT_32FC1);
+//    cout << a;
     
     return 0;
 }

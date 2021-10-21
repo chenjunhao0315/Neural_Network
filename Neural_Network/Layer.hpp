@@ -61,6 +61,7 @@ enum LayerType {
     ShortCut,
     Concat,
     ScaleChannel,
+    Eltwise,
     Softmax,
     EuclideanLoss,
     Yolov3,
@@ -89,6 +90,7 @@ class SwishLayer;
 class DropoutLayer;
 class AvgPoolingLayer;
 class ScaleChannelLayer;
+class EltwiseLayer;
 
 #define opt_find(opt, type) \
     (opt.find(type) != opt.end())
@@ -114,12 +116,13 @@ public:
     virtual void Forward(Tensor *input_tensor = nullptr) {}
     virtual void Forward(bool train = false) {}
     virtual void Backward(Tensor *target = nullptr) {}
+    virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
+    void applyKernel(int num);
     void shape();
     void show_detail();
     long getOperations();
     int getWorkspaceSize();
     string type_to_string();
-    virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
     int getParameter(int type);
     void ClearGrad();
     bool save_raw(FILE *f);
@@ -154,6 +157,8 @@ public:
         int nweights;
         int workspace_size;
         int batch_size;
+        int eltwise_num;
+        int eltwise_op;
         int kernel_num;
         int total_anchor_num;
         int anchor_num;
@@ -480,6 +485,18 @@ public:
     void Backward(Tensor *none = nullptr);
 private:
     vtensorptr concat_tensor;
+};
+
+// Eltwise layer
+class EltwiseLayer : public BaseLayer {
+public:
+    enum ELTWISE_OP {PROD = 0, SUM = 1, MAX = 2};
+    EltwiseLayer(LayerOption opt_);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+private:
+    vtensorptr eltwise_tensor;
 };
 
 // ScaleChannel layer

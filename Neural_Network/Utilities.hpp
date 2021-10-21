@@ -47,6 +47,8 @@ void copy_cpu(int size, float *src, float *dst);
 void scal_cpu(int size, float scale, float *src);
 void scal_add_cpu(int size, float scale, float bias, float *src);
 void axpy_cpu(int size, float scale, float *src, float *dst);
+void mul_cpu(int size, float *src1, float *src2, float *dst);
+void div_cpu(int size, float *src1, float *src2, float *dst);
 
 // ACTIVATION
 enum ACTIVATE_METHOD {

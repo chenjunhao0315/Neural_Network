@@ -10,16 +10,10 @@
 
 using std::string;
 
-Data::Data(string filename_, int width_, int height_) {
-    filename = filename_;
-    width = width_;
-    height = height_;
-}
-
 vtensor Data::get(int num) {
     FILE *f = fopen(filename.c_str(), "rb");
     vtensor data_set;
-    fseek(f, 80, SEEK_CUR);
+    fseek(f, offset, SEEK_CUR);
     unsigned char c;
     for (int i = 0; i < num; i++) {
         vfloat img;

@@ -148,6 +148,7 @@ string BaseLayer::type_to_string() {
         case Dropout: return "Dropout";
         case AvgPooling: return "AvgPooling";
         case ScaleChannel: return "ScaleChannel";
+        case Eltwise: return "Eltwise";
         case Error: return "Error";
     }
     return "Unknown";
@@ -156,6 +157,11 @@ string BaseLayer::type_to_string() {
 Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
     input_tensor = input_tensor_;
     return output_tensor;
+}
+
+void BaseLayer::applyKernel(int num) {
+    kernel = new Tensor [num];
+    info.kernel_num = num;
 }
 
 void BaseLayer::shape() {
@@ -372,7 +378,19 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
         } else if (type == LayerType::Swish) {
         } else if (type == LayerType::Dropout) {
             fprintf(f, "  dropout_param {\n");
-            fprintf(f, "    ratioi: %g\n", info.probability);
+            fprintf(f, "    ratio: %g\n", info.probability);
+            fprintf(f, "  }\n");
+        } else if (type == LayerType::Eltwise) {
+            for (int i = 1; i <= info.eltwise_num; ++i) {
+                fprintf(f, "  bottom: \"%s\"\n", refine_struct[id_table[opt["eltwise_" + to_string(i) + "_name"]]]["name"].c_str());
+            }
+            fprintf(f, "  eltwise_param {\n");
+            fprintf(f, "    operation: ");
+            switch (info.eltwise_op) {
+                case 0: fprintf(f, "PROD\n"); break;
+                case 1: fprintf(f, "SUM\n"); break;
+                case 2: fprintf(f, "MAX\n"); break;
+            }
             fprintf(f, "  }\n");
         }
         fprintf(f, "}\n");
@@ -463,7 +481,7 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.batchnorm = opt_find(opt, "batchnorm");
     info.nweights = info.input_dimension / info.groups * info.output_dimension * info.kernel_width * info.kernel_height;
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.nweights, 0);
     kernel[0].extend();
     float *kernel_weight = kernel->weight;
@@ -471,7 +489,6 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     for (int i = 0; i < info.nweights; ++i) {
         *(kernel_weight++) = randn(0.0, scale);
     }
-    info.kernel_num = 1;
     
     float bias = opt_find_float(opt, "bias", 0);
     biases = new Tensor(1, 1, info.output_dimension, bias);
@@ -596,9 +613,9 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     info.input_dimension = opt_get_int(opt, "input_dimension")
     info.input_number = info.input_width * info.input_height * info.input_dimension;
     
-    info.kernel_width = opt_find_int(opt, "kernel_width", 1);
-    info.kernel_height = opt_find_int(opt, "kernel_height", info.kernel_width);
     info.stride = opt_find_int(opt, "stride", 1);
+    info.kernel_width = opt_find_int(opt, "kernel_width", info.stride);
+    info.kernel_height = opt_find_int(opt, "kernel_height", info.kernel_width);
     info.padding = (opt.find("padding") == opt.end()) ? 0 : ((opt["padding"] == "same") ? ((info.kernel_width - 1)) : atoi(opt["padding"].c_str()));
     
     info.output_width = (info.input_width + info.padding - info.kernel_width) / info.stride + 1;
@@ -608,9 +625,8 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.output_number * info.batch_size, 0);
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
     output_tensor->extend();
@@ -624,9 +640,6 @@ void PoolingLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
-    int input_width = info.input_width;
-    int input_height = info.input_height;
-    int input_dimension = info.input_dimension;
     int kernel_size = info.kernel_width;
     
     int w_offset = -info.padding / 2;
@@ -649,8 +662,8 @@ void PoolingLayer::Forward(bool train) {
                         for(int m = 0; m < kernel_size; ++m){
                             int cur_h = h_offset + i * stride + n;
                             int cur_w = w_offset + j * stride + m;
-                            int index = cur_w + input_width * (cur_h + input_height * (k + b * input_dimension));
-                            bool valid = (cur_h >= 0 && cur_h < input_height && cur_w >= 0 && cur_w < input_width);
+                            int index = cur_w + info.input_width * (cur_h + info.input_height * (k + b * info.input_dimension));
+                            bool valid = (cur_h >= 0 && cur_h < info.input_height && cur_w >= 0 && cur_w < info.input_width);
                             float val = (valid != false) ? input[index] : -10000000;
                             max_i = (val > max) ? index : max_i;
                             max   = (val > max) ? val   : max;
@@ -670,6 +683,7 @@ void PoolingLayer::Backward(Tensor *none) {
     float *indexes = kernel->weight;
     
     int total_size = info.output_width * info.output_height * info.output_dimension * info.batch_size;
+    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < total_size; ++i){
         int index = indexes[i];
         input_delta[index] += output_delta[i];
@@ -693,7 +707,7 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     info.batchnorm = opt_find(opt, "batchnorm");
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(info.input_number, 1, info.output_dimension, 0);
     kernel[0].extend();
     float *kernel_weight = kernel->weight;
@@ -701,7 +715,6 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     for (int i = 0; i < info.input_number * info.output_dimension; ++i) {
         *(kernel_weight++) = randn(0.0, scale);
     }
-    info.kernel_num = 1;
     
     float bias = opt_find_float(opt, "bias", 0);
     biases = new Tensor(1, 1, info.output_dimension, bias);
@@ -713,7 +726,7 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
 REGISTER_LAYER_CLASS(FullyConnected);
 
 void FullyConnectedLayer::Forward(bool train) {
-    fill_cpu(info.output_dimension * info.batch_size, output_tensor->weight, 0);
+    fill_cpu(info.output_number * info.batch_size, output_tensor->weight, 0);
     
     int m = info.batch_size;
     int k = info.input_number;
@@ -809,10 +822,10 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     info.input_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     float alpha = opt_find_float(opt, "alpha", 0.25);
-    kernel = new Tensor [1];
+    
+    this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension, alpha);
     kernel[0].extend();
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
     output_tensor->extend();
@@ -874,9 +887,8 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.output_dimension * info.batch_size, 0);
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -991,9 +1003,14 @@ ShortCutLayer::ShortCutLayer(LayerOption opt_) {
     info.output_dimension = opt_get_int(opt, "input_dimension");
     info.output_number = info.input_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
-    info.shortcut_width = atoi(opt["shortcut_width"].c_str());
-    info.shortcut_height = atoi(opt["shortcut_height"].c_str());
-    info.shortcut_dimension = atoi(opt["shortcut_dimension"].c_str());
+    info.shortcut_width = opt_get_int(opt, "shortcut_width");
+    info.shortcut_height = opt_get_int(opt, "shortcut_height");
+    info.shortcut_dimension = opt_get_int(opt, "shortcut_dimension");
+    
+    this->applyKernel(1);
+    kernel[0] = Tensor(1, 1, 2, 1); // alpha, beta
+    kernel[0][0] = opt_find_int(opt, "alpha", 1);
+    kernel[0][1] = opt_find_int(opt, "beta", 1);
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
     output_tensor->extend();
@@ -1012,35 +1029,26 @@ void ShortCutLayer::Forward(bool train) {
     float *output = output_tensor->weight;
     float *shortcut = shortcut_tensor->weight;
     
-    int shortcut_width = info.shortcut_width;
-    int shortcut_height = info.shortcut_height;
-    int shortcut_dimension = info.shortcut_dimension;
-    
     copy_cpu(info.input_number * info.batch_size, input, output);
-    if (shortcut_width == info.output_width && shortcut_height == info.output_height && shortcut_dimension == info.output_dimension) {
+    if (info.shortcut_width == info.output_width && info.shortcut_height == info.output_height && info.shortcut_dimension == info.output_dimension) {
+        float alpha = kernel[0][0], beta = kernel[0][1];
         for (int i = info.output_number * info.batch_size; i--; ) {
-            *(output++) = *(input++) + *(shortcut++);
+            *(output++) = alpha * *(input++) + beta * *(shortcut++);
         }
     } else {
-        shortcut_cpu(info.batch_size, shortcut_width, shortcut_height, shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, 1, 1, output);
+        shortcut_cpu(info.batch_size, info.shortcut_width, info.shortcut_height, info.shortcut_dimension, shortcut, info.output_width, info.output_height, info.output_dimension, kernel[0][0], kernel[0][1], output);
     }
 }
 
 void ShortCutLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float *output_delta = output_tensor->delta_weight;
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        *(input_delta++) += *(output_delta++);
-    }
-    
-    int shortcut_width = info.shortcut_width;
-    int shortcut_height = info.shortcut_height;
-    int shortcut_dimension = info.shortcut_dimension;
+    axpy_cpu(info.input_number * info.batch_size, kernel[0][0], output_delta, input_delta);
     
     float *shortcut_delta = shortcut_tensor->delta_weight;
     output_delta = output_tensor->delta_weight;
     
-    shortcut_cpu(info.batch_size, info.output_width, info.output_height, info.output_dimension, output_delta, shortcut_width, shortcut_height, shortcut_dimension, 1, 1, shortcut_delta);
+    shortcut_cpu(info.batch_size, info.output_width, info.output_height, info.output_dimension, output_delta, info.shortcut_width, info.shortcut_height, info.shortcut_dimension, kernel[0][0], kernel[0][1], shortcut_delta);
 }
 
 void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out) {
@@ -1078,9 +1086,8 @@ LReluLayer::LReluLayer(LayerOption opt_) {
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     float alpha = opt_find_float(opt, "alpha", 0.1);
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(1, 1, 1, alpha);
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
     output_tensor->extend();
@@ -1171,7 +1178,7 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     info.input_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    kernel = new Tensor [7];
+    this->applyKernel(7);
     kernel[0] = Tensor(1, 1, info.output_dimension, 1); // scale
     kernel[0].extend();
     kernel[1] = Tensor(1, 1, info.output_dimension, 0); // mean
@@ -1182,7 +1189,6 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     kernel[4] = Tensor(1, 1, info.output_dimension, 0); // running variance
     kernel[5] = Tensor(1, 1, info.input_number * info.batch_size, 0); // x
     kernel[6] = Tensor(1, 1, info.input_number * info.batch_size, 0); // x_norm
-    info.kernel_num = 7;
     
     biases = new Tensor(1, 1, info.output_dimension, 0);
     biases->extend();
@@ -1205,31 +1211,31 @@ void BatchNormalizationLayer::Forward(bool train) {
     float *x = kernel[5].weight;
     float *x_norm = kernel[6].weight;
     
-    int batch_size = info.batch_size;
-    int output_dimension = info.output_dimension;
-    int total_size = info.input_number * batch_size;
+//    int batch_size = info.batch_size;
+//    int output_dimension = info.output_dimension;
+    int total_size = info.input_number * info.batch_size;
     int channel_size = info.output_width * info.output_height;
     
     copy_cpu(total_size, input, output);
     copy_cpu(total_size, output, x);
     
     if (train) {
-        mean_cpu(output, batch_size, output_dimension, channel_size, mean);
-        variance_cpu(output, mean, batch_size, output_dimension, channel_size, variance);
+        mean_cpu(output, info.batch_size, info.output_dimension, channel_size, mean);
+        variance_cpu(output, mean, info.batch_size, info.output_dimension, channel_size, variance);
         
-        scal_cpu(output_dimension, 0.99, running_mean);
-        axpy_cpu(output_dimension, 0.01, mean, running_mean);
-        scal_cpu(output_dimension, 0.99, running_variance);
-        axpy_cpu(output_dimension, 0.01, variance, running_variance);
+        scal_cpu(info.output_dimension, 0.99, running_mean);
+        axpy_cpu(info.output_dimension, 0.01, mean, running_mean);
+        scal_cpu(info.output_dimension, 0.99, running_variance);
+        axpy_cpu(info.output_dimension, 0.01, variance, running_variance);
         
-        normalize(output, mean, variance, batch_size, output_dimension, channel_size);
+        normalize(output, mean, variance, info.batch_size, info.output_dimension, channel_size);
         copy_cpu(total_size, output, x_norm);
     } else {
-        normalize(output, running_mean, running_variance, batch_size, output_dimension, channel_size);
+        normalize(output, running_mean, running_variance, info.batch_size, info.output_dimension, channel_size);
     }
     
-    scale_bias(output, scale, batch_size, output_dimension, channel_size);
-    add_bias(output, bias, batch_size, output_dimension, channel_size);
+    scale_bias(output, scale, info.batch_size, info.output_dimension, channel_size);
+    add_bias(output, bias, info.batch_size, info.output_dimension, channel_size);
 }
 
 void BatchNormalizationLayer::Backward(Tensor *none) {
@@ -1246,69 +1252,17 @@ void BatchNormalizationLayer::Backward(Tensor *none) {
     float *x = kernel[5].weight;
     float *x_norm = kernel[6].weight;
     
-    int batch_size = info.batch_size;
-    int output_dimension = info.output_dimension;
-    int one_batch_size = info.input_number;
     int channel_size = info.output_width * info.output_height;
     
-    float chain_grad, scale_value, mean_value;
-    
-    for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < output_dimension; ++d) {
-            float &bias_delta_value = bias_delta[d];
-            float &scale_delta_value = scale_delta[d];
-            float &mean_delta_value = mean_delta[d];
-            float &variance_delta_value = variance_delta[d];
-            scale_value = scale[d];
-            mean_value = mean[d];
-            for (int i = 0; i < channel_size; ++i) {
-                chain_grad = *output_delta;
-                bias_delta_value += chain_grad;
-                scale_delta_value += chain_grad * *(x_norm++);
-                chain_grad = *(output_delta++) *= scale_value;
-                mean_delta_value += chain_grad;
-                variance_delta_value += chain_grad * (*(x++) - mean_value);
-            }
-        }
-    }
-    
-    for (int d = 0; d < output_dimension; ++d) {
-        mean_delta[d] *= (-1.0 / sqrt(variance[d] + .00001f));
-        variance_delta[d] *= (-0.5 * pow(variance[d] + 0.00001f, (float)(-1.5)));
-    }
-    
-    output_delta = output_tensor->delta_weight;
-    x = kernel[5].weight;
-    
-    float variance_scale;
-    float variance_delta_value;
-    float mean_delta_value;
-    
-    for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < output_dimension; ++d) {
-            mean_value = mean[d];
-            mean_delta_value = mean_delta[d] / (channel_size * batch_size);
-            variance_scale = 1.0 / (sqrt(variance[d] + .00001f));
-            variance_delta_value = variance_delta[d];
-            for (int i = 0; i < channel_size; ++i) {
-                *output_delta = *output_delta * variance_scale + variance_delta_value * 2.0 * (*(x++) - mean_value) / (channel_size * batch_size) + mean_delta_value;
-                ++output_delta;
-            }
-        }
-    }
-    
-    output_delta = output_tensor->delta_weight;
-    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
-    
-    //    backward_bias(bias_delta, output_delta, batch_size, output_dimension, channel_size);
-    //    backward_scale_cpu(x_norm, output_delta, batch_size, output_dimension, channel_size, scale_delta);
-    //
-    //    scale_bias(output_delta, scale, batch_size, output_dimension, channel_size);
-    //
-    //    mean_delta_cpu(output_delta, variance, batch_size, output_dimension, channel_size, mean_delta);
-    //    variance_delta_cpu(x, output_delta, mean, variance, batch_size, output_dimension, channel_size, variance_delta);
-    //    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, batch_size, output_dimension, channel_size, output_delta);
-    //    copy_cpu(one_batch_size * batch_size, output_delta, input_delta);
+    backward_bias(bias_delta, output_delta, info.batch_size, info.output_dimension, channel_size);
+    backward_scale_cpu(x_norm, output_delta, info.batch_size, info.output_dimension, channel_size, scale_delta);
+
+    scale_bias(output_delta, scale, info.batch_size, info.output_dimension, channel_size);
+
+    mean_delta_cpu(output_delta, variance, info.batch_size, info.output_dimension, channel_size, mean_delta);
+    variance_delta_cpu(x, output_delta, mean, variance, info.batch_size, info.output_dimension, channel_size, variance_delta);
+    normalize_delta_cpu(x, mean, variance, mean_delta, variance_delta, info.batch_size, info.output_dimension, channel_size, output_delta);
+    copy_cpu(info.input_number * info.batch_size, output_delta, input_delta);
 }
 
 void BatchNormalizationLayer::backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates) {
@@ -1454,10 +1408,9 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     info.output_dimension = info.input_dimension;
     
     info.concat_num = opt_get_int(opt, "concat_num");
-    kernel = new Tensor [1];    // Concat tensor structure
+    this->applyKernel(1);    // Concat tensor structure
     kernel[0] = Tensor(1, 1, info.concat_num + 1, 0);
     kernel[0] = {float(info.input_dimension)};
-    info.kernel_num = 1;
     
     for (int i = 1; i <= info.concat_num; ++i) {
         int width_check = atoi(opt[("concat_" + to_string(i) + "_width")].c_str());
@@ -1513,7 +1466,6 @@ void ConcatLayer::Forward(bool train) {
 
 void ConcatLayer::Backward(Tensor *none) {
     float *output_delta = output_tensor->delta_weight;
-    int check = output_tensor->size;
     
     int channel_size = info.input_width * info.input_height;
     
@@ -1524,7 +1476,158 @@ void ConcatLayer::Backward(Tensor *none) {
             float *concat_delta = concat_tensor[i]->delta_weight + b * concat_input_size + split_concat_input_size * info.split_id;
             for (int j = split_concat_input_size; j--; ) {
                 *(concat_delta++) += *(output_delta++);
-                check--;
+            }
+        }
+    }
+}
+
+EltwiseLayer::EltwiseLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Eltwise;
+    name = opt_find_string(opt, "name", "eltwise");
+    input_name = opt_find_string(opt, "input_name", "default");
+
+    info.input_width = opt_get_int(opt, "input_width");
+    info.input_height = opt_get_int(opt, "input_height");
+    info.input_dimension = opt_get_int(opt, "input_dimension");
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    info.batch_size = opt_find_int(opt, "batch_size", 1);
+
+    info.eltwise_num = opt_get_int(opt, "eltwise_num");
+    if (info.eltwise_num < 1) {
+        fprintf(stderr, "[EltwiseLayer] Must connect at least two layers!\n");
+        exit(-100);
+    }
+    for (int i = 1; i <= info.eltwise_num; ++i) {
+        int width_check = atoi(opt[("eltwise_" + to_string(i) + "_width")].c_str());
+        int height_check = atoi(opt[("eltwise_" + to_string(i) + "_height")].c_str());
+        int dimension_check = atoi(opt[("eltwise_" + to_string(i) + "_dimension")].c_str());
+        if (width_check != info.input_width || height_check != info.input_height || dimension_check != info.input_dimension) {
+            fprintf(stderr, "[EltwiseLayer] %s eltwise shape error!\n", name.c_str());
+            fprintf(stderr, "EltwiseLayer] Eltwise list: %s\n", opt["eltwise"].c_str());
+            fprintf(stderr, "[EltwiseLayer] Error index: %d eltwise(%d * %d * %d) != layer(%d * %d * %d)\n", i - 1, width_check, height_check, dimension_check, info.input_width, info.input_height, info.input_dimension);
+            exit(-100);
+        }
+    }
+    eltwise_tensor.resize(info.eltwise_num + 1);
+    
+    string op = opt_find_string(opt, "eltwise_op", "sum");
+    if (op == "prod") {
+        info.eltwise_op = ELTWISE_OP::PROD;
+        this->applyKernel(1);
+    } else if (op == "sum") {
+        info.eltwise_op = ELTWISE_OP::SUM;
+        this->applyKernel(1);
+    } else if (op == "max") {
+        info.eltwise_op = ELTWISE_OP::MAX;
+        this->applyKernel(2);
+    }
+    
+    kernel[0] = Tensor(1, 1, 1, 1); // alpha
+    kernel[0][0] = opt_find_int(opt, "alpha", 1);
+    
+    if (info.eltwise_op == ELTWISE_OP::MAX) {
+        kernel[1] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    }
+
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
+}
+
+REGISTER_LAYER_CLASS(Eltwise);
+
+Tensor* EltwiseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
+    input_tensor = input_tensor_;
+    for (int i = 0; i <= info.eltwise_num; ++i) {
+        eltwise_tensor[i] = (extra_tensor_[i]);
+    }
+    return output_tensor;
+}
+
+void EltwiseLayer::Forward(bool train) {
+    float *output = output_tensor->weight;
+    int one_batch_size = info.output_number * info.batch_size;
+    
+    switch ((ELTWISE_OP)info.eltwise_op) {
+        case ELTWISE_OP::PROD:
+            mul_cpu(one_batch_size, eltwise_tensor[0]->weight, eltwise_tensor[1]->weight, output);
+            for (int i = 2; i <= info.eltwise_num; ++i) {
+                mul_cpu(one_batch_size, output, eltwise_tensor[i]->weight, output);
+            }
+            break;
+        case ELTWISE_OP::SUM:
+            fill_cpu(info.input_number * info.batch_size, output, 0);
+            for (int i = 0; i <= info.eltwise_num; ++i) {
+                float *eltwise = eltwise_tensor[i]->weight;
+                float *output = output_tensor->weight;
+                axpy_cpu(one_batch_size, 1, eltwise, output);
+            }
+            break;
+        case ELTWISE_OP::MAX: {
+            float *mask = kernel[1].weight;
+            fill_cpu(one_batch_size, mask, -1);
+            fill_cpu(info.input_number * info.batch_size, output, -FLT_MAX);
+            float *eltwise_0 = eltwise_tensor[0]->weight;
+            float *eltwise_1 = eltwise_tensor[1]->weight;
+            for (int idx = 0; idx < one_batch_size; ++idx) {
+                if (eltwise_0[idx] > eltwise_1[idx]) {
+                    output[idx] = eltwise_0[idx];
+                    mask[idx] = 0;
+                } else {
+                    output[idx] = eltwise_1[idx];
+                    mask[idx] = 1;
+                }
+            }
+            for (int d = 2; d <= info.eltwise_num; ++d) {
+                float *eltwise = eltwise_tensor[d]->weight;
+                for (int idx = 0; idx < one_batch_size; ++idx) {
+                    if (eltwise[idx] > output[idx]) {
+                        output[idx] = eltwise[idx];
+                        mask[idx] = d;
+                    }
+                }
+            }
+            break;
+        }
+    }
+}
+
+void EltwiseLayer::Backward(Tensor *none) {
+    float *output = output_tensor->weight;
+    float *output_delta = output_tensor->delta_weight;
+    int one_batch_size = info.output_number * info.batch_size;
+    
+    for (int i = 0; i <= info.eltwise_num; ++i) {
+        float *eltwise = eltwise_tensor[i]->weight;
+        float *eltwise_delta = eltwise_tensor[i]->delta_weight;
+        switch ((ELTWISE_OP)info.eltwise_op) {
+            case ELTWISE_OP::PROD:
+                if (0) {
+                    // Smooth back-propagation
+                } else {
+                    div_cpu(one_batch_size, output, eltwise, eltwise_delta);
+                }
+                mul_cpu(one_batch_size, eltwise_delta, output_delta, eltwise_delta);
+                break;
+            case ELTWISE_OP::SUM: {
+                axpy_cpu(one_batch_size, 1, output_delta, eltwise_delta);
+                break;
+            }
+            case ELTWISE_OP::MAX: {
+                float *mask = kernel[1].weight;
+                for (int index = 0; index < one_batch_size; ++index) {
+                    float gradient = 0;
+                    if (mask[index] == i) {
+                        gradient += output_delta[index];
+                    }
+                    eltwise_delta[index] = gradient;
+                }
+                break;
             }
         }
     }
@@ -1540,11 +1643,11 @@ ScaleChannelLayer::ScaleChannelLayer(LayerOption opt_) {
     info.input_height = opt_get_int(opt, "input_height");
     info.input_dimension = opt_get_int(opt, "input_dimension");
     info.input_number = info.input_width * info.input_height * info.input_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     info.output_width = opt_get_int(opt, "scalechannel_width");
     info.output_height = opt_get_int(opt, "scalechannel_height");
     info.output_dimension = opt_get_int(opt, "scalechannel_dimension");
     info.output_number = info.output_width * info.output_height * info.output_dimension;
+    info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     info.scale_wh = opt_find(opt, "scale_wh");
     if (!info.scale_wh) {
@@ -1644,9 +1747,8 @@ MishLayer::MishLayer(LayerOption opt_) {
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Input Storage
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -1705,9 +1807,8 @@ SwishLayer::SwishLayer(LayerOption opt_) {
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Input Storage
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -1765,9 +1866,8 @@ DropoutLayer::DropoutLayer(LayerOption opt_) {
     info.probability = opt_find_float(opt, "probability", 0.5);
     info.scale = 1.0 / (1.0 - info.probability);
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Probability storage
-    info.kernel_num = 1;
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -1904,7 +2004,7 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
     info.ignore_iou_threshold = opt_find_float(opt, "ignore_iou_threshold", 0.5);
     info.truth_iou_threshold = opt_find_float(opt, "truth_iou_threshold", 1)
     
-    kernel = new Tensor [1];
+    this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
     if (opt.find("mask") == opt.end()) {
         for (int i = 0; i < info.anchor_num; ++i)
@@ -1919,7 +2019,6 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
             kernel[0].weight[i] = n;
         }
     }
-    info.kernel_num = 1;
     
     biases = new Tensor(2, 1, info.total_anchor_num, 0); // Anchor
     stringstream ss;
@@ -2264,7 +2363,7 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
         info.iou_thresh_kind = IOU;
     }
     
-    kernel = new Tensor [4];
+    this->applyKernel(4);
     kernel[0] = Tensor(1, 1, info.anchor_num, 0); // Mask
     if (opt.find("mask") == opt.end()) {
         for (int i = 0; i < info.anchor_num; ++i)
@@ -2282,7 +2381,6 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     kernel[1] = Tensor(1, 1, info.batch_size * info.output_width * info.output_height * info.anchor_num, -1);   // labels
     kernel[2] = Tensor(1, 1, info.batch_size * info.output_width * info.output_height * info.anchor_num, -1);   // class_ids
     kernel[3] = Tensor(1, 1, 1, 0); // classes_multipliers
-    info.kernel_num = 4;
     
     biases = new Tensor(2, 1, info.total_anchor_num, 0); // Anchor
     stringstream ss;

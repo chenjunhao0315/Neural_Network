@@ -14,77 +14,303 @@ Neural_Network::~Neural_Network() {
     delete [] workspace;
 }
 
-bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
-    FILE *f = fopen(weights_name, "wb");
-    if (!f)
-        return false;
-    int major = 0;
-    int minor = 2;
-    int revision = 0;
-    int seen = 32013312;
-    fwrite(&major, sizeof(int), 1, f);
-    fwrite(&minor, sizeof(int), 1, f);
-    fwrite(&revision, sizeof(int), 1, f);
-    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
-        fwrite(&seen, sizeof(size_t), 1, f);
-    } else {
-        fwrite(&seen, sizeof(int), 1, f);
-    }
-    
-    int cut_off_num = (cut_off == -1) ? layer_number : cut_off;
-    
-    for (int i = 0; i < cut_off_num; ++i) {
-        LayerOption &opt = opt_layer[i];
-        if (opt["type"] == "Convolution") {
-            if (opt.find("batchnorm") != opt.end()) {
-                layer[i + 1]->save_raw(f);
-            }
-            layer[i]->save_raw(f);
-        }
-    }
-    
-    return true;
+Neural_Network::Neural_Network(string model_) {
+    model = model_;
+    layer_number = 0;
+    layer = nullptr;
+    workspace = nullptr;
 }
 
-bool Neural_Network::load_darknet(const char *weights_name) {
-    FILE *f = fopen(weights_name, "rb");
-    if (!f)
-        return false;
-    fseek(f, 0, SEEK_END);
-    size_t check = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    int major;
-    int minor;
-    int revision;
-    int seen;
-    fread(&major, sizeof(int), 1, f);
-    fread(&minor, sizeof(int), 1, f);
-    fread(&revision, sizeof(int), 1, f);
-    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
-        fread(&seen, sizeof(size_t), 1, f);
-    } else {
-        int iseen = 0;
-        fread(&iseen, sizeof(int), 1, f);
-        seen = iseen;
-    }
-    printf("Major: %d Minor: %d Revision: %d Seen: %d\n", major, minor, revision, seen);
-    
-    for (int i = 0; i < opt_layer.size(); ++i) {
-        LayerOption &opt = opt_layer[i];
-        size_t test = ftell(f);
-        cout << opt["name"] << ": " << check << " / " << test;
-        if (opt["type"] == "Convolution") {
-            if (opt.find("batchnorm") != opt.end()) {
-                layer[i + 1]->load_raw(f);
-            }
-            layer[i]->load_raw(f);
+void Neural_Network::addOutput(string name) {
+    output_layer.push_back(name);
+}
+
+void Neural_Network::addLayer(LayerOption opt_) {
+    LayerOption auto_opt;
+    string type = opt_["type"];
+    if (opt_.find("activation") != opt_.end()) {
+        if (opt_["activation"] == "Relu") {
+            opt_["bias"] = "0.1";
         }
-        test = ftell(f);
-        cout << " -> " << test << endl;
     }
-    size_t end = ftell(f);
-    printf("End: %zu %zu\n", check, end);
-    return end == check;
+    
+    if (opt_.find("name") == opt_.end()) {
+        opt_["name"] = to_string(opt_layer.size());
+    }
+    
+    opt_layer.push_back(opt_);
+    
+    if (opt_.find("batchnorm") != opt_.end()) {
+        auto_opt["type"] = "BatchNormalization";
+        if (opt_.find("name") != opt_.end()) {
+            auto_opt["name"] = "bn_" + opt_["name"];
+        }
+        opt_layer.push_back(auto_opt);
+    }
+    
+    auto_opt.clear();
+    if (opt_.find("activation") != opt_.end()) {
+        string method = opt_["activation"];
+        if (method == "Relu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "re_" + opt_["name"];
+            }
+            auto_opt["type"] = "Relu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Softmax") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sm_" + opt_["name"];
+            }
+            auto_opt["type"] = "Softmax";
+            auto_opt["number_class"] = auto_opt["number_neurons"];
+            opt_layer.push_back(auto_opt);
+        } else if (method == "PRelu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "pr_" + opt_["name"];
+            }
+            auto_opt["type"] = "PRelu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "LRelu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "lr_" + opt_["name"];
+            }
+            auto_opt["type"] = "LRelu";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Sigmoid") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sg_" + opt_["name"];
+            }
+            auto_opt["type"] = "Sigmoid";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Mish") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "mi_" + opt_["name"];
+            }
+            auto_opt["type"] = "Mish";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Swish") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "sw_" + opt_["name"];
+            }
+            auto_opt["type"] = "Swish";
+            opt_layer.push_back(auto_opt);
+        }
+    }
+}
+
+void Neural_Network::compile(int batch_size_) {
+    unordered_map<string, int> id_table;
+    batch_size = batch_size_;
+    layer = new BaseLayer* [opt_layer.size()];
+//    printf("******Constructe Network******\n");
+    for (int i = 0; i < opt_layer.size(); ++i) {
+//        printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
+        LayerOption &opt = opt_layer[i];
+        opt["batch_size"] = to_string(batch_size);
+        id_table[opt["name"]] = i;
+        if (i > 0) {
+            if (opt.find("input_name") == opt.end())
+                opt["input_name"] = (opt_layer[i - 1].find("name") == opt_layer[i - 1].end()) ? to_string(i - 1) : opt_layer[i - 1]["name"];
+            opt["input_width"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(0));
+            opt["input_height"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(1));
+            opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(2));
+        }
+        
+        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
+        if (layer_param.check("connect")) {
+            ParameterData par = layer_param.get("connect");
+            if (par.type == "single") {
+                opt[par.data + "_width"] = opt[par.data + "_width"] = to_string(layer[id_table[opt[par.data]]]->getParameter(0));
+                opt[par.data + "_height"] = to_string(layer[id_table[opt[par.data]]]->getParameter(1));
+                opt[par.data + "_dimension"] = to_string(layer[id_table[opt[par.data]]]->getParameter(2));
+            } else if (par.type == "multi") {
+                int connect_num = 0;
+                if (opt.find(par.data) != opt.end()) {
+                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                    stringstream connect_list(opt[par.data]);
+                    
+                    for (int i = 1; i <= connect_num; ++i) {
+                        string connect_name;
+                        getline(connect_list, connect_name, ',');
+                        EARSE_SPACE(connect_name);
+                        opt[par.data + "_" + to_string(i) + "_name"] = connect_name;
+                        opt[par.data + "_" + to_string(i) + "_width"] = to_string(layer[id_table[connect_name]]->getParameter(0));
+                        opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
+                        opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
+                    }
+                }
+                opt[par.data + "_num"] = to_string(connect_num);
+            }
+        } else if (layer_param.check("net")) {
+            opt["net_width"] = to_string(layer[0]->getParameter(0));
+            opt["net_height"] = to_string(layer[0]->getParameter(1));
+        }
+        
+        layer[i] = LayerRegistry::CreateLayer(opt);
+        layer_number++;
+    }
+//    printf("*****************************\n");
+    constructGraph();
+    
+    for (int i = 0; i < output_layer.size(); ++i) {
+        vector<int> route;
+        string target_name = output_layer[i];
+        for (int j = (int)opt_layer.size() - 1; j >= 0; --j) {
+            if (target_name == opt_layer[j]["name"]) {
+                route.push_back(j);
+                target_name = opt_layer[j]["input_name"];
+            }
+        }
+        path.push_back(route);
+    }
+    // Test for branch
+//    vector<vector<int>> route;
+//    for (int i = 0; i < layer_number; ++i) {
+//        vector<int> move_on_path;
+//        if (i) {
+//            move_on_path = route[id_table[opt_layer[i]["input_name"]]];
+//            move_on_path.push_back(i);
+//        } else {
+//            move_on_path.push_back(0);
+//        }
+//        route.push_back(move_on_path);
+//    }
+}
+
+void Neural_Network::constructGraph() {
+    alloc_workspace();
+    for (int i = 0; i < layer_number; ++i) {
+        LayerOption &opt = opt_layer[i];
+        vtensorptr extra_tensor;
+        
+        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
+        if (layer_param.check("connect")) {
+            ParameterData par = layer_param.get("connect");
+            if (par.type == "single") {
+                extra_tensor.push_back(terminal[opt[par.data]]);
+            } else if (par.type == "multi") {
+                extra_tensor.push_back(terminal[opt["input_name"]]);
+                int connect_num = 0;
+                if (opt.find(par.data) != opt.end()) {
+                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                    stringstream connect_list(opt[par.data]);
+                    for (int i = 1; i <= connect_num; ++i) {
+                        string connect_name;
+                        getline(connect_list, connect_name, ',');
+                        EARSE_SPACE(connect_name);
+                        extra_tensor.push_back(terminal[connect_name]);
+                    }
+                }
+            }
+        }
+
+        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
+        terminal[opt["name"]] = act;
+    }
+    
+    int output_size = (int)output_layer.size();
+    if (output_size > 0) {
+        output.reserve(output_size);
+        output.push_back(terminal[output_layer[0]]);
+        for (int i = 1; i < output_size; ++i) {
+            output.push_back(terminal[output_layer[i]]);
+        }
+    } else {
+        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
+    }
+}
+
+vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
+    layer[0]->Forward(input_tensor_);
+    for (int i = 1; i < layer_number; ++i) {
+        layer[i]->Forward(train);
+    }
+    return output;
+}
+
+float Neural_Network::Backward(Tensor *target) {
+    float loss = 0;
+    if (model == "mtcnn") {
+        float *target_ptr = target->weight;
+        if (target_ptr[0] == 1) {
+            Tensor cls_pos(1, 1, 1, 1);
+            Tensor bbox_pos(1, 1, 4, 0);
+            bbox_pos = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
+            layer[path[0][0]]->Backward(&cls_pos);
+            layer[path[1][0]]->Backward(&bbox_pos);
+            float loss_cls = layer[path[0][0]]->getLoss();
+            float loss_bbox = layer[path[1][0]]->getLoss();
+            if (loss_cls > loss_bbox) {
+                for (int i = 1; i < path[0].size(); ++i) {
+                    layer[path[0][i]]->Backward(&cls_pos);
+                }
+            }
+            else {
+                for (int i = 1; i < path[1].size(); ++i) {
+                    layer[path[1][i]]->Backward(&bbox_pos);
+                }
+            }
+            loss = loss_cls + loss_bbox * 0.5;
+        }
+        else if (target_ptr[0] == 0) {
+            Tensor cls_neg(1, 1, 1, 0);
+            for (int i = 0; i < path[0].size(); ++i) {
+                layer[path[0][i]]->Backward(&cls_neg);
+            }
+        }
+        else if (target_ptr[0] == -1) {
+            Tensor bbox_part(1, 1, 4, 0);
+            bbox_part = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
+            for (int i = 0; i < path[1].size(); ++i) {
+                layer[path[1][i]]->Backward(&bbox_part);
+            }
+            loss *= 0.5;
+        }
+        else if (target_ptr[0] == -2) {
+            Tensor landmark(1, 1, 10, 0);
+            float *landmark_ptr = landmark.weight;
+            for (int i = 5; i <= 14; ++i) {
+                *(landmark_ptr++) = target_ptr[i];
+            }
+            for (int i = 0; i < path[2].size(); ++i) {
+                layer[path[2][i]]->Backward(&landmark);
+            }
+            loss *= 0.5;
+        }
+    } else {
+        for (int i = layer_number; i--; ) {
+            layer[i]->Backward(target);
+            loss += layer[i]->getLoss();
+        }
+    }
+    return loss;
+}
+
+void Neural_Network::shape() {
+    printf("Model type: \"%s\"\n", model.c_str());
+    printf("-------------------------------------------------------------\n");
+    printf("Layer(type)      Name          Input          Output Shape\n");
+    printf("=============================================================\n");
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->shape();
+    }
+    printf("=============================================================\n");
+}
+
+void Neural_Network::show_detail() {
+    for (int i = 0; i < layer_number; ++i) {
+        layer[i]->show_detail();
+    }
+}
+
+Neural_Network::nn_status Neural_Network::status() {
+    return (layer_number > 0) ? ((layer[0]->type == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+}
+
+network_structure Neural_Network::getStructure() {
+    if (this->status() == nn_status::OK)
+        return network_structure{layer[0]->info.output_width, layer[0]->info.output_height, layer[0]->info.output_dimension};
+    return network_structure{0, 0, 0};
 }
 
 bool Neural_Network::check_version(FILE *model) {
@@ -235,212 +461,77 @@ bool Neural_Network::load_ottermodel(const char *model_name, int batch_size) {
     return true;
 }
 
-void Neural_Network::addOutput(string name) {
-    output_layer.push_back(name);
-}
-
-void Neural_Network::addLayer(LayerOption opt_) {
-    LayerOption auto_opt;
-    string type = opt_["type"];
-    if (opt_.find("activation") != opt_.end()) {
-        if (opt_["activation"] == "Relu") {
-            opt_["bias"] = "0.1";
-        }
-    }
-    
-    if (opt_.find("name") == opt_.end()) {
-        opt_["name"] = to_string(opt_layer.size());
-    }
-    
-    opt_layer.push_back(opt_);
-    
-    if (opt_.find("batchnorm") != opt_.end()) {
-        auto_opt["type"] = "BatchNormalization";
-        if (opt_.find("name") != opt_.end()) {
-            auto_opt["name"] = "bn_" + opt_["name"];
-        }
-        opt_layer.push_back(auto_opt);
-    }
-    
-    auto_opt.clear();
-    if (opt_.find("activation") != opt_.end()) {
-        string method = opt_["activation"];
-        if (method == "Relu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "re_" + opt_["name"];
-            }
-            auto_opt["type"] = "Relu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Softmax") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sm_" + opt_["name"];
-            }
-            auto_opt["type"] = "Softmax";
-            auto_opt["number_class"] = auto_opt["number_neurons"];
-            opt_layer.push_back(auto_opt);
-        } else if (method == "PRelu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "pr_" + opt_["name"];
-            }
-            auto_opt["type"] = "PRelu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "LRelu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "lr_" + opt_["name"];
-            }
-            auto_opt["type"] = "LRelu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Sigmoid") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sg_" + opt_["name"];
-            }
-            auto_opt["type"] = "Sigmoid";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Mish") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "mi_" + opt_["name"];
-            }
-            auto_opt["type"] = "Mish";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Swish") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sw_" + opt_["name"];
-            }
-            auto_opt["type"] = "Swish";
-            opt_layer.push_back(auto_opt);
-        }
-    }
-}
-
-void Neural_Network::compile(int batch_size_) {
-    unordered_map<string, int> id_table;
-    batch_size = batch_size_;
-    layer = new BaseLayer* [opt_layer.size()];
-//    printf("******Constructe Network******\n");
-    for (int i = 0; i < opt_layer.size(); ++i) {
-//        printf("Create layer: %s\n", opt_layer[i]["type"].c_str());
-        LayerOption &opt = opt_layer[i];
-        opt["batch_size"] = to_string(batch_size);
-        id_table[opt["name"]] = i;
-        if (i > 0) {
-            if (opt.find("input_name") == opt.end())
-                opt["input_name"] = (opt_layer[i - 1].find("name") == opt_layer[i - 1].end()) ? to_string(i - 1) : opt_layer[i - 1]["name"];
-            opt["input_width"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(0));
-            opt["input_height"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(1));
-            opt["input_dimension"] = to_string(layer[id_table[opt["input_name"]]]->getParameter(2));
-        }
-        
-        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
-        if (layer_param.check("connect")) {
-            ParameterData par = layer_param.get("connect");
-            if (par.type == "single") {
-                opt[par.data + "_width"] = opt[par.data + "_width"] = to_string(layer[id_table[opt[par.data]]]->getParameter(0));
-                opt[par.data + "_height"] = to_string(layer[id_table[opt[par.data]]]->getParameter(1));
-                opt[par.data + "_dimension"] = to_string(layer[id_table[opt[par.data]]]->getParameter(2));
-            } else if (par.type == "multi") {
-                int connect_num = 0;
-                if (opt.find(par.data) != opt.end()) {
-                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
-                    stringstream connect_list(opt[par.data]);
-                    
-                    for (int i = 1; i <= connect_num; ++i) {
-                        string connect_name;
-                        getline(connect_list, connect_name, ',');
-                        connect_name.erase(std::remove_if(connect_name.begin(), connect_name.end(), [](unsigned char x) { return std::isspace(x); }), connect_name.end());
-                        opt[par.data + "_" + to_string(i) + "_name"] = connect_name;
-                        opt[par.data + "_" + to_string(i) + "_width"] = to_string(layer[id_table[connect_name]]->getParameter(0));
-                        opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
-                        opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
-                    }
-                }
-                opt[par.data + "_num"] = to_string(connect_num);
-            }
-        } else if (layer_param.check("net")) {
-            opt["net_width"] = to_string(layer[0]->getParameter(0));
-            opt["net_height"] = to_string(layer[0]->getParameter(1));
-        }
-        
-        layer[i] = LayerRegistry::CreateLayer(opt);
-        layer_number++;
-    }
-//    printf("*****************************\n");
-    constructGraph();
-    
-    for (int i = 0; i < output_layer.size(); ++i) {
-        vector<int> route;
-        string target_name = output_layer[i];
-        for (int j = (int)opt_layer.size() - 1; j >= 0; --j) {
-            if (target_name == opt_layer[j]["name"]) {
-                route.push_back(j);
-                target_name = opt_layer[j]["input_name"];
-            }
-        }
-        path.push_back(route);
-    }
-}
-
-void Neural_Network::constructGraph() {
-    alloc_workspace();
-    for (int i = 0; i < layer_number; ++i) {
-        LayerOption &opt = opt_layer[i];
-        vtensorptr extra_tensor;
-        
-        Parameter layer_param = LayerParameter::getParameter(opt["type"]);
-        if (layer_param.check("connect")) {
-            ParameterData par = layer_param.get("connect");
-            if (par.type == "single") {
-                extra_tensor.push_back(terminal[opt[par.data]]);
-            } else if (par.type == "multi") {
-                extra_tensor.push_back(terminal[opt["input_name"]]);
-                int connect_num = 0;
-                if (opt.find(par.data) != opt.end()) {
-                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
-                    stringstream connect_list(opt[par.data]);
-                    for (int i = 1; i <= connect_num; ++i) {
-                        string connect_name;
-                        getline(connect_list, connect_name, ',');
-                        connect_name.erase(std::remove_if(connect_name.begin(), connect_name.end(), [](unsigned char x) { return std::isspace(x); }), connect_name.end());
-                        extra_tensor.push_back(terminal[connect_name]);
-                    }
-                }
-            }
-        }
-
-        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
-        terminal[opt["name"]] = act;
-    }
-    
-    int output_size = (int)output_layer.size();
-    if (output_size) {
-        output.reserve(output_size);
-        output.push_back(terminal[output_layer[0]]);
-        for (int i = 1; i < output_size; ++i) {
-            output.push_back(terminal[output_layer[i]]);
-        }
+bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
+    FILE *f = fopen(weights_name, "wb");
+    if (!f)
+        return false;
+    int major = 0;
+    int minor = 2;
+    int revision = 0;
+    int seen = 32013312;
+    fwrite(&major, sizeof(int), 1, f);
+    fwrite(&minor, sizeof(int), 1, f);
+    fwrite(&revision, sizeof(int), 1, f);
+    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
+        fwrite(&seen, sizeof(size_t), 1, f);
     } else {
-        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
+        fwrite(&seen, sizeof(int), 1, f);
     }
+    
+    int cut_off_num = (cut_off == -1) ? layer_number : cut_off;
+    
+    for (int i = 0; i < cut_off_num; ++i) {
+        LayerOption &opt = opt_layer[i];
+        if (opt["type"] == "Convolution") {
+            if (opt.find("batchnorm") != opt.end()) {
+                layer[i + 1]->save_raw(f);
+            }
+            layer[i]->save_raw(f);
+        }
+    }
+    
+    return true;
 }
 
-void Neural_Network::shape() {
-    printf("Model type: \"%s\"\n", model.c_str());
-    printf("-------------------------------------------------------------\n");
-    printf("Layer(type)      Name          Input          Output Shape\n");
-    printf("=============================================================\n");
-    for (int i = 0; i < layer_number; ++i) {
-        layer[i]->shape();
+bool Neural_Network::load_darknet(const char *weights_name) {
+    FILE *f = fopen(weights_name, "rb");
+    if (!f)
+        return false;
+    fseek(f, 0, SEEK_END);
+    size_t check = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    int major;
+    int minor;
+    int revision;
+    int seen;
+    fread(&major, sizeof(int), 1, f);
+    fread(&minor, sizeof(int), 1, f);
+    fread(&revision, sizeof(int), 1, f);
+    if ((major * 10 + minor) >= 2 && major < 1000 && minor < 1000){
+        fread(&seen, sizeof(size_t), 1, f);
+    } else {
+        int iseen = 0;
+        fread(&iseen, sizeof(int), 1, f);
+        seen = iseen;
     }
-    printf("=============================================================\n");
-}
-
-void Neural_Network::show_detail() {
-    for (int i = 0; i < layer_number; ++i) {
-        layer[i]->show_detail();
+    printf("Major: %d Minor: %d Revision: %d Seen: %d\n", major, minor, revision, seen);
+    
+    for (int i = 0; i < opt_layer.size(); ++i) {
+        LayerOption &opt = opt_layer[i];
+        size_t test = ftell(f);
+        cout << opt["name"] << ": " << check << " / " << test;
+        if (opt["type"] == "Convolution") {
+            if (opt.find("batchnorm") != opt.end()) {
+                layer[i + 1]->load_raw(f);
+            }
+            layer[i]->load_raw(f);
+        }
+        test = ftell(f);
+        cout << " -> " << test << endl;
     }
-}
-
-Neural_Network::nn_status Neural_Network::status() {
-    return (layer_number > 0) ? ((layer[0]->type == LayerType::Input) ? nn_status::OK : nn_status::ERROR) : nn_status::ERROR;
+    size_t end = ftell(f);
+    printf("End: %zu %zu\n", check, end);
+    return end == check;
 }
 
 bool Neural_Network::to_prototxt(const char *filename) {
@@ -486,77 +577,6 @@ bool Neural_Network::to_prototxt(const char *filename) {
     return true;
 }
 
-vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
-    layer[0]->Forward(input_tensor_);
-    for (int i = 1; i < layer_number; ++i) {
-        layer[i]->Forward(train);
-    }
-    return output;
-}
-
-float Neural_Network::Backward(Tensor *target) {
-    float loss = 0;
-    if (model == "mtcnn") {
-        float *target_ptr = target->weight;
-        if (target_ptr[0] == 1) {
-            Tensor cls_pos(1, 1, 1, 1);
-            Tensor bbox_pos(1, 1, 4, 0);
-            bbox_pos = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
-            layer[path[0][0]]->Backward(&cls_pos);
-            layer[path[1][0]]->Backward(&bbox_pos);
-            float loss_cls = layer[path[0][0]]->getLoss();
-            float loss_bbox = layer[path[1][0]]->getLoss();
-            if (loss_cls > loss_bbox) {
-                for (int i = 1; i < path[0].size(); ++i) {
-                    layer[path[0][i]]->Backward(&cls_pos);
-                }
-            }
-            else {
-                for (int i = 1; i < path[1].size(); ++i) {
-                    layer[path[1][i]]->Backward(&bbox_pos);
-                }
-            }
-            loss = loss_cls + loss_bbox * 0.5;
-        }
-        else if (target_ptr[0] == 0) {
-            Tensor cls_neg(1, 1, 1, 0);
-            for (int i = 0; i < path[0].size(); ++i) {
-                layer[path[0][i]]->Backward(&cls_neg);
-            }
-        }
-        else if (target_ptr[0] == -1) {
-            Tensor bbox_part(1, 1, 4, 0);
-            bbox_part = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
-            for (int i = 0; i < path[1].size(); ++i) {
-                layer[path[1][i]]->Backward(&bbox_part);
-            }
-            loss *= 0.5;
-        }
-        else if (target_ptr[0] == -2) {
-            Tensor landmark(1, 1, 10, 0);
-            float *landmark_ptr = landmark.weight;
-            for (int i = 5; i <= 14; ++i) {
-                *(landmark_ptr++) = target_ptr[i];
-            }
-            for (int i = 0; i < path[2].size(); ++i) {
-                layer[path[2][i]]->Backward(&landmark);
-            }
-            loss *= 0.5;
-        }
-    } else if (model == "yolov3" || model == "yolov4") {
-        for (int i = layer_number; i--; ) {
-            layer[i]->Backward(target);
-            loss += layer[i]->getLoss();
-        }
-    } else {
-        for (int i = layer_number; i--; ) {
-            layer[i]->Backward(target);
-            loss += layer[i]->getLoss();
-        }
-    }
-    return loss;
-}
-
 vfloat Neural_Network::predict(Tensor *input) {
     vfloat output = Forward(input)[0]->toVector();
     float max_value = output[0];
@@ -580,13 +600,6 @@ float Neural_Network::evaluate(vtensor &data_set, vtensor &target) {
             correct++;
     }
     return (float)correct / data_number;
-}
-
-Neural_Network::Neural_Network(string model_) {
-    model = model_;
-    layer_number = 0;
-    layer = nullptr;
-    workspace = nullptr;
 }
 
 vector<Train_Args> Neural_Network::getTrainArgs() {

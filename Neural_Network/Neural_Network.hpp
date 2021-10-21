@@ -22,6 +22,10 @@
 
 typedef map<string, float> TrainerOption;
 
+struct network_structure {
+    int width, height, dimension;
+};
+
 class Neural_Network {
 public:
     enum nn_status {
@@ -33,22 +37,23 @@ public:
     void addLayer(LayerOption opt_);
     void addOutput(string name);
     void compile(int batch_size_ = 1);
-    void shape();
-    void show_detail();
-    nn_status status();
     vtensorptr Forward(Tensor *input_tensor_, bool train = false);
     float Backward(Tensor *target);
+    nn_status status();
+    network_structure getStructure();
     void ClearGrad();
     Otter_Leader convert_to_otter();
     bool check_version(FILE *model);
-    bool save_darknet(const char *weights_name, int cut_off = -1);
     bool save_otter(const char *model_name, bool save_weight = false);
     bool save_dam(const char *model_name);
     bool save_ottermodel(const char *model_name);
-    bool load_darknet(const char *weights_name);
+    bool save_darknet(const char *weights_name, int cut_off = -1);
     bool load_otter(const char *model_structure, int batch_size = 1);
     bool load_dam(const char *model_weight);
     bool load_ottermodel(const char *model_name, int batch_size = 1);
+    bool load_darknet(const char *weights_name);
+    void shape();
+    void show_detail();
     bool to_prototxt(const char *filename = "model.prototxt");
     void alloc_workspace();
     void constructGraph();

@@ -17,6 +17,7 @@
 		76390E812666B45D00FFA5EC /* Layer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E7F2666B45D00FFA5EC /* Layer.cpp */; };
 		76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E832666B46F00FFA5EC /* Tensor.cpp */; };
 		76390E892666B78800FFA5EC /* Utilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76390E872666B78800FFA5EC /* Utilities.cpp */; };
+		768995F0271F27DE00128595 /* Machine_Learning.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 768995EE271F27DD00128595 /* Machine_Learning.cpp */; };
 		76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76A40ED026A4CF4700A01830 /* Mtcnn.cpp */; };
 		76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */; };
 		76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */; };
@@ -60,6 +61,8 @@
 		76390E842666B46F00FFA5EC /* Tensor.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Tensor.hpp; sourceTree = "<group>"; };
 		76390E872666B78800FFA5EC /* Utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utilities.cpp; sourceTree = "<group>"; };
 		76390E882666B78800FFA5EC /* Utilities.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Utilities.hpp; sourceTree = "<group>"; };
+		768995EE271F27DD00128595 /* Machine_Learning.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Machine_Learning.cpp; sourceTree = "<group>"; };
+		768995EF271F27DE00128595 /* Machine_Learning.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Machine_Learning.hpp; sourceTree = "<group>"; };
 		76A40ED026A4CF4700A01830 /* Mtcnn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mtcnn.cpp; sourceTree = "<group>"; };
 		76A40ED126A4CF4700A01830 /* Mtcnn.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Mtcnn.hpp; sourceTree = "<group>"; };
 		76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Test_All_Layer.cpp; sourceTree = "<group>"; };
@@ -144,6 +147,8 @@
 				76208E6326FE340C008E30A8 /* Box.hpp */,
 				761AB9932711C75C00779088 /* Otter.cpp */,
 				761AB9942711C75C00779088 /* Otter.hpp */,
+				768995EE271F27DD00128595 /* Machine_Learning.cpp */,
+				768995EF271F27DE00128595 /* Machine_Learning.hpp */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -221,6 +226,7 @@
 				76390E742666B3D000FFA5EC /* main.cpp in Sources */,
 				76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */,
 				76390E7D2666B44E00FFA5EC /* Neural_Network.cpp in Sources */,
+				768995F0271F27DE00128595 /* Machine_Learning.cpp in Sources */,
 				76390E892666B78800FFA5EC /* Utilities.cpp in Sources */,
 				76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */,
 				76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */,

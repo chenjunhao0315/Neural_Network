@@ -19,13 +19,16 @@ typedef vector<Tensor> vtensor;
 
 class Data {
 public:
-    Data(string filename_, int width_, int height_);
+    Data(string filename_, int width_, int height_, int dimension_, int offset_) : filename(filename_), width(width_), height(height_), dimension(dimension_), offset(offset_) {}
     vtensor get(int num);
 private:
     string filename;
     int width;
     int height;
+    int dimension;
+    int offset;
     int num;
 };
+
 
 #endif /* Data_Process_hpp */

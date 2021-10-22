@@ -1,0 +1,106 @@
+Input {
+    REQUIRED int input_width
+    REQUIRED int input_height
+    REQUIRED int input_dimension
+}
+
+FullyConnected {
+    REQUIRED int number_neurons
+    OPTION bool batchnorm false 
+}
+
+Convolution {
+    REQUIRED int number_kernel
+    REQUIRED int kernel_width
+    OPTION int kernel_height 0
+    OPTION int stride 1
+    OPTION int padding 0
+    OPTION int groups 1
+}
+
+PRelu {
+    OPTION float alpha 0.25
+}
+
+LRelu {
+    OPTION float alpha 0.1
+}
+
+Dropout {
+    OPTION float probability 0.5
+}
+
+Pooling {
+    REQUIRED int kernel_width
+    OPTION int kernel_height 0
+    OPTION int stride 1
+    OPTION int padding 0
+}
+
+UpSample {
+    REQUIRED int stride
+}
+
+ShortCut {
+    OPTION single connect shortcut
+    REQUIRED string shortcut
+    OPTION float alpha 1
+    OPTION float beta 1
+}
+
+Concat {
+    OPTION multi connect concat
+    OPTION string concat none
+    OPTION int splits 1
+    OPTION int split_id 0
+}
+
+Eltwise {
+    OPTION multi connect eltwise
+    OPTION string eltwise none
+    OPTION string eltwise_op sum
+    OPTION float alpha 1
+}
+
+YOLOv3 {
+    REQUIRED int net
+    REQUIRED int total_anchor_num
+    REQUIRED int anchor_num
+    REQUIRED int classes
+    REQUIRED int max_boxes
+    REQUIRED string anchor
+    OPTION string mask none
+    OPTION float ignore_iou_threshold 0.5
+    OPTION float truth_iou_threshold 1
+}
+
+YOLOv4 {
+    REQUIRED int net
+    REQUIRED int total_anchor_num
+    REQUIRED int anchor_num
+    REQUIRED int classes
+    REQUIRED int max_boxes
+    REQUIRED string anchor
+    OPTION string mask none
+    OPTION float ignore_iou_threshold 0.5
+    OPTION float truth_iou_threshold 1
+    OPTION float scale_x_y 1
+    OPTION float iou_normalizer 0.75
+    OPTION float obj_normalizer 1
+    OPTION float cls_normalizer 1
+    OPTION float delta_normalizer 1
+    OPTION float beta_nms 0.6
+    OPTION float objectness_smooth 0
+    OPTION float label_smooth 0
+    OPTION float max_delta FLT_MAX
+    OPTION float iou_thresh FLT_MAX
+    OPTION bool new_coordinate false
+    OPTION bool focal_loss false
+    OPTION IOU_KIND iou_loss IOU
+    OPTION IOU_KIND iou_thres_kind IOU 
+}
+
+ScaleChannel {
+    OPTION single connect scalechannel
+    OPTION string scalechannel none
+}

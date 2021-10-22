@@ -90,6 +90,20 @@ void col2im_cpu(float* data_col,
         int channels, int height, int width,
         int ksize, int stride, int pad, float* data_im);
 
+inline static int is_a_ge_zero_and_a_lt_b(int a, int b);
+void im2col_cpu_ext(const float* data_im, const int channels,
+    const int height, const int width, const int kernel_h, const int kernel_w,
+    const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w,
+    const int dilation_h, const int dilation_w,
+    float* data_col);
+void col2im_cpu_ext(const float* data_col, const int channels,
+    const int height, const int width, const int kernel_h, const int kernel_w,
+    const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w,
+    const int dilation_h, const int dilation_w,
+    float* data_im);
+
 void convert_index_base_to_channel_base(float *src, float *dst, int w, int h, int c);
 template <typename srcType = float, typename dstType = float>
 void convert_channel_base_to_index_base(void *src, void *dst, int w, int h, int c) {

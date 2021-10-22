@@ -469,11 +469,18 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.kernel_width = opt_find_int(opt, "kernel_width", 1);
     info.kernel_height = opt_find_int(opt, "kernel_height", info.kernel_width);
+    info.stride_x = opt_find_int(opt, "stride_x", -1);
+    info.stride_y = opt_find_int(opt, "stride_x", -1);
     info.stride = opt_find_int(opt, "stride", 1);
+    if (info.stride_x < 1 || info.stride_y < 1) {
+        if (info.stride_x < 0) info.stride_x = info.stride;
+        if (info.stride_y < 0) info.stride_y = info.stride;
+    }
     info.padding = (opt.find("padding") == opt.end()) ? 0 : ((opt["padding"] == "same") ? ((info.kernel_width - 1) / 2) : atoi(opt["padding"].c_str()));
+    info.dilation = opt_find_int(opt, "dilation", 1);
     
-    info.output_width = (info.input_width + info.padding * 2 - info.kernel_width) / info.stride + 1;
-    info.output_height = (info.input_height + info.padding * 2 - info.kernel_height) / info.stride + 1;
+    info.output_width = (info.input_width + info.padding * 2 - info.kernel_width) / info.stride_x + 1;
+    info.output_height = (info.input_height + info.padding * 2 - info.kernel_height) / info.stride_y + 1;
     info.output_dimension = opt_find_int(opt, "number_kernel", 1);
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.groups = opt_find_int(opt, "groups", 1);
@@ -516,24 +523,36 @@ void ConvolutionLayer::Forward(bool train) {
     
     int kernel_size = info.kernel_width;
     
-    fill_cpu(info.output_number * info.batch_size, output, 0);
+    output_tensor->clearWeight();
     
     int m = info.output_dimension / info.groups;
     int k = info.kernel_width * info.kernel_height * info.input_dimension / info.groups;
     int n = info.output_width * info.output_height;
     for(int i = 0; i < info.batch_size; ++i) {
         for (int j = 0; j < info.groups; ++j) {
+            int group_offset = i * info.groups + j;
             float *a = weights + j * info.nweights / info.groups;
             float *b = workspace;
-            float *c = output + (i * info.groups + j) * n * m;
-            float *im = input + (i * info.groups + j) * info.input_number / info.groups;
+            float *c = output + group_offset * n * m;
+            float *im = input + group_offset * info.input_number / info.groups;
             
             if (kernel_size == 1) {
                 // Doesn't need to rearrange
                 b = im;
             } else {
                 // Rearrange input tensor and put it into workspace
-                im2col_cpu(im, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, b);
+//                im2col_cpu(im, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, b);
+                
+                im2col_cpu_ext(
+                    im,                                     // input
+                    info.input_dimension / info.groups,     // input channels
+                    info.input_height, info.input_width,    // input size (h, w)
+                    kernel_size, kernel_size,               // kernel size (h, w)
+                    info.padding * info.dilation, info.padding * info.dilation,                                          // padding (h, w)
+                    info.stride_y, info.stride_x,           // stride (h, w)
+                    info.dilation, info.dilation,           // dilation (h, w)
+                    b                                       // output
+                );
             }
             // Matrix multiplication (input with kernel) (Both not transpose)
             // Calculate output (input_channel * kernel_n) dot (kernel_n * output_channel)
@@ -568,25 +587,37 @@ void ConvolutionLayer::Backward(Tensor *none) {
     
     for(int i = 0; i < info.batch_size; ++i) {
         for (int j = 0; j < info.groups; ++j) {
-            float *a = output_delta + (i * info.groups + j) * m * k;
+            int group_offset = i * info.groups + j;
+            float *a = output_delta + group_offset * m * k;
             float *b = workspace;
             float *c = weights_delta + j * info.nweights / info.groups;
             
-            float *im  = input + (i * info.groups + j) * info.input_number / info.groups;
-            float *imd = input_delta + (i * info.groups + j) * info.input_number / info.groups;
+            float *im  = input + group_offset * info.input_number / info.groups;
+            float *imd = input_delta + group_offset * info.input_number / info.groups;
             
             if(kernel_size == 1){
                 // Doesn't need to rearrange
                 b = im;
             } else {
                 // Rearrange input tensor and put it into workspace
-                im2col_cpu(im, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, b);
+//                im2col_cpu(im, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, b);
+                
+                im2col_cpu_ext(
+                    im,                                     // input
+                    info.input_dimension / info.groups,     // input channels
+                    info.input_height, info.input_width,    // input size (h, w)
+                    kernel_size, kernel_size,               // kernel size (h, w)
+                    info.padding * info.dilation, info.padding * info.dilation,                                          // padding (h, w)
+                    info.stride_y, info.stride_x,           // stride (h, w)
+                    info.dilation, info.dilation,           // dilation (h, w)
+                    b                                       // output
+                );
             }
             // Matrix multiplication (input with output_delta) (input transpose)
             // Calculate weight_delta
             gemm(0, 1, m, n, k, 1, a, k, b, k, 1, c, n);
             a = weights + j * info.nweights / info.groups;
-            b = output_delta + (i * info.groups + j) * m * k;
+            b = output_delta + group_offset * m * k;
             c = workspace;
             if (kernel_size == 1) {
                 c = imd;
@@ -596,7 +627,17 @@ void ConvolutionLayer::Backward(Tensor *none) {
             gemm(1, 0, n, k, m, 1, a, n, b, k, 0, c, k);
             if (kernel_size != 1) {
                 // Restore arrangement
-                col2im_cpu(workspace, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, imd);
+//                col2im_cpu(workspace, info.input_dimension / info.groups, info.input_height, info.input_width, kernel_size, info.stride, info.padding, imd);
+                col2im_cpu_ext(
+                    workspace,                              // input
+                    info.input_dimension / info.groups,     // input channels (h, w)
+                    info.input_height, info.input_width,    // input size (h, w)
+                    kernel_size, kernel_size,               // kernel size (h, w)
+                    info.padding * info.dilation, info.padding * info.dilation,                                          // padding (h, w)
+                    info.stride_y, info.stride_x,           // stride (h, w)
+                    info.dilation, info.dilation,           // dilation (h, w)
+                    imd                                     // output (delta)
+                );
             }
         }
     }
@@ -726,7 +767,7 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
 REGISTER_LAYER_CLASS(FullyConnected);
 
 void FullyConnectedLayer::Forward(bool train) {
-    fill_cpu(info.output_number * info.batch_size, output_tensor->weight, 0);
+    output_tensor->clearWeight();
     
     int m = info.batch_size;
     int k = info.input_number;
@@ -785,28 +826,19 @@ REGISTER_LAYER_CLASS(Relu);
 void ReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
-    float value;
     
     for (int i = info.input_number * info.batch_size; i--; ) {
-        value = *(input++);
-        *(output++) = (value < 0) ? 0 : value;
+        *(output++) = std::max(*(input++), 0.f);
     }
 }
 
 void ReluLayer::Backward(Tensor *none) {
-    int one_batch_size = info.input_number;
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
     
-    for (int b = info.batch_size; b--; ) {
-        for (int i = info.input_number; i--; ) {
-            if (output[i] > 0)
-                input_delta[i] += output_delta[i];
-        }
-        output += one_batch_size;
-        output_delta += one_batch_size;
-        input_delta += one_batch_size;
+    for (int i = info.input_number * info.batch_size; i--; ) {
+        *(input_delta++) += *(output_delta++) * (*(output++) > 0);
     }
 }
 
@@ -838,11 +870,9 @@ void PReluLayer::Forward(bool traiin) {
     float *output = output_tensor->weight;
     
     for (int b = info.batch_size; b--; ) {
-        float *alpha = kernel->weight;
-        float value;
-        for (int i = info.input_number; i--; ++alpha) {
-            value = *(input++);
-            *(output++) = (value < 0) ? value * *alpha : value;
+        float *negative_slope = kernel->weight;
+        for (int i = info.input_number; i--; ++input) {
+            *(output++) = std::max(*input, 0.f) + *(negative_slope++) * std::min(*input, 0.f);
         }
     }
 }
@@ -860,14 +890,8 @@ void PReluLayer::Backward(Tensor *none) {
         
         for (int i = 0; i < info.input_number; ++i) {
             chain_grad = output_delta[i];
-            if (output[i] < 0) {
-                input_delta[i] += chain_grad * alpha[i];
-                alpha_delta[i] += output[i] * chain_grad;
-            }
-            else {
-                input_delta[i] += chain_grad;
-                alpha_delta[i] += 0;
-            }
+            alpha_delta[i] += output[i] * chain_grad * (output[i] <= 0);
+            input_delta[i] += chain_grad * ((output[i] > 0) + alpha[i] * (output[i] <= 0));
         }
         output += one_batch_size;
         output_delta += one_batch_size;
@@ -1098,33 +1122,21 @@ REGISTER_LAYER_CLASS(LRelu);
 void LReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
-    float value, scale = kernel[0][0];
+    float negative_slope = kernel[0][0];
+    
     for (int i = info.input_number * info.batch_size; i--; ++input) {
-        value = *input;
-        *(output++) = (value > 0) ? value : value * scale;
+        *(output++) = std::max(*input, 0.f) + negative_slope * std::min(*input, 0.f);
     }
 }
 
 void LReluLayer::Backward(Tensor *none) {
-    int one_batch_size = info.input_number;
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
-    float chain_grad, scale = kernel[0][0];
+    float negative_slope = kernel[0][0];
     
-    for (int b = info.batch_size; b--; ) {
-        for (int i = 0; i < info.input_number; ++i) {
-            chain_grad = output_delta[i];
-            if (output[i] < 0) {
-                input_delta[i] += chain_grad * scale;
-            }
-            else {
-                input_delta[i] += chain_grad;
-            }
-        }
-        output += one_batch_size;
-        output_delta += one_batch_size;
-        input_delta += one_batch_size;
+    for (int i = info.input_number * info.batch_size; i--; ++output) {
+        *(input_delta++) += *(output_delta++) * ((*output > 0) + negative_slope * (*output <= 0));
     }
 }
 
@@ -1158,11 +1170,9 @@ void SigmoidLayer::Backward(Tensor *none) {
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
-    float value;
     
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
-        value = *(output++);
-        *(input_delta++) = value * (1.0 - value) * *(output_delta++);
+    for (int i = info.input_number * info.batch_size; i--; ++output) {
+        *(input_delta++) = *output * (1.0 - *output) * *(output_delta++);
     }
 }
 
@@ -1211,8 +1221,6 @@ void BatchNormalizationLayer::Forward(bool train) {
     float *x = kernel[5].weight;
     float *x_norm = kernel[6].weight;
     
-//    int batch_size = info.batch_size;
-//    int output_dimension = info.output_dimension;
     int total_size = info.input_number * info.batch_size;
     int channel_size = info.output_width * info.output_height;
     
@@ -1228,10 +1236,10 @@ void BatchNormalizationLayer::Forward(bool train) {
         scal_cpu(info.output_dimension, 0.99, running_variance);
         axpy_cpu(info.output_dimension, 0.01, variance, running_variance);
         
-        normalize(output, mean, variance, info.batch_size, info.output_dimension, channel_size);
+        normalize_cpu(output, mean, variance, info.batch_size, info.output_dimension, channel_size);
         copy_cpu(total_size, output, x_norm);
     } else {
-        normalize(output, running_mean, running_variance, info.batch_size, info.output_dimension, channel_size);
+        normalize_cpu(output, running_mean, running_variance, info.batch_size, info.output_dimension, channel_size);
     }
     
     scale_bias(output, scale, info.batch_size, info.output_dimension, channel_size);
@@ -1533,7 +1541,6 @@ EltwiseLayer::EltwiseLayer(LayerOption opt_) {
     if (info.eltwise_op == ELTWISE_OP::MAX) {
         kernel[1] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     }
-
     
     output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     output_tensor->extend();
@@ -1561,7 +1568,7 @@ void EltwiseLayer::Forward(bool train) {
             }
             break;
         case ELTWISE_OP::SUM:
-            fill_cpu(info.input_number * info.batch_size, output, 0);
+            output_tensor->clearWeight();
             for (int i = 0; i <= info.eltwise_num; ++i) {
                 float *eltwise = eltwise_tensor[i]->weight;
                 float *output = output_tensor->weight;
@@ -1608,7 +1615,7 @@ void EltwiseLayer::Backward(Tensor *none) {
         switch ((ELTWISE_OP)info.eltwise_op) {
             case ELTWISE_OP::PROD:
                 if (0) {
-                    // Smooth back-propagation
+                    // Smooth backpropagation
                 } else {
                     div_cpu(one_batch_size, output, eltwise, eltwise_delta);
                 }

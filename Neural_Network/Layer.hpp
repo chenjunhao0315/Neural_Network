@@ -151,9 +151,12 @@ public:
         int shortcut_dimension;
         int kernel_width;
         int kernel_height;
+        int stride_x;
+        int stride_y;
         int stride;
         int padding;
         int groups;
+        int dilation;
         int nweights;
         int workspace_size;
         int batch_size;

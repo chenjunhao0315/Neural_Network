@@ -75,7 +75,7 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > padding (0) <br>
 > groups (1) <br>
 > batchnorm (none) <br>
-> actiivation (none)
+> activation (none)
 * BatchNormalization layer
 * Relu layer
 * PRelu layer

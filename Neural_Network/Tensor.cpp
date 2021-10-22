@@ -136,7 +136,6 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     // initialize
     weight = new float [size];
     delta_weight = nullptr;
-//    delta_weight = new float [size]();
     
     // assign random value
     float scale = sqrt(1.0 / size);
@@ -152,10 +151,10 @@ Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
     size = width * height * dimension;
     
     // initialize
-    weight = new float [size];
+    weight = new float [size]();
     delta_weight = nullptr;
-//    delta_weight = new float [size]();
-    fill(weight, weight + size, parameter);
+    if (parameter)
+        fill(weight, weight + size, parameter);
 }
 
 void Tensor::extend() {
@@ -193,7 +192,6 @@ Tensor::Tensor(vfloat &V) {
     
     // initialize
     weight = new float [size];
-//    delta_weight = new float [size]();
     delta_weight = nullptr;
     for (int i = 0; i < size; ++i) {
         weight[i] = V[i];
@@ -208,11 +206,8 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     size *= 3;
     
     // initialize
-    weight = new float [n * 3];
+    weight = new float [size]();
     delta_weight = nullptr;
-//    delta_weight = new float [n * 3];
-    fill(weight, weight + n, 0);
-//    fill(delta_weight, delta_weight + n, 0);
     
     for (int i = 0; i < n; ++i) {
         weight[i] = V1[i];
@@ -230,7 +225,6 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
     // initialize
     weight = new float [n];
     delta_weight = nullptr;
-//    delta_weight = new float [n]();
     
     copy_cpu(n, pixelArray, weight);
 }
@@ -284,8 +278,12 @@ void Tensor::showDeltaWeight() {
     }
 }
 
+void Tensor::clearWeight() {
+    fill_cpu(size, weight, 0);
+}
+
 void Tensor::clearDeltaWeight() {
-    fill(delta_weight, delta_weight + size, 0);
+    fill_cpu(size, delta_weight, 0);
 }
 
 int Tensor::getWidth() {

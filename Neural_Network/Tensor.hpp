@@ -56,6 +56,7 @@ public:
     void showDeltaWeight();
     float* getWeight();
     float* getDeltaWeight();
+    void clearWeight();
     void clearDeltaWeight();
     int getWidth();
     int getHeight();

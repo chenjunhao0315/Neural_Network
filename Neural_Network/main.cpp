@@ -54,7 +54,7 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_55040_v4_x15.ottermodel");
+    YOLOv4 yolo("backup_0_45056_v4_x16.ottermodel");
     IMG img("5D4A1809.JPG");
     yolo.detect(img);
     img.save("detected.jpg", 100);
@@ -65,9 +65,9 @@ int main(int argc, const char * argv[]) {
 //    c.stop_and_show();
 //    img.save("gaussian.jpg");
 
-//    Mtcnn mtcnn("pnet_default.ottermodel", "rnet_default.ottermodel", "onet_default.ottermodel");
+//    Mtcnn mtcnn("pnet_default.ottermodel", "rnet_default.ottermodel", "onet_new.ottermodel");
 //    mtcnn.min_face_size = 0;
-//    IMG img("target.jpg");
+//    IMG img("5D4A0550_baseline.jpg");
 //    Clock c;
 //    vector<Bbox> result = mtcnn.detect(img);
 //    c.stop_and_show();

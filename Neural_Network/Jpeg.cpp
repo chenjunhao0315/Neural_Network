@@ -32,15 +32,13 @@ JPEG::JPEG(unsigned char *pixelArray_, int width_, int height_, int channel_) {
 }
 
 JPEG::~JPEG() {
-    delete decoder;
-    delete encoder;
+    JPEG_FREE(decoder);
+    JPEG_FREE(encoder);
 }
 
 bool JPEG::close() {
-    delete decoder;
-    delete encoder;
-    decoder = nullptr;
-    encoder = nullptr;
+    JPEG_FREE(decoder);
+    JPEG_FREE(encoder);
     return true;
 }
 
@@ -58,18 +56,12 @@ bool JPEG::save(const char *filename, float quality, bool isRGB, bool down_sampl
 }
 
 JPEG_DECODER::~JPEG_DECODER() {
-    if (Exif)
-        delete Exif;
-    if (data.data_indicator)
-        delete [] data.data_indicator;
-    if (data.comp[0].pixels)
-        delete [] data.comp[0].pixels;
-    if (data.comp[1].pixels)
-        delete [] data.comp[1].pixels;
-    if (data.comp[2].pixels)
-        delete [] data.comp[2].pixels;
-    if (data.rgb)
-        delete [] data.rgb;
+    JPEG_FREE(Exif);
+    JPEG_FREE_ARRAY(data.data_indicator);
+    JPEG_FREE_ARRAY(data.comp[0].pixels);
+    JPEG_FREE_ARRAY(data.comp[1].pixels);
+    JPEG_FREE_ARRAY(data.comp[2].pixels);
+    JPEG_FREE_ARRAY(data.rgb);
 }
 
 JPEG_DECODER::JPEG_DECODER(const char *filename) {
@@ -728,14 +720,14 @@ void JPEG_DECODER::getPicInfo(vector<string> &Info) {
     if (!Exif)
         return;
     Exif->getInfo(Info);
-}
+} 
 
 JFIF::~JFIF() {
-    delete [] Tag;
-    delete [] Format;
-    delete [] Components;
-    delete [] Offset;
-    delete [] Sub;
+    JPEG_FREE_ARRAY(Tag);
+    JPEG_FREE_ARRAY(Format);
+    JPEG_FREE_ARRAY(Components);
+    JPEG_FREE_ARRAY(Offset);
+    JPEG_FREE_ARRAY(Sub);
 }
 
 void JFIF::Init(unsigned int num, unsigned char *_start_pos) {

@@ -44,6 +44,7 @@ public:
     Tensor(float* RGB, int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_);
     Tensor(int width_, int height_, int dimension_, float parameter);
+    void free();
     void extend();
     void copyTo(Tensor &T);
     void one_of_n_encodinig(int index, int n);

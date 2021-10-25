@@ -18,6 +18,13 @@
 
 #define OMP_THREADS 4
 
+#define OTTER_FREE(data) if (data) delete data; data = nullptr;
+#define OTTER_FREE_ARRAY(data) if (data) delete [] data; data = nullptr;
+#define OTTER_CHECK_PTR_QUIT(ptr, message, error_code)   \
+    if (!ptr) {fprintf(stderr, message); exit(error_code);}
+#define OTTER_CHECK_PTR_BOOL(ptr, message)   \
+    if (!ptr) {fprintf(stderr, message); return false;}
+
 using namespace std::chrono;
 using std::vector;
 

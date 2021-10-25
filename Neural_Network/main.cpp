@@ -23,11 +23,11 @@ int main(int argc, const char * argv[]) {
     
 //    test_all_layer(true);
     
-//    YOLOv4 nn(80);
+//    YOLOv4 nn(80, 32);
 //
 //    YOLOv4_DataLoader loader("train_clear.txt");
 //
-//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.001}, {"warmup", 100}, {"steps", 2}, {"steps_1", 400000}, {"steps_2", 450000}, {"scales_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 500200}});
+//    Trainer trainer(&nn.network, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.00261}, {"warmup", 1000}, {"policy", Trainer::Policy::STEPS}, {"steps", 2}, {"steps_1", 1600000}, {"steps_2", 1800000}, {"scals_1", 0.1}, {"scales_2", 0.1}, {"max_batches", 2000200}, {"sub_division",1}, {"l2_decay", 0.0005}});
 //
 ////    yolo_train_args_v4 test = loader.get_train_arg(0);
 ////    for (int i = 0; i < 100; ++i)
@@ -54,8 +54,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_0_45056_v4_x16.ottermodel");
-    IMG img("5D4A1809.JPG");
+    YOLOv4 yolo("backup_55040_v4_r1.ottermodel");
+    IMG img("person.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     

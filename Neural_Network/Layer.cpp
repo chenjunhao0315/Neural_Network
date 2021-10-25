@@ -10,12 +10,9 @@
 static ParameterParser layerparameter("layer.txt");
 
 BaseLayer::~BaseLayer() {
-    if (output_tensor)
-        delete output_tensor;
-    if (kernel)
-        delete [] kernel;
-    if (biases)
-        delete biases;
+    OTTER_FREE(output_tensor);
+    OTTER_FREE(biases);
+    OTTER_FREE_ARRAY(kernel);
 }
 
 BaseLayer::BaseLayer() {
@@ -402,9 +399,15 @@ ParameterParser::ParameterParser(const char *param_filename) {
     fstream param_file;
     param_file.open(param_filename);
     
+    if (!param_file.is_open()) {
+        fprintf(stderr, "[Layer Prototype] Layer prototype file miss!\n");
+        exit(-200);
+    }
+    
     while (!param_file.eof()) {
         string param;
         param_file >> param;
+        if (param.size() == 0) break;
         param_list.push_back(param);
     }
     
@@ -1123,9 +1126,11 @@ void LReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float negative_slope = kernel[0][0];
+    float value;
     
-    for (int i = info.input_number * info.batch_size; i--; ++input) {
-        *(output++) = std::max(*input, 0.f) + negative_slope * std::min(*input, 0.f);
+    for (int i = info.input_number * info.batch_size; i--; ) {
+        value = *(input++);
+        *(output++) = (value > 0) ? value : negative_slope * value;
     }
 }
 
@@ -2321,7 +2326,7 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
     info.total_anchor_num = opt_get_int(opt, "total_anchor_num");
     info.anchor_num = opt_get_int(opt, "anchor_num");
     info.classes = opt_get_int(opt, "classes");
-    info.max_boxes = opt_find_int(opt, "total_boxes", 200);
+    info.max_boxes = opt_find_int(opt, "max_boxes", 200);
     info.net_width = opt_get_int(opt, "net_width");
     info.net_height = opt_get_int(opt, "net_height");
     info.ignore_iou_threshold = opt_find_float(opt, "ignore_iou_threshold", 0.5);

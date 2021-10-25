@@ -10,8 +10,8 @@
 Neural_Network::~Neural_Network() {
     for (int i = layer_number; i--; )
         delete layer[i];
-    delete [] layer;
-    delete [] workspace;
+    OTTER_FREE_ARRAY(layer);
+    OTTER_FREE_ARRAY(workspace);
 }
 
 Neural_Network::Neural_Network(string model_) {
@@ -205,6 +205,7 @@ void Neural_Network::constructGraph() {
         }
 
         Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
+        OTTER_CHECK_PTR_QUIT(act, "[Graph Constructor] Node miss!\n", -87);
         terminal[opt["name"]] = act;
     }
     
@@ -463,8 +464,7 @@ bool Neural_Network::load_ottermodel(const char *model_name, int batch_size) {
 
 bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
     FILE *f = fopen(weights_name, "wb");
-    if (!f)
-        return false;
+    OTTER_CHECK_PTR_BOOL(f, "[Neural Network] Open file fail!\n");
     int major = 0;
     int minor = 2;
     int revision = 0;
@@ -495,8 +495,7 @@ bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
 
 bool Neural_Network::load_darknet(const char *weights_name) {
     FILE *f = fopen(weights_name, "rb");
-    if (!f)
-        return false;
+    OTTER_CHECK_PTR_BOOL(f, "[Neural Network] Open file fail!\n");
     fseek(f, 0, SEEK_END);
     size_t check = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -536,8 +535,7 @@ bool Neural_Network::load_darknet(const char *weights_name) {
 
 bool Neural_Network::to_prototxt(const char *filename) {
     FILE *f = fopen(filename, "w");
-    if (!f)
-        return false;
+    OTTER_CHECK_PTR_BOOL(f, "[Neural Network] Open file fail!\n");
     // Model name
     fprintf(f, "name: \"%s\"\n", model.c_str());
     
@@ -617,19 +615,15 @@ void Neural_Network::alloc_workspace() {
     int max = 0, size;
     for (int i = 0; i < layer_number; ++i) {
         size = layer[i]->getWorkspaceSize();
-        if (size > max)
-            max = size;
+        max = std::max(max, size);
     }
-    if (max)
-        workspace = new float [max];
-    else
-        workspace = nullptr;
+    workspace = (max) ? new float [max] : nullptr;
 //    printf("workspace: %lu bytes at ", max * sizeof(float));
 //    cout << workspace << endl;
 }
 
 void Neural_Network::ClearGrad() {
-    for (int i = 0; i < layer_number; ++i) {
+    for (int i = layer_number; i--; ) {
         layer[i]->ClearGrad();
     }
 }

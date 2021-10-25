@@ -16,6 +16,9 @@
 
 #include "Cast.hpp"
 
+#define MAT_FREE(data) if (data) delete data; data = nullptr;
+#define MAT_FREE_ARRAY(data) if (data) delete [] data; data = nullptr;
+
 using std::ostream;
 
 enum MatType {

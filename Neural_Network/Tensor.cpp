@@ -16,9 +16,13 @@ Tensor::Tensor() {
     delta_weight = nullptr;
 }
 
+void Tensor::free() {
+    OTTER_FREE_ARRAY(weight);
+    OTTER_FREE_ARRAY(delta_weight);
+}
+
 Tensor::~Tensor() {
-    delete [] weight;
-    delete [] delta_weight;
+    this->free();
 }
 
 Tensor::Tensor(const Tensor &T) {
@@ -56,8 +60,7 @@ Tensor& Tensor::operator=(const Tensor &T) {
         height = T.height;
         dimension = T.dimension;
         if (size != T.size) {
-            delete [] weight;
-            delete [] delta_weight;
+            this->free();
         }
         size = T.size;
         weight = new float [size];
@@ -232,7 +235,7 @@ Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
 void Tensor::one_of_n_encodinig(int index, int n) {
     if (size != n) {
         size = n;
-        delete [] weight;
+        if (weight) delete [] weight;
         weight = new float [size]();
     }
     weight[index] = 1;
@@ -335,7 +338,7 @@ void Tensor::load(FILE *f) {
     fread(&height, sizeof(int), 1, f);
     fread(&dimension, sizeof(int), 1, f);
     fread(&size, sizeof(int), 1, f);
-    delete [] weight;
+    if (weight) delete [] weight;
     weight = new float [size];
     fread(weight, sizeof(float), size, f);
 }

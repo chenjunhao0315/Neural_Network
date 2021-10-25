@@ -24,6 +24,9 @@
 
 using namespace std;
 
+#define JPEG_FREE(data) if (data) delete data; data = nullptr;
+#define JPEG_FREE_ARRAY(data) if (data) delete [] data; data = nullptr;
+
 class JPEG;
 class JPEG_ENCODER;
 class JPEG_DECODER;

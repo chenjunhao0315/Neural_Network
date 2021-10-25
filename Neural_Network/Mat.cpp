@@ -13,8 +13,7 @@ Mat::~Mat() {
 }
 
 void Mat::freeData() {
-    delete [] data;
-    data = nullptr;
+    MAT_FREE_ARRAY(data);
 }
 
 void Mat::copyFrom(void *src) {

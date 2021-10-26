@@ -101,7 +101,7 @@ Feature_map PNet::predict(IMG &img) {
     
     unsigned char *rgb = img.toPixelArray();
     int img_size = img.width * img.height * 3;
-    float *img_data = new float [img_size];
+    float img_data[img_size];
     for (int i = 0; i < img_size; ++i) {
         img_data[i] = ((float)rgb[i] - 127.5) * 0.0078125;
     }
@@ -132,7 +132,6 @@ Feature_map PNet::predict(IMG &img) {
             map[h][w] = feature;
         }
     }
-    delete [] img_data;
     return map;
 }
 

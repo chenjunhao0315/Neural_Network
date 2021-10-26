@@ -14,7 +14,11 @@ Convolution {
     REQUIRED int kernel_width
     OPTION int kernel_height 0
     OPTION int stride 1
+    OPTION int stride_x -1
+    OPTION int stride_y -1
     OPTION int padding 0
+    OPTION int dilation 1
+    OPTION int groups 1
 }
 
 PRelu {
@@ -41,16 +45,28 @@ UpSample {
 }
 
 ShortCut {
+    OPTION single connect shortcut
     REQUIRED string shortcut
+    OPTION float alpha 1
+    OPTION float beta 1
 }
 
 Concat {
+    OPTION multi connect concat
     OPTION string concat none
     OPTION int splits 1
     OPTION int split_id 0
 }
 
+Eltwise {
+    OPTION multi connect eltwise
+    OPTION string eltwise none
+    OPTION string eltwise_op sum
+    OPTION float alpha 1
+}
+
 YOLOv3 {
+    REQUIRED int net
     REQUIRED int total_anchor_num
     REQUIRED int anchor_num
     REQUIRED int classes
@@ -62,6 +78,7 @@ YOLOv3 {
 }
 
 YOLOv4 {
+    REQUIRED int net
     REQUIRED int total_anchor_num
     REQUIRED int anchor_num
     REQUIRED int classes
@@ -84,4 +101,9 @@ YOLOv4 {
     OPTION bool focal_loss false
     OPTION IOU_KIND iou_loss IOU
     OPTION IOU_KIND iou_thres_kind IOU 
+}
+
+ScaleChannel {
+    OPTION single connect scalechannel
+    OPTION string scalechannel none
 }

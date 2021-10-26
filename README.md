@@ -72,6 +72,9 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > **kernel_width** <br>
 > kernel_height ( = kernel_width) <br>
 > stride (1) <br>
+> stride_x (-1) <br>
+> stride_y (-1) <br>
+> dilation (1) <br>
 > padding (0) <br>
 > groups (1) <br>
 > batchnorm (none) <br>
@@ -525,6 +528,7 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
+
 
 
 

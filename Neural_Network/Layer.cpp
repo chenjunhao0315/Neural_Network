@@ -830,8 +830,9 @@ void ReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        *(output++) = std::max(*(input++), 0.f);
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        output[i] = std::max(input[i], 0.f);
     }
 }
 
@@ -840,8 +841,9 @@ void ReluLayer::Backward(Tensor *none) {
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
     
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        *(input_delta++) += *(output_delta++) * (*(output++) > 0);
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        input_delta[i] += output_delta[i] * (output[i] > 0);
     }
 }
 
@@ -851,10 +853,14 @@ PReluLayer::PReluLayer(LayerOption opt_) {
     name = opt_find_string(opt, "name", "prelu");
     input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
+    info.input_width = opt_get_int(opt, "input_width");
+    info.input_height = opt_get_int(opt, "input_height");
+    info.input_dimension = opt_get_int(opt, "input_dimension");
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     float alpha = opt_find_float(opt, "alpha", 0.25);
     
@@ -871,12 +877,15 @@ REGISTER_LAYER_CLASS(PRelu);
 void PReluLayer::Forward(bool traiin) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
+    float *negative_slope = kernel->weight, value;
     
     for (int b = info.batch_size; b--; ) {
-        float *negative_slope = kernel->weight;
-        for (int i = info.input_number; i--; ++input) {
-            *(output++) = std::max(*input, 0.f) + *(negative_slope++) * std::min(*input, 0.f);
+        for (int i = 0; i < info.input_number; ++i) {
+            value = input[i];
+            output[i] = std::max(value, 0.f) + negative_slope[i] * std::min(value, 0.f);
         }
+        input += info.input_number;
+        output += info.output_number;
     }
 }
 
@@ -885,16 +894,15 @@ void PReluLayer::Backward(Tensor *none) {
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
+    float *negative_slope = kernel->weight;
+    float *negative_slope_delta = kernel->delta_weight;
+    float chain_grad;
     
     for (int b = info.batch_size; b--; ) {
-        float *alpha = kernel->weight;
-        float *alpha_delta = kernel->delta_weight;
-        float chain_grad;
-        
         for (int i = 0; i < info.input_number; ++i) {
             chain_grad = output_delta[i];
-            alpha_delta[i] += output[i] * chain_grad * (output[i] <= 0);
-            input_delta[i] += chain_grad * ((output[i] > 0) + alpha[i] * (output[i] <= 0));
+            negative_slope_delta[i] += output[i] * chain_grad * (output[i] <= 0);
+            input_delta[i] += chain_grad * ((output[i] > 0) + negative_slope[i] * (output[i] <= 0));
         }
         output += one_batch_size;
         output_delta += one_batch_size;
@@ -908,10 +916,14 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     name = opt_find_string(opt, "name", "sm");
     input_name = opt_find_string(opt, "input_name", "default");
     
+    info.input_width = opt_get_int(opt, "input_width");
+    info.input_height = opt_get_int(opt, "input_height");
+    info.input_dimension = opt_get_int(opt, "input_dimension");
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = 1;
     info.output_height = 1;
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = atoi(opt["input_width"].c_str()) * atoi(opt["input_height"].c_str()) * info.output_dimension;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     this->applyKernel(1);
@@ -934,8 +946,7 @@ void SoftmaxLayer::Forward(bool train) {
     for (int b = info.batch_size; b--; ) {
         float max = input[0];
         for (int i = 1; i < info.output_dimension; ++i) {
-            if (input[i] > max)
-                max = input[i];
+            max = std::max(max, input[i]);
         }
         float sum = 0;
         for (int i = 0; i < info.output_dimension; ++i) {
@@ -1126,11 +1137,11 @@ void LReluLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
     float negative_slope = kernel[0][0];
-    float value;
     
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        value = *(input++);
-        *(output++) = (value > 0) ? value : negative_slope * value;
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        float value = input[i];
+        output[i] = (value > 0) ? value : negative_slope * value;
     }
 }
 
@@ -1140,8 +1151,10 @@ void LReluLayer::Backward(Tensor *none) {
     float *input_delta = input_tensor->delta_weight;
     float negative_slope = kernel[0][0];
     
-    for (int i = info.input_number * info.batch_size; i--; ++output) {
-        *(input_delta++) += *(output_delta++) * ((*output > 0) + negative_slope * (*output <= 0));
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        float value = output[i];
+        input_delta[i] += output_delta[i] * ((value > 0) + negative_slope * (value <= 0));
     }
 }
 
@@ -1166,8 +1179,9 @@ REGISTER_LAYER_CLASS(Sigmoid);
 void SigmoidLayer::Forward(bool train) {
     float *input = input_tensor->weight;
     float *output = output_tensor->weight;
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        *(output++) = 1.0 / (1.0 + exp(-(*(input++))));
+    
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        output[i] = 1.0 / (1.0 + exp(-(input[i])));
     }
 }
 
@@ -1175,9 +1189,11 @@ void SigmoidLayer::Backward(Tensor *none) {
     float *output = output_tensor->weight;
     float *output_delta = output_tensor->delta_weight;
     float *input_delta = input_tensor->delta_weight;
+    float value;
     
-    for (int i = info.input_number * info.batch_size; i--; ++output) {
-        *(input_delta++) = *output * (1.0 - *output) * *(output_delta++);
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        value = output[i];
+        input_delta[i] = value * (1.0 - value) * output_delta[i];
     }
 }
 
@@ -1470,9 +1486,8 @@ void ConcatLayer::Forward(bool train) {
             int concat_input_size = channel_size * int(kernel[0][i]);
             int split_concat_input_size = concat_input_size / info.splits;
             float *concat = concat_tensor[i]->weight + b * concat_input_size + split_concat_input_size * info.split_id;
-            for (int j = split_concat_input_size; j--; ) {
-                *(output++) = *(concat++);
-            }
+            copy_cpu(split_concat_input_size, concat, output);
+            output += split_concat_input_size;
         }
     }
 }
@@ -1487,9 +1502,8 @@ void ConcatLayer::Backward(Tensor *none) {
             int concat_input_size = channel_size * int(kernel[0][i]);
             int split_concat_input_size = concat_input_size / info.splits;
             float *concat_delta = concat_tensor[i]->delta_weight + b * concat_input_size + split_concat_input_size * info.split_id;
-            for (int j = split_concat_input_size; j--; ) {
-                *(concat_delta++) += *(output_delta++);
-            }
+            axpy_cpu(split_concat_input_size, 1, output_delta, concat_delta);
+            output_delta += split_concat_input_size;
         }
     }
 }
@@ -1774,10 +1788,11 @@ void MishLayer::Forward(bool train) {
     float *activation_input = kernel[0].weight;
     float *output = output_tensor->weight;
     
-    for (int i = info.input_number * info.batch_size; i--; ) {
-        float x_val = *(input++);
-        *(activation_input++) = x_val;
-        *(output++) = x_val * tanh_activate(softplus_activate(x_val, MISH_THRESHOLD));
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+        float x_val = input[i];
+        activation_input[i] = x_val;
+        output[i] = x_val * tanh_activate(softplus_activate(x_val, MISH_THRESHOLD));
     }
 }
 
@@ -1787,17 +1802,17 @@ void MishLayer::Backward(Tensor *none) {
     float *activation_input = kernel[0].weight;
     const float MISH_THRESHOLD = 20.0f;
     
-    for (int i = info.output_number * info.batch_size; i--; ) {
-        
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         // implementation from TensorFlow: https://github.com/tensorflow/addons/commit/093cdfa85d334cbe19a37624c33198f3140109ed
         // implementation from Pytorch: https://github.com/thomasbrandon/mish-cuda/blob/master/csrc/mish.h#L26-L31
-        float inp = *(activation_input++);
+        float inp = activation_input[i];
         float sp = softplus_activate(inp, MISH_THRESHOLD);
         float grad_sp = 1 - exp(-sp);
         float tsp = tanh(sp);
         float grad_tsp = (1 - tsp * tsp) * grad_sp;
         float grad = inp * grad_tsp + tsp;
-        *(input_delta++) += grad * *(output_delta++);
+        input_delta[i] += grad * output_delta[i];
     }
 }
 
@@ -1833,9 +1848,8 @@ void SwishLayer::Forward(bool train) {
     float *activation_input = kernel[0].weight;
     float *output = output_tensor->weight;
     
-    int n = info.input_number * info.batch_size;
     #pragma omp parallel for num_threads(OMP_THREADS)
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
         float x_val = input[i];
         float sigmoid = logistic_activate(x_val);
         activation_input[i] = sigmoid;
@@ -1849,9 +1863,8 @@ void SwishLayer::Backward(Tensor *none) {
     float *output_delta = output_tensor->delta_weight;
     float *activation_input = kernel[0].weight;
     
-    int n = info.output_number * info.batch_size;
     #pragma omp parallel for num_threads(OMP_THREADS)
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         float swish = output[i];
         input_delta[i] += output_delta[i] * (swish + activation_input[i] * (1 - swish));
     }
@@ -1899,13 +1912,10 @@ void DropoutLayer::Forward(bool train) {
         return;
     }
     
-    for(int i = info.input_number * info.batch_size; i--; ++input, ++output){
+    for(int i = 0; i < info.input_number * info.batch_size; ++i){
         float p = Random(0, 1);
-        *(prob++) = p;
-        if(p < probability)
-            *(output) = 0;
-        else
-            *(output) = *(input) * scale;
+        prob[i] = p;
+        output[i] = (p < probability) ? 0 : scale * input[i];
     }
 }
 
@@ -1916,12 +1926,9 @@ void DropoutLayer::Backward(Tensor *none) {
     float probability = info.probability;
     float scale = info.scale;
     
-    for(int i = info.input_number * info.batch_size; i--; ) {
-        float p = *(prob++);
-        if(p < probability)
-            *(input_delta) = 0;
-        else
-            *(input_delta) = *(output_delta) * scale;
+    for(int i = 0; i < info.input_number * info.batch_size; ++i) {
+        float p = prob[i];
+        input_delta[i] = (p < probability) ? 0 : scale * output_delta[i];
     }
 }
 

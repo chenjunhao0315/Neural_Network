@@ -153,38 +153,38 @@ void normalize_cpu(float *x, float *mean, float *variance, int batch, int filter
 }
 
 void copy_cpu(int size, float *src, float *dst) {
-    for (int i = size; i--; )
-        *(dst++) = *(src++);
+    for (int i = 0; i < size; ++i)
+        dst[i] = src[i];
 }
 
 void scal_cpu(int size, float scale, float *src) {
-    for (int i = size; i--; )
-        *(src++) *= scale;
+    for (int i = 0; i < size; ++i)
+        src[i] *= scale;
 }
 
 void scal_add_cpu(int size, float scale, float bias, float *src) {
-    for (int i = size; i--; ++src)
-        *(src) = *(src) * scale + bias;
+    for (int i = 0; i < size; ++i)
+        src[i] = scale * src[i] + bias;
 }
 
 void axpy_cpu(int size, float scale, float *src, float *dst) {
-    for (int i = size; i--; )
-        *(dst++) += scale * *(src++);
+    for (int i = 0; i < size; ++i)
+        dst[i] += scale * src[i];
 }
 
 void fill_cpu(int size, float *src, float parameter) {
-    for (int i = size; i--; )
-        *(src++) = parameter;
+    for (int i = 0; i < size; ++i)
+        src[i] = parameter;
 }
 
 void mul_cpu(int size, float *src1, float *src2, float *dst) {
-    for (int i = size; i--; )
-        *(dst++) = *(src1++) * *(src2++);
+    for (int i = 0; i < size; ++i)
+        dst[i] = src1[i] * src2[i];
 }
 
 void div_cpu(int size, float *src1, float *src2, float *dst) {
-    for (int i = size; i--; )
-        *(dst++) = *(src1++) / *(src2++);
+    for (int i = 0; i < size; ++i)
+        dst[i] = src1[i] / src2[i];
 }
 
 float sum_array(float *a, int n) {
@@ -233,7 +233,7 @@ void gemm(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int lda, f
 }
 
 void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(OMP_THREADS)
+//    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i) {
         for(int k = 0; k < K; ++k) {
             float A_PART = ALPHA * A[i * lda + k];
@@ -245,7 +245,7 @@ void gemm_nn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(OMP_THREADS)
+//    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;
@@ -258,7 +258,7 @@ void gemm_nt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(OMP_THREADS)
+//    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int k = 0; k < K; ++k){
             float A_PART = ALPHA * A[k * lda + i];
@@ -270,7 +270,7 @@ void gemm_tn(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int 
 }
 
 void gemm_tt(int M, int N, int K, float ALPHA, float *A, int lda, float *B, int ldb, float *C, int ldc) {
-    #pragma omp parallel for num_threads(OMP_THREADS)
+//    #pragma omp parallel for num_threads(OMP_THREADS)
     for(int i = 0; i < M; ++i){
         for(int j = 0; j < N; ++j){
             float sum = 0;
@@ -291,26 +291,26 @@ void gemm_cpu(int TA, int TB, int M, int N, int K, float ALPHA, float *A, int ld
             }
         }
     }
-    if(!TA && !TB)      // A, B not transpose
-        gemm_nn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
-    else if (TA && !TB) // A transpose, B not
-        gemm_tn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
-    else if (!TA && TB) // B transpose, A not
-        gemm_nt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
-    else                // A, B transpose
-        gemm_tt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
+//    if(!TA && !TB)      // A, B not transpose
+//        gemm_nn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
+//    else if (TA && !TB) // A transpose, B not
+//        gemm_tn(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
+//    else if (!TA && TB) // B transpose, A not
+//        gemm_nt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
+//    else                // A, B transpose
+//        gemm_tt(M, N, K, ALPHA, A, lda, B, ldb, C, ldc);
     
-//    #pragma omp parallel for num_threads(OMP_THREADS)
-//    for (int t = 0; t < M; ++t) {
-//        if (!TA && !TB)
-//            gemm_nn(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
-//        else if (TA && !TB)
-//            gemm_tn(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
-//        else if (!TA && TB)
-//            gemm_nt(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
-//        else
-//            gemm_tt(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
-//    }
+    #pragma omp parallel for num_threads(OMP_THREADS)
+    for (int t = 0; t < M; ++t) {
+        if (!TA && !TB)
+            gemm_nn(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
+        else if (TA && !TB)
+            gemm_tn(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
+        else if (!TA && TB)
+            gemm_nt(1, N, K, ALPHA, A + t * lda, lda, B, ldb, C + t * ldc, ldc);
+        else
+            gemm_tt(1, N, K, ALPHA, A + t, lda, B, ldb, C + t * ldc, ldc);
+    }
 }
 
 float im2col_get_pixel(float *im, int height, int width, int channels, int row, int col, int channel, int pad) {

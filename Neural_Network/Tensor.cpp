@@ -353,9 +353,8 @@ void Tensor::load_raw(FILE *f) {
 vfloat Tensor::toVector() {
     vfloat result;
     result.reserve(size);
-    float *weight_ptr = weight;
-    for (int i = size; i--; ) {
-        result.push_back(*(weight_ptr++));
+    for (int i = 0; i < size; ++i) {
+        result.push_back(weight[i]);
     }
     return result;
 }

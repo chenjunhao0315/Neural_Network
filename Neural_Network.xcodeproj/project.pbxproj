@@ -61,6 +61,7 @@
 		76390E842666B46F00FFA5EC /* Tensor.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Tensor.hpp; sourceTree = "<group>"; };
 		76390E872666B78800FFA5EC /* Utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utilities.cpp; sourceTree = "<group>"; };
 		76390E882666B78800FFA5EC /* Utilities.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Utilities.hpp; sourceTree = "<group>"; };
+		763C4B7927282CF1002CE1A9 /* layer.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = layer.txt; sourceTree = "<group>"; };
 		768995EE271F27DD00128595 /* Machine_Learning.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Machine_Learning.cpp; sourceTree = "<group>"; };
 		768995EF271F27DE00128595 /* Machine_Learning.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Machine_Learning.hpp; sourceTree = "<group>"; };
 		76A40ED026A4CF4700A01830 /* Mtcnn.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Mtcnn.cpp; sourceTree = "<group>"; };
@@ -117,6 +118,7 @@
 		76390E722666B3D000FFA5EC /* Neural_Network */ = {
 			isa = PBXGroup;
 			children = (
+				763C4B7927282CF1002CE1A9 /* layer.txt */,
 				76390E732666B3D000FFA5EC /* main.cpp */,
 				76390E7B2666B44E00FFA5EC /* Neural_Network.cpp */,
 				76390E7C2666B44E00FFA5EC /* Neural_Network.hpp */,

@@ -5,32 +5,49 @@ This is a simple project to implement neural network in c++, the structure of ne
 
 ## Feature
 * C++11
-* Multi-thread support with Openmp
+* Multi-thread support with OpenMp
 * Run only on CPU
 * Structure visualization by [Netron][3] with Caffe2 like prototxt file
 * Easy to add custom layer
 
 ## Supported Layers
+#### Data layer
 * Input layer (data input)
-* FullyConnected layer
+
+#### Vision layers
 * Convolution layer (depth-wise support)
-* BatchNormalization layer
-* Relu layer
-* PRelu layer
-* LRelu layer
-* Sigmoid layer
-* Mish layer
-* Swish layer
-* Dropout layer
 * Pooling layer
 * AvgPooling layer
 * UpSample layer
-* ShortCut layer (single layer)
+
+#### Common layers
+* Dropout layer
+* FullyConnected layer
+
+#### Activation layers
+* Sigmoid layer
+* Tanh layer
+* Relu layer
+* PRelu layer
+* LRelu layer
+* Mish layer
+* Swish layer
+* Elu layer
+
+#### Normalization layer
+* BatchNormalization layer
+
+#### Utility layers
 * Concat layer (multi layers)
+* Eltwise layer (multi layers)
+* ShortCut layer (single layer)
 * ScaleChannel layer
-* Eltwise layer
-* Softmax layer
+
+#### Loss layers
+* Softmax layer (with cross entropy loss)
 * EuclideanLoss layer
+
+#### Special layers
 * Yolov3 layer
 * Yolov4 layer
 
@@ -59,14 +76,13 @@ It will add layer to neural network, checking the structure of input tensor at s
 ```cpp
 nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"}, {"name", "WWW"}});    // The options are unordered
 ```
+##### Data layer
 * Input layer options
 > **input_width** <br>
 > **input_height** <br>
 > **input_dimension**
-* FullyConnected layer options
-> **number_neurons** <br>
-> batchnorm (none) <br>
-> activation (none)
+
+##### Vision layers
 * Convolution layer options
 > **number_kernel** <br>
 > **kernel_width** <br>
@@ -79,17 +95,6 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > groups (1) <br>
 > batchnorm (none) <br>
 > activation (none)
-* BatchNormalization layer
-* Relu layer
-* PRelu layer
-> alpha (0.25)
-* LRelu layer
-> alpha (0.1)
-* Sigmoid layer
-* Mish layer
-* Swish layer
-* Dropout layer
-> probability (0.5)
 * Pooling layer (output_size = (input_size + padding - kernel_size) / stride + 1)
 > **kernel_width** <br>
 > kernel_height ( = kernel_width) <br>
@@ -98,21 +103,51 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 * AvgPooling layer
 * UpSample layer
 > **stride**
-* ShortCut layer (single layer)
-> **shortcut** <br>
-> alpha (1) <br>
-> beta (1)
+
+##### Common layers
+* Dropout layer
+> probability (0.5)
+* FullyConnected layer options
+> **number_neurons** <br>
+> batchnorm (none) <br>
+> activation (none)
+
+##### Activation layers
+* Sigmoid layer
+* Tanh layer
+* Relu layer
+* PRelu layer
+> alpha (0.25)
+* LRelu layer
+> alpha (1)
+* Mish layer
+* Swish layer
+* Elu layer
+> alpha (0.1)
+
+##### Normalization layer
+* BatchNormalization layer
+
+##### Utility layers
 * Concat layer (multi layers)
 > concat (none) <br>
 > splits (1) <br>
 > split_id (0)
-* ScaleChannel layer
-> **scalechannel**
 * Eltwise layer
 > **eltwise** <br>
 > eltwise_op (prod, sum, max)
+* ShortCut layer (single layer)
+> **shortcut** <br>
+> alpha (1) <br>
+> beta (1)
+* ScaleChannel layer
+> **scalechannel**
+
+##### Loss layers
 * Softmax layer
 * EuclideanLoss layer
+
+##### Special layers
 * YOLOv3 layer
 > **total_anchor_num** <br>
 > **anchor_num** <br>
@@ -528,12 +563,4 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
-
-
-
-
-
-
-
-
 

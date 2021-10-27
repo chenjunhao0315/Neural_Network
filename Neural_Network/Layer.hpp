@@ -45,23 +45,25 @@ struct Train_Args {
 
 enum LayerType {
     Input,
-    FullyConnected,
+    Pooling,
     Convolution,
-    BatchNormalization,
+    AvgPooling,
+    UpSample,
+    Dropout,
+    FullyConnected,
+    Sigmoid,
+    Tanh,
     Relu,
     PRelu,
     LRelu,
-    Sigmoid,
     Mish,
     Swish,
-    Dropout,
-    Pooling,
-    AvgPooling,
-    UpSample,
-    ShortCut,
+    Elu,
+    BatchNormalization,
     Concat,
-    ScaleChannel,
     Eltwise,
+    ShortCut,
+    ScaleChannel,
     Softmax,
     EuclideanLoss,
     Yolov3,
@@ -69,28 +71,45 @@ enum LayerType {
     Error
 };
 
+// Data layer
 class InputLayer;
+
+// Vision layers
+class ConvolutionLayer;
+class PoolingLayer;
+class AvgPoolingLayer;
+class UpSampleLayer;
+
+// Common layers
+class DropoutLayer;
 class FullyConnectedLayer;
+
+// Activations layers
+class SigmoidLayer;
+class TanhLayer;
 class ReluLayer;
 class PReluLayer;
 class LReluLayer;
-class SoftmaxLayer;
-class ConvolutionLayer;
-class PoolingLayer;
-class EuclideanLossLayer;
-class ShortCutLayer;
-class SigmoidLayer;
-class BatchNormalizationLayer;
-class UpSampleLayer;
-class ConcatLayer;
-class YOLOv3Layer;
-class YOLOv4Layer;
 class MishLayer;
 class SwishLayer;
-class DropoutLayer;
-class AvgPoolingLayer;
-class ScaleChannelLayer;
+class EluLayer;
+
+// Normalization layer
+class BatchNormalizationLayer;
+
+// Utility layer
+class ConcatLayer;
 class EltwiseLayer;
+class ShortCutLayer;
+class ScaleChannelLayer;
+
+// Loss layers
+class SoftmaxLayer;
+class EuclideanLossLayer;
+
+// Special layers
+class YOLOv3Layer;
+class YOLOv4Layer;
 
 #define opt_find(opt, type) \
     (opt.find(type) != opt.end())
@@ -117,12 +136,12 @@ public:
     virtual void Forward(bool train = false) {}
     virtual void Backward(Tensor *target = nullptr) {}
     virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
+    virtual inline const char* Type() const {return "Unknown"; }
     void applyKernel(int num);
     void shape();
     void show_detail();
     long getOperations();
     int getWorkspaceSize();
-    string type_to_string();
     int getParameter(int type);
     void ClearGrad();
     bool save_raw(FILE *f);
@@ -327,7 +346,7 @@ public:
         string name = param.getName();
         if (pool.count(name) == 1) {
             cout << "Layer type: [" << name << "] has been registered." << endl;
-//            exit(1);
+            return;
         }
         pool[name] = param;
     }
@@ -364,6 +383,7 @@ public:
     InputLayer(LayerOption opt_);
     void Forward(Tensor *input_tensor_);
     void Backward(Tensor *none = nullptr) {}
+    inline const char* Type() const {return "Input"; }
 };
 
 // Convolution layer
@@ -373,6 +393,7 @@ public:
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Convolution"; }
 private:
     float *workspace;
 };
@@ -383,89 +404,16 @@ public:
     PoolingLayer(LayerOption opt_);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Pooling"; }
 };
 
-// FullyConnected layer
-class FullyConnectedLayer : public BaseLayer {
+// AvgPooling layer
+class AvgPoolingLayer : public BaseLayer {
 public:
-    FullyConnectedLayer(LayerOption opt_);
+    AvgPoolingLayer(LayerOption opt_);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
-};
-
-// Relu layer
-class ReluLayer : public BaseLayer {
-public:
-    ReluLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// PRelu layer
-class PReluLayer : public BaseLayer {
-public:
-    PReluLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// Softmax layer with cross entropy loss
-class SoftmaxLayer : public BaseLayer {
-public:
-    SoftmaxLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *target);
-private:
-};
-
-// Euclidean loss layer
-class EuclideanLossLayer : public BaseLayer {
-public:
-    EuclideanLossLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *target);
-private:
-};
-
-// ShortCut layer
-class ShortCutLayer : public BaseLayer {
-public:
-    ShortCutLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-private:
-    void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
-    Tensor *shortcut_tensor;
-};
-
-// LRelu layer
-class LReluLayer : public BaseLayer {
-public:
-    LReluLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// Sigmoid layer
-class SigmoidLayer : public BaseLayer {
-public:
-    SigmoidLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// BatchNormalization layer
-class BatchNormalizationLayer : public BaseLayer {
-public:
-    BatchNormalizationLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-private:
-    void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
-    void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
-    void variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta);
-    void normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta);
+    inline const char* Type() const {return "AvgPooling"; }
 };
 
 // UpSample layer
@@ -474,9 +422,114 @@ public:
     UpSampleLayer(LayerOption opt_);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "UpSample"; }
 private:
     void upsample(float *in, int w, int h, int c, int batch, int stride, bool forward, float scale, float *out);
     void downsample(float *src, float *dst, int batch_size, int width, int height, int dimension, int stride, bool forward);
+};
+
+// Sigmoid layer
+class SigmoidLayer : public BaseLayer {
+public:
+    SigmoidLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Sigmoid"; }
+};
+
+// Tanh layer
+class TanhLayer : public BaseLayer {
+public:
+    TanhLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Tanh"; }
+};
+
+// Relu layer
+class ReluLayer : public BaseLayer {
+public:
+    ReluLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Relu"; }
+};
+
+// PRelu layer
+class PReluLayer : public BaseLayer {
+public:
+    PReluLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "PRelu"; }
+};
+
+// LRelu layer
+class LReluLayer : public BaseLayer {
+public:
+    LReluLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "LRelu"; }
+};
+
+// Mish layer
+class MishLayer : public BaseLayer {
+public:
+    MishLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Mish"; }
+};
+
+// Swish layer
+class SwishLayer : public BaseLayer {
+public:
+    SwishLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Swish"; }
+};
+
+// Elu layer
+class EluLayer : public BaseLayer {
+public:
+    EluLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Elu"; }
+};
+
+// Dropout layer
+class DropoutLayer : public BaseLayer {
+public:
+    DropoutLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Dropout"; }
+};
+
+// FullyConnected layer
+class FullyConnectedLayer : public BaseLayer {
+public:
+    FullyConnectedLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "FullyConnected"; }
+};
+
+// BatchNormalization layer
+class BatchNormalizationLayer : public BaseLayer {
+public:
+    BatchNormalizationLayer(LayerOption opt_);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "BatchNorm"; }
+private:
+    void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
+    void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
+    void variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta);
+    void normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta);
 };
 
 // Concat layer
@@ -486,6 +539,7 @@ public:
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Concat"; }
 private:
     vtensorptr concat_tensor;
 };
@@ -498,8 +552,22 @@ public:
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "Eltwise"; }
 private:
     vtensorptr eltwise_tensor;
+};
+
+// ShortCut layer
+class ShortCutLayer : public BaseLayer {
+public:
+    ShortCutLayer(LayerOption opt_);
+    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    void Forward(bool train = false);
+    void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "ShortCut"; }
+private:
+    void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
+    Tensor *shortcut_tensor;
 };
 
 // ScaleChannel layer
@@ -509,40 +577,29 @@ public:
     Tensor *connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
+    inline const char* Type() const {return "ScaleChannel"; }
 private:
     Tensor *scalechannel_tensor;
 };
 
-// Dropout layer
-class DropoutLayer : public BaseLayer {
+// Softmax layer with cross entropy loss
+class SoftmaxLayer : public BaseLayer {
 public:
-    DropoutLayer(LayerOption opt_);
+    SoftmaxLayer(LayerOption opt_);
     void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
+    void Backward(Tensor *target);
+    inline const char* Type() const {return "Softmax"; }
+private:
 };
 
-// Mish layer
-class MishLayer : public BaseLayer {
+// Euclidean loss layer
+class EuclideanLossLayer : public BaseLayer {
 public:
-    MishLayer(LayerOption opt_);
+    EuclideanLossLayer(LayerOption opt_);
     void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// Swish layer
-class SwishLayer : public BaseLayer {
-public:
-    SwishLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
-};
-
-// AvgPooling layer
-class AvgPoolingLayer : public BaseLayer {
-public:
-    AvgPoolingLayer(LayerOption opt_);
-    void Forward(bool train = false);
-    void Backward(Tensor *none = nullptr);
+    void Backward(Tensor *target);
+    inline const char* Type() const {return "EuclideanLoss"; }
+private:
 };
 
 // YOLOv3 layer
@@ -552,6 +609,7 @@ public:
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *target);
+    inline const char* Type() const {return "YOLOv3"; }
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();
@@ -584,12 +642,7 @@ public:
     Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *target);
-    
-    enum NUM_KIND {
-        DEFAULT_NMS,
-        GREEDY_NMS,
-        DIOU_NMS
-    };
+    inline const char* Type() const {return "YOLOv4"; }
 private:
     int entry_index(int batch, int location, int entry);
     vector<Detection> yolo_get_detection_without_correction();

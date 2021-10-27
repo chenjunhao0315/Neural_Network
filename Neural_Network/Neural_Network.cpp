@@ -76,11 +76,23 @@ void Neural_Network::addLayer(LayerOption opt_) {
             }
             auto_opt["type"] = "LRelu";
             opt_layer.push_back(auto_opt);
+        } else if (method == "Elu") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "el_" + opt_["name"];
+            }
+            auto_opt["type"] = "Elu";
+            opt_layer.push_back(auto_opt);
         } else if (method == "Sigmoid") {
             if (opt_.find("name") != opt_.end()) {
                 auto_opt["name"] = "sg_" + opt_["name"];
             }
             auto_opt["type"] = "Sigmoid";
+            opt_layer.push_back(auto_opt);
+        } else if (method == "Tanh") {
+            if (opt_.find("name") != opt_.end()) {
+                auto_opt["name"] = "ta_" + opt_["name"];
+            }
+            auto_opt["type"] = "Tanh";
             opt_layer.push_back(auto_opt);
         } else if (method == "Mish") {
             if (opt_.find("name") != opt_.end()) {
@@ -998,4 +1010,33 @@ vfloat Trainer::train_batch(Tensor &data, Tensor &target) {
         }
     }
     return vfloat{loss};
+}
+
+// Python interface
+Tensor* create_tensor_init(int width, int height, int dimension, float parameter) {
+    return new Tensor(width, height, dimension, parameter);
+}
+
+Tensor* create_tensor_array(float *data, int width, int height, int dimension) {
+    return new Tensor(data, width, height, dimension);
+}
+
+void tensor_show(Tensor *t) {
+    cout << *t;
+}
+
+Neural_Network* create_network(const char *model_name) {
+    return new Neural_Network(model_name);
+}
+
+void network_load_ottermodel(Neural_Network *net, const char *ottermodel) {
+    net->load_ottermodel(ottermodel);
+}
+
+void network_forward(Neural_Network *net, Tensor *data) {
+    
+}
+
+void network_shape(Neural_Network *net) {
+    net->shape();
 }

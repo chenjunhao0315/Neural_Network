@@ -139,4 +139,15 @@ private:
     int args_num;
 };
 
+// Python interface
+extern "C" {
+    Tensor* create_tensor_init(int width, int height, int dimension, float parameter);
+    Tensor* create_tensor_array(float *data, int width, int height, int dimension);
+    void tensor_show(Tensor *t);
+
+    Neural_Network* create_network(const char *model_name);
+    void network_load_ottermodel(Neural_Network *net, const char *ottermodel);
+    void network_forward(Neural_Network *net, Tensor *data);
+    void network_shape(Neural_Network *net);
+}
 #endif /* Neural_Network_hpp */

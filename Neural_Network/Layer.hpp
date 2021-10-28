@@ -131,14 +131,17 @@ class BaseLayer {
 public:
     ~BaseLayer();
     BaseLayer();
+    BaseLayer(LayerOption opt_);
     BaseLayer(const BaseLayer &L);
     BaseLayer(BaseLayer &&L);
     BaseLayer& operator=(const BaseLayer &L);
     virtual void Forward(Tensor *input_tensor = nullptr) {}
     virtual void Forward(bool train = false) {}
     virtual void Backward(Tensor *target = nullptr) {}
-    virtual Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace = nullptr);
+    virtual vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace = nullptr);
     virtual inline const char* Type() const {return "Unknown"; }
+    void applyInput(int num);
+    void applyOutput(int num);
     void applyKernel(int num);
     void shape();
     void show_detail();
@@ -156,6 +159,9 @@ public:
     string name;
     string input_name;
     struct Info {
+        int input_num;
+        int output_num;
+        int kernel_num;
         int input_number;
         int output_number;
         int output_width;
@@ -183,7 +189,6 @@ public:
         int batch_size;
         int eltwise_num;
         int eltwise_op;
-        int kernel_num;
         int total_anchor_num;
         int anchor_num;
         int classes;
@@ -215,8 +220,8 @@ public:
         float loss;
     } info;
     LayerOption opt;
-    Tensor* input_tensor;
-    Tensor* output_tensor;
+    Tensor** input_tensor;
+    Tensor** output_tensor;
     Tensor* kernel;
     Tensor* biases;
 };
@@ -399,7 +404,7 @@ public:
 class ConvolutionLayer : public BaseLayer {
 public:
     ConvolutionLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
     inline const char* Type() const {return "Convolution"; }
@@ -545,12 +550,10 @@ private:
 class ConcatLayer : public BaseLayer {
 public:
     ConcatLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
     inline const char* Type() const {return "Concat"; }
-private:
-    vtensorptr concat_tensor;
 };
 
 // Eltwise layer
@@ -558,37 +561,32 @@ class EltwiseLayer : public BaseLayer {
 public:
     enum ELTWISE_OP {PROD = 0, SUM = 1, MAX = 2};
     EltwiseLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
-    inline const char* Type() const {return "Eltwise"; }
-private:
-    vtensorptr eltwise_tensor;
+    inline const char* Type() const {return "Eltwise"; }\
 };
 
 // ShortCut layer
 class ShortCutLayer : public BaseLayer {
 public:
     ShortCutLayer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
     inline const char* Type() const {return "ShortCut"; }
 private:
     void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out);
-    Tensor *shortcut_tensor;
 };
 
 // ScaleChannel layer
 class ScaleChannelLayer : public BaseLayer {
 public:
     ScaleChannelLayer(LayerOption opt_);
-    Tensor *connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *none = nullptr);
     inline const char* Type() const {return "ScaleChannel"; }
-private:
-    Tensor *scalechannel_tensor;
 };
 
 // Softmax layer with cross entropy loss
@@ -615,7 +613,7 @@ private:
 class YOLOv3Layer : public BaseLayer {
 public:
     YOLOv3Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *target);
     inline const char* Type() const {return "YOLOv3"; }
@@ -648,7 +646,7 @@ typedef struct train_yolo_args {
 class YOLOv4Layer : public BaseLayer {
 public:
     YOLOv4Layer(LayerOption opt_);
-    Tensor* connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace);
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);
     void Forward(bool train = false);
     void Backward(Tensor *target);
     inline const char* Type() const {return "YOLOv4"; }

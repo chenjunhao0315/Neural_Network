@@ -10,7 +10,10 @@
 static ParameterParser layerparameter("layer.txt");
 
 BaseLayer::~BaseLayer() {
-    OTTER_FREE(output_tensor);
+    OTTER_FREE_ARRAY(input_tensor);
+    for (int i = 0; i < info.output_num; ++i)
+        delete output_tensor[i];
+    OTTER_FREE_ARRAY(output_tensor);
     OTTER_FREE(biases);
     OTTER_FREE_ARRAY(kernel);
 }
@@ -23,6 +26,26 @@ BaseLayer::BaseLayer() {
     memset(&info, 0, sizeof(Info));
 }
 
+BaseLayer::BaseLayer(LayerOption opt_) {
+    input_tensor = nullptr;
+    output_tensor = nullptr;
+    kernel = nullptr;
+    biases = nullptr;
+    memset(&info, 0, sizeof(Info));
+    opt = opt_;
+    name = opt_find_string(opt, "name", "");
+    input_name = opt_find_string(opt, "input_name", "");
+    
+    info.input_width = opt_find_int(opt, "input_width", 0);
+    info.input_height = opt_find_int(opt, "input_height", 0);
+    info.input_dimension = opt_find_int(opt, "input_dimension", 0);
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    
+    this->applyInput(1);
+    this->applyOutput(1);
+}
+
 BaseLayer::BaseLayer(const BaseLayer &L) {
     if (this != &L) {
         type = L.type;
@@ -30,11 +53,14 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
         input_name = L.input_name;
         info = L.info;
         opt = L.opt;
-        input_tensor = L.input_tensor;
-        if (L.output_tensor)
-            output_tensor = new Tensor(L.output_tensor);
-        else
-            output_tensor = nullptr;
+        this->applyInput(info.input_num);
+        for (int i = 0; i < info.input_num; ++i) {
+            input_tensor[i] = L.input_tensor[i];
+        }
+        this->applyOutput(info.output_num);
+        for (int i = 0; i < info.output_num; ++i) {
+            output_tensor[i] = new Tensor(L.output_tensor[i]);
+        }
         if (L.kernel) {
             kernel = new Tensor [info.kernel_num];
             for (int i = 0; i < info.kernel_num; ++i) {
@@ -74,11 +100,14 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
         input_name = L.input_name;
         info = L.info;
         opt = L.opt;
-        input_tensor = L.input_tensor;
-        if (L.output_tensor)
-            output_tensor = new Tensor(L.output_tensor);
-        else
-            output_tensor = nullptr;
+        this->applyInput(info.input_num);
+        for (int i = 0; i < info.input_num; ++i) {
+            input_tensor[i] = L.input_tensor[i];
+        }
+        this->applyOutput(info.output_num);
+        for (int i = 0; i < info.output_num; ++i) {
+            output_tensor[i] = new Tensor(L.output_tensor[i]);
+        }
         if (L.kernel) {
             kernel = new Tensor [info.kernel_num];
             for (int i = 0; i < info.kernel_num; ++i) {
@@ -122,9 +151,27 @@ Train_Args BaseLayer::getTrainArgs() {
     return Train_Args();
 }
 
-Tensor* BaseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
-    return output_tensor;
+vtensorptr BaseLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
+    for (int i = 0; i < info.input_num; ++i) {
+        input_tensor[i] = input_tensor_[i];
+    }
+    vtensorptr output_tensor_;
+    for (int i = 0; i < info.output_num; ++i) {
+        output_tensor_.push_back(output_tensor[i]);
+    }
+    return output_tensor_;
+}
+
+void BaseLayer::applyInput(int num) {
+    if (info.input_num) OTTER_FREE_ARRAY(input_tensor);
+    input_tensor = new Tensor* [num];
+    info.input_num = num;
+}
+
+void BaseLayer::applyOutput(int num) {
+    if (info.input_num) OTTER_FREE_ARRAY(output_tensor);
+    output_tensor = new Tensor* [num];
+    info.output_num = num;
 }
 
 void BaseLayer::applyKernel(int num) {
@@ -208,7 +255,8 @@ int BaseLayer::getParameter(int type) {
 }
 
 void BaseLayer::ClearGrad() {
-    output_tensor->clearDeltaWeight();
+    for (int i = 0; i < info.output_num; ++i)
+        output_tensor[i]->clearDeltaWeight();
 }
 
 bool BaseLayer::save_raw(FILE *f) {
@@ -389,49 +437,39 @@ void ParameterParser::parse() {
 }
 
 
-InputLayer::InputLayer(LayerOption opt_) {
-    opt = opt_;
+InputLayer::InputLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Input;
-    name = (opt.find("name") == opt.end()) ? "in" : opt["name"];
-    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
+    this->applyInput(0);
     info.output_dimension = (opt.find("input_dimension") == opt.end()) ? atoi(opt["output_dimension"].c_str()) : atoi(opt["input_dimension"].c_str());
     info.output_width = (opt.find("input_width") == opt.end()) ? atoi(opt["output_width"].c_str()) : atoi(opt["input_width"].c_str());
     info.output_height = (opt.find("input_height") == opt.end()) ? atoi(opt["output_height"].c_str()) : atoi(opt["input_height"].c_str());
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Input);
 
 void InputLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
+    input_tensor[0] = input_tensor_;
+    copy_cpu(info.output_number * info.batch_size, input_tensor[0]->weight, output_tensor[0]->weight);
 }
 
-DataLayer::DataLayer(LayerOption opt_) {
-    opt = opt_;
+DataLayer::DataLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Data;
-    name = (opt.find("name") == opt.end()) ? "data" : opt["name"];
-    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
     
-    info.input_width = opt_find_int(opt, "input_width", 0);
-    info.input_height = opt_find_int(opt, "input_height", 0);
-    info.input_dimension = opt_find_int(opt, "input_dimension", 0);
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    this->applyInput(0);
     info.output_width = info.input_width;
     info.output_height = info.input_height;
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     float scale = opt_find_float(opt, "scale", 1);
     bool mean = opt_find(opt, "mean");
     
-    applyKernel(2);
+    this->applyKernel(2);
     kernel[0] = Tensor(1, 1, 1, scale);
     kernel[1] = Tensor(1, 1, info.input_dimension, 0);
     if (mean) {
@@ -448,18 +486,18 @@ DataLayer::DataLayer(LayerOption opt_) {
         kernel[1].free();
     }
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Data);
 
 void DataLayer::Forward(Tensor *input_tensor_) {
-    input_tensor = input_tensor_;
-    float *output = output_tensor->weight;
+    input_tensor[0] = input_tensor_;
+    float *output = output_tensor[0]->weight;
     float *mean = kernel[1].weight;
     
-    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output);
+    copy_cpu(info.output_number * info.batch_size, input_tensor[0]->weight, output);
     if (mean) {
         int channel_size = info.input_width * info.input_height;
         for (int b = 0; b < info.batch_size; ++b) {
@@ -470,21 +508,14 @@ void DataLayer::Forward(Tensor *input_tensor_) {
         }
     }
     if (kernel[0][0] != 1) {
-        output = output_tensor->weight;
+        output = output_tensor[0]->weight;
         scal_cpu(info.output_number * info.batch_size, kernel[0][0], output);
     }
 }
 
-ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
-    opt = opt_;
+ConvolutionLayer::ConvolutionLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Convolution;
-    name = opt_find_string(opt, "name", "conv");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.input_width = opt_get_int(opt, "input_width");
-    info.input_height = opt_get_int(opt, "input_height");
-    info.input_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.kernel_width = opt_find_int(opt, "kernel_width", 1);
     info.kernel_height = opt_find_int(opt, "kernel_height", info.kernel_width);
     info.stride_x = opt_find_int(opt, "stride_x", -1);
@@ -502,7 +533,6 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     info.output_dimension = opt_find_int(opt, "number_kernel", 1);
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.groups = opt_find_int(opt, "groups", 1);
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     info.batchnorm = opt_find(opt, "batchnorm");
     info.nweights = info.input_dimension / info.groups * info.output_dimension * info.kernel_width * info.kernel_height;
     
@@ -521,27 +551,27 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     
     info.workspace_size = info.kernel_width * info.kernel_height * info.input_dimension * info.output_width * info.output_height / info.groups;
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Convolution);
 
-Tensor* ConvolutionLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace_) {
-    input_tensor = input_tensor_;
+vtensorptr ConvolutionLayer::connectGraph(vtensorptr input_tensor_, float *workspace_) {
+    input_tensor[0] = input_tensor_[0];
     workspace = workspace_;
-    return output_tensor;
+    return vtensorptr{output_tensor[0]};
 }
 
 void ConvolutionLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float *weights = kernel->weight;
     float *bias = biases->weight;
     
     int kernel_size = info.kernel_width;
     
-    output_tensor->clearWeight();
+    output_tensor[0]->clearWeight();
     
     int m = info.output_dimension / info.groups;
     int k = info.kernel_width * info.kernel_height * info.input_dimension / info.groups;
@@ -585,9 +615,9 @@ void ConvolutionLayer::Forward(bool train) {
 }
 
 void ConvolutionLayer::Backward(Tensor *none) {
-    float *input = input_tensor->weight;
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input = input_tensor[0]->weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     float *bias_delta = biases->delta_weight;
     float *weights = kernel->weight;
     float *weights_delta = kernel->delta_weight;
@@ -661,16 +691,8 @@ void ConvolutionLayer::Backward(Tensor *none) {
     }
 }
 
-PoolingLayer::PoolingLayer(LayerOption opt_) {
-    opt = opt_;
+PoolingLayer::PoolingLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Pooling;
-    name = opt_find_string(opt, "name", "pool");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.stride = opt_find_int(opt, "stride", 1);
     info.kernel_width = opt_find_int(opt, "kernel_width", info.stride);
@@ -687,8 +709,8 @@ PoolingLayer::PoolingLayer(LayerOption opt_) {
     this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.output_number * info.batch_size, 0);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Pooling);
@@ -696,8 +718,8 @@ REGISTER_LAYER_CLASS(Pooling);
 void PoolingLayer::Forward(bool train) {
     int stride = info.stride;
     
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
     int kernel_size = info.kernel_width;
     
@@ -737,8 +759,8 @@ void PoolingLayer::Forward(bool train) {
 }
 
 void PoolingLayer::Backward(Tensor *none) {
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float *indexes = kernel->weight;
     
     int total_size = info.output_width * info.output_height * info.output_dimension * info.batch_size;
@@ -749,26 +771,18 @@ void PoolingLayer::Backward(Tensor *none) {
     }
 }
 
-AvgPoolingLayer::AvgPoolingLayer(LayerOption opt_) {
-    opt = opt_;
+AvgPoolingLayer::AvgPoolingLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::AvgPooling;
     name = opt_find_string(opt, "name", "avgpooling");
     input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = 1;
     info.output_height = 1;
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(AvgPooling);
@@ -778,8 +792,8 @@ void AvgPoolingLayer::Forward(bool train) {
     int output_dimension = info.output_dimension;
     int channel_size = info.input_width * info.input_height;
     
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
     for(int b = 0; b < batch_size; ++b){
         for(int k = 0; k < output_dimension; ++k){
@@ -799,8 +813,8 @@ void AvgPoolingLayer::Backward(Tensor *none) {
     int output_dimension = info.output_dimension;
     int channel_size = info.input_width * info.input_height;
     
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     
     for(int b = 0; b < batch_size; ++b){
         for(int k = 0; k < output_dimension; ++k){
@@ -813,16 +827,9 @@ void AvgPoolingLayer::Backward(Tensor *none) {
     }
 }
 
-UpSampleLayer::UpSampleLayer(LayerOption opt_) {
-    opt = opt_;
+UpSampleLayer::UpSampleLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::UpSample;
-    name = opt_find_string(opt, "name", "up");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     int stride = opt_find_int(opt, "stride", 1);
     info.output_width = stride * info.input_width;
     info.output_height = stride * info.input_height;
@@ -837,18 +844,17 @@ UpSampleLayer::UpSampleLayer(LayerOption opt_) {
         info.output_height = info.input_height / stride;
     }
     info.stride = stride;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     info.scale = opt_find_float(opt, "scale", 1);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(UpSample);
 
 void UpSampleLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
     if (info.reverse) {
         upsample(output, info.output_width, info.output_height, info.output_dimension, info.batch_size, info.stride, false, info.scale, input);
@@ -858,8 +864,8 @@ void UpSampleLayer::Forward(bool train) {
 }
 
 void UpSampleLayer::Backward(Tensor *none) {
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     
     if (info.reverse) {
         upsample(output_delta, info.output_width, info.output_height, info.output_dimension, info.batch_size, info.stride, true, info.scale, input_delta);
@@ -890,18 +896,8 @@ void UpSampleLayer::upsample(float *in, int w, int h, int c, int batch, int stri
     }
 }
 
-DropoutLayer::DropoutLayer(LayerOption opt_) {
-    opt = opt_;
+DropoutLayer::DropoutLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Dropout;
-    name = opt_find_string(opt, "name", "dropout");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
@@ -914,15 +910,15 @@ DropoutLayer::DropoutLayer(LayerOption opt_) {
     this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Probability storage
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Dropout);
 
 void DropoutLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float *prob = kernel->weight;
     float probability = info.probability;
     float scale = info.scale;
@@ -940,8 +936,8 @@ void DropoutLayer::Forward(bool train) {
 }
 
 void DropoutLayer::Backward(Tensor *none) {
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     float *prob = kernel->weight;
     float probability = info.probability;
     float scale = info.scale;
@@ -952,21 +948,13 @@ void DropoutLayer::Backward(Tensor *none) {
     }
 }
 
-FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
-    opt = opt_;
+FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::FullyConnected;
-    name = opt_find_string(opt, "name", "fc");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = 1;
     info.output_height = 1;
     info.output_dimension = opt_find_int(opt, "number_neurons", 1);
     info.output_number = info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     info.batchnorm = opt_find(opt, "batchnorm");
     
     this->applyKernel(1);
@@ -981,37 +969,37 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) {
     float bias = opt_find_float(opt, "bias", 0);
     biases = new Tensor(1, 1, info.output_dimension, bias);
     biases->extend();
-    output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(FullyConnected);
 
 void FullyConnectedLayer::Forward(bool train) {
-    output_tensor->clearWeight();
+    output_tensor[0]->clearWeight();
     
     int m = info.batch_size;
     int k = info.input_number;
     int n = info.output_number;
-    float *a = input_tensor->weight;
+    float *a = input_tensor[0]->weight;
     float *b = kernel->weight;
-    float *c = output_tensor->weight;
+    float *c = output_tensor[0]->weight;
     gemm(0, 1, m, n, k, 1, a, k, b, k, 1, c, n);
     if(!info.batchnorm){
-        add_bias(output_tensor->weight, biases->weight, info.batch_size, info.output_dimension, 1);
+        add_bias(output_tensor[0]->weight, biases->weight, info.batch_size, info.output_dimension, 1);
     }
 }
 
 void FullyConnectedLayer::Backward(Tensor *none) {
     if(!info.batchnorm){
-        backward_bias(biases->delta_weight, output_tensor->delta_weight, info.batch_size, info.output_dimension, 1);
+        backward_bias(biases->delta_weight, output_tensor[0]->delta_weight, info.batch_size, info.output_dimension, 1);
     }
     
     int m = info.output_dimension;
     int k = info.batch_size;
     int n = info.input_number;
-    float *a = output_tensor->delta_weight;
-    float *b = input_tensor->weight;
+    float *a = output_tensor[0]->delta_weight;
+    float *b = input_tensor[0]->weight;
     float *c = kernel->delta_weight;
     gemm(1, 0, m, n, k, 1, a, m, b, n, 1, c, n);
     
@@ -1019,44 +1007,40 @@ void FullyConnectedLayer::Backward(Tensor *none) {
     k = info.output_dimension;
     n = info.input_number;
     
-    a = output_tensor->delta_weight;
+    a = output_tensor[0]->delta_weight;
     b = kernel->weight;
-    c = input_tensor->delta_weight;
+    c = input_tensor[0]->delta_weight;
     
     gemm(0, 0, m, n, k, 1, a, k, b, n, 1, c, n);
 }
 
-SigmoidLayer::SigmoidLayer(LayerOption opt_) {
-    opt = opt_;
+SigmoidLayer::SigmoidLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Sigmoid;
-    name = opt_find_string(opt, "name", "sig");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Sigmoid);
 
 void SigmoidLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         output[i] = 1.0 / (1.0 + exp(-(input[i])));
     }
 }
 
 void SigmoidLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float value;
     
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
@@ -1065,37 +1049,33 @@ void SigmoidLayer::Backward(Tensor *none) {
     }
 }
 
-TanhLayer::TanhLayer(LayerOption opt_) {
-    opt = opt_;
+TanhLayer::TanhLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Tanh;
-    name = opt_find_string(opt, "name", "tanh");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Tanh);
 
 void TanhLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         output[i] = tanh(input[i]);
     }
 }
 
 void TanhLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float value;
     
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
@@ -1104,38 +1084,34 @@ void TanhLayer::Backward(Tensor *none) {
     }
 }
 
-ReluLayer::ReluLayer(LayerOption opt_) {
-    opt = opt_;
+ReluLayer::ReluLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Relu;
-    name = opt_find_string(opt, "name", "re");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Relu);
 
 void ReluLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     
     #pragma omp parallel for num_threads(OMP_THREADS)
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         output[i] = std::max(input[i], 0.f);
     }
 }
 
 void ReluLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     
     #pragma omp parallel for num_threads(OMP_THREADS)
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
@@ -1143,36 +1119,28 @@ void ReluLayer::Backward(Tensor *none) {
     }
 }
 
-PReluLayer::PReluLayer(LayerOption opt_) {
-    opt = opt_;
+PReluLayer::PReluLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::PRelu;
-    name = opt_find_string(opt, "name", "prelu");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.input_width = opt_get_int(opt, "input_width");
-    info.input_height = opt_get_int(opt, "input_height");
-    info.input_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = info.input_width;
     info.output_height = info.input_height;
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     float alpha = opt_find_float(opt, "alpha", 0.25);
     
     this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension, alpha);
     kernel[0].extend();
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(PRelu);
 
 void PReluLayer::Forward(bool traiin) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float *negative_slope = kernel->weight, value;
     
     for (int b = info.batch_size; b--; ) {
@@ -1187,9 +1155,9 @@ void PReluLayer::Forward(bool traiin) {
 
 void PReluLayer::Backward(Tensor *none) {
     int one_batch_size = info.input_number;
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float *negative_slope = kernel->weight;
     float *negative_slope_delta = kernel->delta_weight;
     float chain_grad;
@@ -1206,44 +1174,41 @@ void PReluLayer::Backward(Tensor *none) {
     }
 }
 
-LReluLayer::LReluLayer(LayerOption opt_) {
-    opt = opt_;
+LReluLayer::LReluLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::LRelu;
-    name = opt_find_string(opt, "name", "lrelu");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     float alpha = opt_find_float(opt, "alpha", 0.1);
     this->applyKernel(1);
     kernel[0] = Tensor(1, 1, 1, alpha);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(LRelu);
 
 void LReluLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float negative_slope = kernel[0][0];
     
     #pragma omp parallel for num_threads(OMP_THREADS)
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         float value = input[i];
         output[i] = (value > 0) ? value : negative_slope * value;
     }
 }
 
 void LReluLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float negative_slope = kernel[0][0];
     
     #pragma omp parallel for num_threads(OMP_THREADS)
@@ -1253,19 +1218,9 @@ void LReluLayer::Backward(Tensor *none) {
     }
 }
 
-MishLayer::MishLayer(LayerOption opt_) {
-    opt = opt_;
+MishLayer::MishLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Mish;
-    name = opt_find_string(opt, "name", "mish");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
-    
+
     info.output_width = info.input_width;
     info.output_height = info.input_height;
     info.output_dimension = info.input_dimension;
@@ -1274,17 +1229,17 @@ MishLayer::MishLayer(LayerOption opt_) {
     this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Input Storage
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Mish);
 
 void MishLayer::Forward(bool train) {
     const float MISH_THRESHOLD = 20;
-    float *input = input_tensor->weight;
+    float *input = input_tensor[0]->weight;
     float *activation_input = kernel[0].weight;
-    float *output = output_tensor->weight;
+    float *output = output_tensor[0]->weight;
     
     #pragma omp parallel for num_threads(OMP_THREADS)
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
@@ -1295,8 +1250,8 @@ void MishLayer::Forward(bool train) {
 }
 
 void MishLayer::Backward(Tensor *none) {
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     float *activation_input = kernel[0].weight;
     const float MISH_THRESHOLD = 20.0f;
     
@@ -1314,19 +1269,9 @@ void MishLayer::Backward(Tensor *none) {
     }
 }
 
-SwishLayer::SwishLayer(LayerOption opt_) {
-    opt = opt_;
+SwishLayer::SwishLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Swish;
-    name = opt_find_string(opt, "name", "swish");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
-    
+
     info.output_width = info.input_width;
     info.output_height = info.input_height;
     info.output_dimension = info.input_dimension;
@@ -1335,16 +1280,16 @@ SwishLayer::SwishLayer(LayerOption opt_) {
     this->applyKernel(1);
     kernel[0] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);    // Input Storage
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Swish);
 
 void SwishLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
+    float *input = input_tensor[0]->weight;
     float *activation_input = kernel[0].weight;
-    float *output = output_tensor->weight;
+    float *output = output_tensor[0]->weight;
     
     #pragma omp parallel for num_threads(OMP_THREADS)
     for (int i = 0; i < info.input_number * info.batch_size; ++i) {
@@ -1356,9 +1301,9 @@ void SwishLayer::Forward(bool train) {
 }
 
 void SwishLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     float *activation_input = kernel[0].weight;
     
     #pragma omp parallel for num_threads(OMP_THREADS)
@@ -1368,45 +1313,41 @@ void SwishLayer::Backward(Tensor *none) {
     }
 }
 
-EluLayer::EluLayer(LayerOption opt_) {
-    opt = opt_;
+EluLayer::EluLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Elu;
-    name = opt_find_string(opt, "name", "elu");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     
     float alpha = opt_find_float(opt, "alpha", 1);
     this->applyKernel(1);
     kernel[0] = Tensor(1, 1, 1, alpha);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Elu);
 
 void EluLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float negative_slope = kernel[0][0];
     
     #pragma omp parallel for num_threads(OMP_THREADS)
-    for (int i = 0; i < info.input_number * info.batch_size; ++i) {
+    for (int i = 0; i < info.output_number * info.batch_size; ++i) {
         float value = input[i];
         output[i] = std::max(value, 0.f) + negative_slope * (exp(std::min(value, 0.f)) - 1.f);
     }
 }
 
 void EluLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *input = input_tensor->weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *input = input_tensor[0]->weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float negative_slope = kernel[0][0];
     
     #pragma omp parallel for num_threads(OMP_THREADS)
@@ -1416,17 +1357,13 @@ void EluLayer::Backward(Tensor *none) {
     }
 }
 
-BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
-    opt = opt_;
+BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::BatchNormalization;
-    name = opt_find_string(opt, "name", "bn");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     
     this->applyKernel(7);
     kernel[0] = Tensor(1, 1, info.output_dimension, 1); // scale
@@ -1443,15 +1380,15 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) {
     biases = new Tensor(1, 1, info.output_dimension, 0);
     biases->extend();
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(BatchNormalization);
 
 void BatchNormalizationLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     float *bias = biases->weight;
     float *scale = kernel[0].weight;
     float *mean = kernel[1].weight;
@@ -1487,8 +1424,8 @@ void BatchNormalizationLayer::Forward(bool train) {
 }
 
 void BatchNormalizationLayer::Backward(Tensor *none) {
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     float *bias_delta = biases->delta_weight;
     float *scale_delta = kernel[0].delta_weight;
     float *mean_delta = kernel[1].delta_weight;
@@ -1561,18 +1498,8 @@ void BatchNormalizationLayer::normalize_delta_cpu(float *x, float *mean, float *
     }
 }
 
-ConcatLayer::ConcatLayer(LayerOption opt_) {
-    opt = opt_;
+ConcatLayer::ConcatLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Concat;
-    name = opt_find_string(opt, "name", "cc");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
@@ -1602,24 +1529,23 @@ ConcatLayer::ConcatLayer(LayerOption opt_) {
     info.output_dimension /= info.splits;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     
-    concat_tensor.resize(info.concat_num + 1);
+    this->applyInput(info.concat_num + 1);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Concat);
 
-Tensor* ConcatLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
+vtensorptr ConcatLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
     for (int i = 0; i <= info.concat_num; ++i) {
-        concat_tensor[i] = (extra_tensor_[i]);
+        input_tensor[i] = (input_tensor_[i]);
     }
-    return output_tensor;
+    return vtensorptr{output_tensor[0]};
 }
 
 void ConcatLayer::Forward(bool train) {
-    float *output = output_tensor->weight;
+    float *output = output_tensor[0]->weight;
     
     int channel_size = info.input_width * info.input_height;
     
@@ -1627,7 +1553,7 @@ void ConcatLayer::Forward(bool train) {
         for (int i = 0; i <= info.concat_num; ++i) {
             int concat_input_size = channel_size * int(kernel[0][i]);
             int split_concat_input_size = concat_input_size / info.splits;
-            float *concat = concat_tensor[i]->weight + b * concat_input_size + split_concat_input_size * info.split_id;
+            float *concat = input_tensor[i]->weight + b * concat_input_size + split_concat_input_size * info.split_id;
             copy_cpu(split_concat_input_size, concat, output);
             output += split_concat_input_size;
         }
@@ -1635,7 +1561,7 @@ void ConcatLayer::Forward(bool train) {
 }
 
 void ConcatLayer::Backward(Tensor *none) {
-    float *output_delta = output_tensor->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     
     int channel_size = info.input_width * info.input_height;
     
@@ -1643,28 +1569,20 @@ void ConcatLayer::Backward(Tensor *none) {
         for (int i = 0; i <= info.concat_num; ++i) {
             int concat_input_size = channel_size * int(kernel[0][i]);
             int split_concat_input_size = concat_input_size / info.splits;
-            float *concat_delta = concat_tensor[i]->delta_weight + b * concat_input_size + split_concat_input_size * info.split_id;
+            float *concat_delta = input_tensor[i]->delta_weight + b * concat_input_size + split_concat_input_size * info.split_id;
             axpy_cpu(split_concat_input_size, 1, output_delta, concat_delta);
             output_delta += split_concat_input_size;
         }
     }
 }
 
-EltwiseLayer::EltwiseLayer(LayerOption opt_) {
-    opt = opt_;
+EltwiseLayer::EltwiseLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Eltwise;
-    name = opt_find_string(opt, "name", "eltwise");
-    input_name = opt_find_string(opt, "input_name", "default");
 
-    info.input_width = opt_get_int(opt, "input_width");
-    info.input_height = opt_get_int(opt, "input_height");
-    info.input_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = info.input_width;
     info.output_height = info.input_height;
     info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
 
     info.eltwise_num = opt_get_int(opt, "eltwise_num");
     if (info.eltwise_num < 1) {
@@ -1682,7 +1600,8 @@ EltwiseLayer::EltwiseLayer(LayerOption opt_) {
             exit(-100);
         }
     }
-    eltwise_tensor.resize(info.eltwise_num + 1);
+    
+    this->applyInput(info.eltwise_num + 1);
     
     string op = opt_find_string(opt, "eltwise_op", "sum");
     if (op == "prod") {
@@ -1703,36 +1622,35 @@ EltwiseLayer::EltwiseLayer(LayerOption opt_) {
         kernel[1] = Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
     }
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Eltwise);
 
-Tensor* EltwiseLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
+vtensorptr EltwiseLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
     for (int i = 0; i <= info.eltwise_num; ++i) {
-        eltwise_tensor[i] = (extra_tensor_[i]);
+        input_tensor[i] = (input_tensor_[i]);
     }
-    return output_tensor;
+    return vtensorptr{output_tensor[0]};
 }
 
 void EltwiseLayer::Forward(bool train) {
-    float *output = output_tensor->weight;
+    float *output = output_tensor[0]->weight;
     int one_batch_size = info.output_number * info.batch_size;
     
     switch ((ELTWISE_OP)info.eltwise_op) {
         case ELTWISE_OP::PROD:
-            mul_cpu(one_batch_size, eltwise_tensor[0]->weight, eltwise_tensor[1]->weight, output);
+            mul_cpu(one_batch_size, input_tensor[0]->weight, input_tensor[1]->weight, output);
             for (int i = 2; i <= info.eltwise_num; ++i) {
-                mul_cpu(one_batch_size, output, eltwise_tensor[i]->weight, output);
+                mul_cpu(one_batch_size, output, input_tensor[i]->weight, output);
             }
             break;
         case ELTWISE_OP::SUM:
-            output_tensor->clearWeight();
+            output_tensor[0]->clearWeight();
             for (int i = 0; i <= info.eltwise_num; ++i) {
-                float *eltwise = eltwise_tensor[i]->weight;
-                float *output = output_tensor->weight;
+                float *eltwise = input_tensor[i]->weight;
+                float *output = output_tensor[0]->weight;
                 axpy_cpu(one_batch_size, 1, eltwise, output);
             }
             break;
@@ -1740,8 +1658,8 @@ void EltwiseLayer::Forward(bool train) {
             float *mask = kernel[1].weight;
             fill_cpu(one_batch_size, mask, -1);
             fill_cpu(info.input_number * info.batch_size, output, -FLT_MAX);
-            float *eltwise_0 = eltwise_tensor[0]->weight;
-            float *eltwise_1 = eltwise_tensor[1]->weight;
+            float *eltwise_0 = input_tensor[0]->weight;
+            float *eltwise_1 = input_tensor[1]->weight;
             for (int idx = 0; idx < one_batch_size; ++idx) {
                 if (eltwise_0[idx] > eltwise_1[idx]) {
                     output[idx] = eltwise_0[idx];
@@ -1752,7 +1670,7 @@ void EltwiseLayer::Forward(bool train) {
                 }
             }
             for (int d = 2; d <= info.eltwise_num; ++d) {
-                float *eltwise = eltwise_tensor[d]->weight;
+                float *eltwise = input_tensor[d]->weight;
                 for (int idx = 0; idx < one_batch_size; ++idx) {
                     if (eltwise[idx] > output[idx]) {
                         output[idx] = eltwise[idx];
@@ -1766,13 +1684,13 @@ void EltwiseLayer::Forward(bool train) {
 }
 
 void EltwiseLayer::Backward(Tensor *none) {
-    float *output = output_tensor->weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     int one_batch_size = info.output_number * info.batch_size;
     
     for (int i = 0; i <= info.eltwise_num; ++i) {
-        float *eltwise = eltwise_tensor[i]->weight;
-        float *eltwise_delta = eltwise_tensor[i]->delta_weight;
+        float *eltwise = input_tensor[i]->weight;
+        float *eltwise_delta = input_tensor[i]->delta_weight;
         switch ((ELTWISE_OP)info.eltwise_op) {
             case ELTWISE_OP::PROD:
                 if (0) {
@@ -1801,42 +1719,40 @@ void EltwiseLayer::Backward(Tensor *none) {
     }
 }
 
-ShortCutLayer::ShortCutLayer(LayerOption opt_) {
-    opt = opt_;
+ShortCutLayer::ShortCutLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::ShortCut;
-    name = opt_find_string(opt, "name", "sc");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
-    info.output_number = info.input_number = info.output_width * info.output_height * info.output_dimension;
+    this->applyInput(2);
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
-    info.shortcut_width = opt_get_int(opt, "shortcut_width");
-    info.shortcut_height = opt_get_int(opt, "shortcut_height");
-    info.shortcut_dimension = opt_get_int(opt, "shortcut_dimension");
+    info.shortcut_width = opt_get_int(opt, "shortcut_1_width");
+    info.shortcut_height = opt_get_int(opt, "shortcut_1_height");
+    info.shortcut_dimension = opt_get_int(opt, "shortcut_1_dimension");
     
     this->applyKernel(1);
     kernel[0] = Tensor(1, 1, 2, 1); // alpha, beta
     kernel[0][0] = opt_find_int(opt, "alpha", 1);
     kernel[0][1] = opt_find_int(opt, "beta", 1);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(ShortCut);
 
-Tensor* ShortCutLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
-    shortcut_tensor = extra_tensor_[0];
-    return output_tensor;
+vtensorptr ShortCutLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
+    input_tensor[0] = input_tensor_[0];
+    input_tensor[1] = input_tensor_[1];
+    return vtensorptr{output_tensor[0]};
 }
 
 void ShortCutLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
-    float *shortcut = shortcut_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
+    float *shortcut = input_tensor[1]->weight;
     
     copy_cpu(info.input_number * info.batch_size, input, output);
     if (info.shortcut_width == info.output_width && info.shortcut_height == info.output_height && info.shortcut_dimension == info.output_dimension) {
@@ -1850,12 +1766,12 @@ void ShortCutLayer::Forward(bool train) {
 }
 
 void ShortCutLayer::Backward(Tensor *none) {
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
     axpy_cpu(info.input_number * info.batch_size, kernel[0][0], output_delta, input_delta);
     
-    float *shortcut_delta = shortcut_tensor->delta_weight;
-    output_delta = output_tensor->delta_weight;
+    float *shortcut_delta = input_tensor[1]->delta_weight;
+    output_delta = output_tensor[0]->delta_weight;
     
     shortcut_cpu(info.batch_size, info.output_width, info.output_height, info.output_dimension, output_delta, info.shortcut_width, info.shortcut_height, info.shortcut_dimension, kernel[0][0], kernel[0][1], shortcut_delta);
 }
@@ -1882,21 +1798,14 @@ void ShortCutLayer::shortcut_cpu(int batch, int w1, int h1, int c1, float *add, 
     }
 }
 
-ScaleChannelLayer::ScaleChannelLayer(LayerOption opt_) {
-    opt = opt_;
+ScaleChannelLayer::ScaleChannelLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::ScaleChannel;
-    name = opt_find_string(opt, "name", "scalechannel");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.input_width = opt_get_int(opt, "input_width");
-    info.input_height = opt_get_int(opt, "input_height");
-    info.input_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
-    info.output_width = opt_get_int(opt, "scalechannel_width");
-    info.output_height = opt_get_int(opt, "scalechannel_height");
-    info.output_dimension = opt_get_int(opt, "scalechannel_dimension");
+
+    this->applyInput(2);
+    info.output_width = opt_get_int(opt, "scalechannel_1_width");
+    info.output_height = opt_get_int(opt, "scalechannel_1_height");
+    info.output_dimension = opt_get_int(opt, "scalechannel_1_dimension");
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     
     info.scale_wh = opt_find(opt, "scale_wh");
     if (!info.scale_wh) {
@@ -1910,22 +1819,22 @@ ScaleChannelLayer::ScaleChannelLayer(LayerOption opt_) {
         }
     }
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0.0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(ScaleChannel);
 
-Tensor* ScaleChannelLayer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
-    scalechannel_tensor = extra_tensor_[0];
-    return output_tensor;
+vtensorptr ScaleChannelLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
+    input_tensor[0] = input_tensor_[0];
+    input_tensor[1] = input_tensor_[1];
+    return vtensorptr{output_tensor[0]};
 }
 
 void ScaleChannelLayer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
-    float *scalechannel = scalechannel_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
+    float *scalechannel = input_tensor[1]->weight;
     
     int size = info.input_number * info.batch_size;
     int channel_size = info.output_width * info.output_height;
@@ -1948,11 +1857,11 @@ void ScaleChannelLayer::Forward(bool train) {
 }
 
 void ScaleChannelLayer::Backward(Tensor *none) {
-    float *input = input_tensor->weight;
-    float *input_delta = input_tensor->delta_weight;
-    float *output_delta = output_tensor->delta_weight;
-    float *scalechannel = scalechannel_tensor->weight;
-    float *scalechannel_delta = scalechannel_tensor->delta_weight;
+    float *input = input_tensor[0]->weight;
+    float *input_delta = input_tensor[0]->delta_weight;
+    float *output_delta = output_tensor[0]->delta_weight;
+    float *scalechannel = input_tensor[1]->weight;
+    float *scalechannel_delta = input_tensor[1]->delta_weight;
     
     int size = info.input_number * info.batch_size;
     int channel_size = info.output_width * info.output_height;
@@ -1978,16 +1887,9 @@ void ScaleChannelLayer::Backward(Tensor *none) {
     }
 }
 
-SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
-    opt = opt_;
+SoftmaxLayer::SoftmaxLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Softmax;
-    name = opt_find_string(opt, "name", "sm");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.input_width = opt_get_int(opt, "input_width");
-    info.input_height = opt_get_int(opt, "input_height");
-    info.input_dimension = opt_get_int(opt, "input_dimension");
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.output_width = 1;
     info.output_height = 1;
     info.output_dimension = info.input_dimension;
@@ -1997,8 +1899,8 @@ SoftmaxLayer::SoftmaxLayer(LayerOption opt_) {
     this->applyKernel(1);
     kernel[0] = Tensor(1, 1, info.output_dimension * info.batch_size, 0);
     
-    output_tensor = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(1, 1, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(Softmax);
@@ -2007,9 +1909,9 @@ void SoftmaxLayer::Forward(bool train) {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
-    float *input = input_tensor->weight;
+    float *input = input_tensor[0]->weight;
     float *expo_sum = kernel->weight;
-    float *output = output_tensor->weight;
+    float *output = output_tensor[0]->weight;
     
     for (int b = info.batch_size; b--; ) {
         float max = input[0];
@@ -2034,7 +1936,7 @@ void SoftmaxLayer::Backward(Tensor *target) {
     int one_batch_input_size = info.input_number;
     int one_batch_output_size = info.output_dimension;
     
-    float *input_delta = input_tensor->delta_weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float *expo_sum = kernel->weight;
     float *target_ptr = target->weight;
     
@@ -2057,33 +1959,29 @@ void SoftmaxLayer::Backward(Tensor *target) {
     }
 }
 
-EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) {
-    opt = opt_;
+EuclideanLossLayer::EuclideanLossLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::EuclideanLoss;
-    name = opt_find_string(opt, "name", "el");
-    input_name = opt_find_string(opt, "input_name", "default");
     
-    info.output_width = opt_get_int(opt, "input_width");
-    info.output_height = opt_get_int(opt, "input_height");
-    info.output_dimension = opt_get_int(opt, "input_dimension");
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
     info.output_number = info.output_width * info.output_height * info.output_dimension;
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
 }
 
 REGISTER_LAYER_CLASS(EuclideanLoss);
 
 void EuclideanLossLayer::Forward(bool train) {
-    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
+    copy_cpu(info.output_number * info.batch_size, input_tensor[0]->weight, output_tensor[0]->weight);
 }
 
 void EuclideanLossLayer::Backward(Tensor *target) {
     int one_batch_size = info.output_dimension;
     
-    float *input = input_tensor->weight;
-    float *input_delta = input_tensor->delta_weight;
+    float *input = input_tensor[0]->weight;
+    float *input_delta = input_tensor[0]->delta_weight;
     float *target_ptr = target->weight;
     float &loss = info.loss; loss = 0;
     
@@ -2098,18 +1996,8 @@ void EuclideanLossLayer::Backward(Tensor *target) {
     }
 }
 
-YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
-    opt = opt_;
+YOLOv3Layer::YOLOv3Layer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Yolov3;
-    name = opt_find_string(opt, "name", "yolov3");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.batch_size = opt_find_int(opt, "batch_size", 1);
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
@@ -2152,21 +2040,21 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) {
         biases->weight[i * 2 + 1] = h;
     }
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
     detection = Tensor(1, 1, 1, 0);
 }
 
 REGISTER_LAYER_CLASS(YOLOv3);
 
-Tensor* YOLOv3Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
-    return &detection;
+vtensorptr YOLOv3Layer::connectGraph(vtensorptr input_tensor_, float *workspace) {
+    input_tensor[0] = input_tensor_[0];
+    return vtensorptr{&detection};
 }
 
 void YOLOv3Layer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     int channel_size = info.output_width * info.output_height;
     
     memcpy(output, input, info.output_number * info.batch_size * sizeof(float));
@@ -2179,7 +2067,7 @@ void YOLOv3Layer::Forward(bool train) {
             activate_array(output + index, (1 + info.classes) * channel_size, LOGISTIC);
         }
     }
-    input_tensor->clearDeltaWeight();
+    input_tensor[0]->clearDeltaWeight();
     
     if (!train) {
         vector<Detection> dets = yolo_get_detection_without_correction();
@@ -2213,8 +2101,8 @@ void YOLOv3Layer::Backward(Tensor *target) {
     int target_size = 5 * max_boxes;
     int classes = info.classes;
     
-    float *output = output_tensor->weight;
-    float *delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *delta = input_tensor[0]->delta_weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
     float *target_ptr = target->weight;
@@ -2351,7 +2239,7 @@ int YOLOv3Layer::entry_index(int batch, int location, int entry) {
 
 vector<Detection> YOLOv3Layer::yolo_get_detection_without_correction() {
     float threshold = 0.24; // TODO: threshold input
-    float *feature = output_tensor->weight;
+    float *feature = output_tensor[0]->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
     
@@ -2414,16 +2302,8 @@ int YOLOv3Layer::int_index(float *a, int val, int n) {
     return -1;
 }
 
-YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
-    opt = opt_;
+YOLOv4Layer::YOLOv4Layer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Yolov4;
-    name = opt_find_string(opt, "name", "yolov4");
-    input_name = opt_find_string(opt, "input_name", "default");
-    
-    info.input_width = opt_get_int(opt, "input_width")
-    info.input_height = opt_get_int(opt, "input_height")
-    info.input_dimension = opt_get_int(opt, "input_dimension")
-    info.input_number = info.input_width * info.input_height * info.input_dimension;
     
     info.output_width = info.input_width;
     info.output_height = info.input_height;
@@ -2514,21 +2394,21 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) {
         biases->weight[i * 2 + 1] = h;
     }
     
-    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
-    output_tensor->extend();
+    output_tensor[0] = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor[0]->extend();
     detection = Tensor(1, 1, 1, 0);
 }
 
 REGISTER_LAYER_CLASS(YOLOv4);
 
-Tensor* YOLOv4Layer::connectGraph(Tensor* input_tensor_, vtensorptr extra_tensor_, float *workspace) {
-    input_tensor = input_tensor_;
-    return &detection;
+vtensorptr YOLOv4Layer::connectGraph(vtensorptr input_tensor_, float *workspace) {
+    input_tensor[0] = input_tensor_[0];
+    return vtensorptr{&detection};
 }
 
 void YOLOv4Layer::Forward(bool train) {
-    float *input = input_tensor->weight;
-    float *output = output_tensor->weight;
+    float *input = input_tensor[0]->weight;
+    float *output = output_tensor[0]->weight;
     int channel_size = info.output_width * info.output_height;
     float scale_x_y = info.scale_x_y;
     float scale_x_y_bias = -0.5 * (scale_x_y - 1);
@@ -2549,7 +2429,7 @@ void YOLOv4Layer::Forward(bool train) {
             scal_add_cpu(2 * channel_size, scale_x_y, scale_x_y_bias, output + bbox_index);
         }
     }
-    input_tensor->clearDeltaWeight();
+    input_tensor[0]->clearDeltaWeight();
     
     if (!train) {
         vector<Detection> dets = yolo_get_detection_without_correction();
@@ -2596,8 +2476,8 @@ void YOLOv4Layer::Backward(Tensor *target) {
     IOU_KIND iou_loss = (IOU_KIND)info.iou_loss;
     IOU_KIND iou_thresh_kind = (IOU_KIND)info.iou_thresh_kind;
     
-    float *output = output_tensor->weight;
-    float *delta = input_tensor->delta_weight;
+    float *output = output_tensor[0]->weight;
+    float *delta = input_tensor[0]->delta_weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
     float *target_ptr = target->weight;
@@ -3034,7 +2914,7 @@ int YOLOv4Layer::compare_yolo_class(float *output, int classes, int class_index,
 
 vector<Detection> YOLOv4Layer::yolo_get_detection_without_correction() {
     float threshold = 0.24; // TODO: threshold input
-    float *feature = output_tensor->weight;
+    float *feature = output_tensor[0]->weight;
     float *bias = biases->weight;
     float *mask = kernel[0].weight;
     

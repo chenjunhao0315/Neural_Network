@@ -265,6 +265,7 @@ public:
     void Forward(bool train);    // For normal layer
     void Forward(Tensor *input);    // For input layer
     void Backward(Tensor *target);    // The output tensor should be extended! Or it will cause segmentation fault when clearing gradient (maybe fix at next version)
+    vtensorptr connectGraph(vtensorptr input_tensor_, float *workspace);    // If there are multi inputs or need workspace
     inline const char* Type() const {return "Custom_Name";}
 private:
     ...
@@ -276,6 +277,8 @@ Remeber to add enum at `Layer.hpp`.
 In the constrctor of custom layer, you can use ask space for storing data, for example
 ```cpp
 CustomLayer::CustomLayer(Layeroption opt) {
+    this->applyInput(NUM);    // ask for input space to store input tensor (default = 1) Note: Data layer should set it to 0
+    this->applyOutput(NUM);    // ask for output space to store output tensor (default = 1)
     this->applyKernel(NUM);    // ask for kernel space to store data
     kernel[0] = Tensor(WIDTH, HEIGHT, DIMENSION, PARAMETER);
     kernel[0].extend();    // If the kernel parameter can be updated
@@ -568,3 +571,4 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
+

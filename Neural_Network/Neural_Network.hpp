@@ -68,7 +68,7 @@ private:
     BaseLayer **layer;
     vtensorptr output;
     vector<string> output_layer;
-    unordered_map<string, Tensor*> terminal;
+    unordered_map<string, vtensorptr> terminal;
     vector<vector<int>> path;
     int batch_size;
     float *workspace;

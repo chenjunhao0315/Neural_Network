@@ -38,6 +38,10 @@ void Neural_Network::addLayer(LayerOption opt_) {
         opt_["name"] = to_string(opt_layer.size());
     }
     
+    if (opt_.find("input_id") == opt_.end()) {
+        opt_["input_id"] = "0";
+    }
+    
     opt_layer.push_back(opt_);
     
     if (opt_.find("batchnorm") != opt_.end()) {
@@ -81,27 +85,21 @@ void Neural_Network::compile(int batch_size_) {
         Parameter layer_param = LayerParameter::getParameter(opt["type"]);
         if (layer_param.check("connect")) {
             ParameterData par = layer_param.get("connect");
-            if (par.type == "single") {
-                opt[par.data + "_width"] = opt[par.data + "_width"] = to_string(layer[id_table[opt[par.data]]]->getParameter(0));
-                opt[par.data + "_height"] = to_string(layer[id_table[opt[par.data]]]->getParameter(1));
-                opt[par.data + "_dimension"] = to_string(layer[id_table[opt[par.data]]]->getParameter(2));
-            } else if (par.type == "multi") {
-                int connect_num = 0;
-                if (opt.find(par.data) != opt.end()) {
-                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
-                    stringstream connect_list(opt[par.data]);
+            int connect_num = 0;
+            if (opt.find(par.data) != opt.end()) {
+                connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                stringstream connect_list(opt[par.data]);
                     
-                    for (int i = 1; i <= connect_num; ++i) {
-                        string connect_name;
-                        getline(connect_list, connect_name, ',');
-                        EARSE_SPACE(connect_name);
-                        opt[par.data + "_" + to_string(i) + "_name"] = connect_name;
-                        opt[par.data + "_" + to_string(i) + "_width"] = to_string(layer[id_table[connect_name]]->getParameter(0));
-                        opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
-                        opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
-                    }
+                for (int i = 1; i <= connect_num; ++i) {
+                    string connect_name;
+                    getline(connect_list, connect_name, ',');
+                    EARSE_SPACE(connect_name);
+                    opt[par.data + "_" + to_string(i) + "_name"] = connect_name;
+                    opt[par.data + "_" + to_string(i) + "_width"] = to_string(layer[id_table[connect_name]]->getParameter(0));
+                    opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
+                    opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
                 }
-                opt[par.data + "_num"] = to_string(connect_num);
+            opt[par.data + "_num"] = to_string(connect_num);
             }
         } else if (layer_param.check("net")) {
             opt["net_width"] = to_string(layer[0]->getParameter(0));
@@ -143,43 +141,39 @@ void Neural_Network::constructGraph() {
     alloc_workspace();
     for (int i = 0; i < layer_number; ++i) {
         LayerOption &opt = opt_layer[i];
-        vtensorptr extra_tensor;
+        vtensorptr input_tensor;
+        if (i) input_tensor.push_back(terminal[opt["input_name"]][atoi(opt["input_id"].c_str())]);
         
         Parameter layer_param = LayerParameter::getParameter(opt["type"]);
         if (layer_param.check("connect")) {
             ParameterData par = layer_param.get("connect");
-            if (par.type == "single") {
-                extra_tensor.push_back(terminal[opt[par.data]]);
-            } else if (par.type == "multi") {
-                extra_tensor.push_back(terminal[opt["input_name"]]);
-                int connect_num = 0;
-                if (opt.find(par.data) != opt.end()) {
-                    connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
-                    stringstream connect_list(opt[par.data]);
-                    for (int i = 1; i <= connect_num; ++i) {
-                        string connect_name;
-                        getline(connect_list, connect_name, ',');
-                        EARSE_SPACE(connect_name);
-                        extra_tensor.push_back(terminal[connect_name]);
-                    }
+            int connect_num = 0;
+            if (opt.find(par.data) != opt.end()) {
+                connect_num = (int)count(opt[par.data].begin(), opt[par.data].end(), ',') + 1;
+                stringstream connect_list(opt[par.data]);
+                for (int i = 1; i <= connect_num; ++i) {
+                    string connect_name;
+                    getline(connect_list, connect_name, ',');
+                    EARSE_SPACE(connect_name);
+                    input_tensor.push_back(terminal[connect_name][0]);
                 }
             }
         }
 
-        Tensor *act = layer[i]->connectGraph(terminal[opt["input_name"]], extra_tensor, workspace);
-        OTTER_CHECK_PTR_QUIT(act, "[Graph Constructor] Node miss!\n", -87);
+        vtensorptr act = layer[i]->connectGraph(input_tensor, workspace);
+        OTTER_CHECK_PTR_QUIT(act[atoi(opt["input_id"].c_str())], "[Graph Constructor] Node miss!\n", -87);
         terminal[opt["name"]] = act;
     }
     
     int output_size = (int)output_layer.size();
     if (output_size > 0) {
         output.reserve(output_size);
-        output.push_back(terminal[output_layer[0]]);
+        output.push_back(terminal[output_layer[0]][0]);
         for (int i = 1; i < output_size; ++i) {
-            output.push_back(terminal[output_layer[i]]);
+            output.push_back(terminal[output_layer[i]][0]);
         }
     } else {
-        output.push_back(terminal[opt_layer[layer_number - 1]["name"]]);
+        output.push_back(terminal[opt_layer[layer_number - 1]["name"]][0]);
     }
 }
 

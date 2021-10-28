@@ -24,7 +24,7 @@ void test_all_layer(bool save) {
 //    nn.shape();
 //    nn.to_prototxt("test_all_layer.prototxt");
     
-    nn.addLayer(LayerOption{{"type", "Input"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}, {"name", "input"}});
+    nn.addLayer(LayerOption{{"type", "Data"}, {"input_width", "28"}, {"input_height", "28"}, {"input_dimension", "3"}, {"scale", "0.0078125"}, {"mean", "127.5, 127.5, 127.5"}, {"name", "input"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "2"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "Relu"}, {"name", "conv_1"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "16"}, {"kernel_width", "3"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_2"}});
     nn.addLayer(LayerOption{{"type", "Convolution"}, {"number_kernel", "8"}, {"kernel_width", "1"}, {"stride", "1"}, {"padding", "same"}, {"batchnorm", "true"}, {"activation", "LRelu"}, {"name", "conv_3"}});
@@ -54,13 +54,13 @@ void test_all_layer(bool save) {
     nn.to_prototxt("test_all_layer.prototxt");
 //    exit(1);
     
-    Data bee("bee.npy", 28, 28, 3, 80);
+    class Data bee("bee.npy", 28, 28, 3, 80);
     vtensor data_bee = bee.get(500);
     vtensor label_bee(500, Tensor(1, 1, 1, 0));
-    Data cat("cat.npy", 28, 28, 3, 80);
+    class Data cat("cat.npy", 28, 28, 3, 80);
     vtensor data_cat = cat.get(500);
     vtensor label_cat(500, Tensor(1, 1, 1, 1));
-    Data fish("fish.npy", 28, 28, 3, 80);
+    class Data fish("fish.npy", 28, 28, 3, 80);
     vtensor data_fish = fish.get(500);
     vtensor label_fish(500, Tensor(1, 1, 1, 2));
     

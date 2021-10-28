@@ -187,6 +187,11 @@ void div_cpu(int size, float *src1, float *src2, float *dst) {
         dst[i] = src1[i] / src2[i];
 }
 
+void sub_cpu(int size, float mean, float *src) {
+    for (int i = 0; i < size; ++i)
+        src[i] -= mean;
+}
+
 float sum_array(float *a, int n) {
     float sum = 0;
     for(int i = 0; i < n; ++i) sum += a[i];

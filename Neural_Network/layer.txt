@@ -4,6 +4,14 @@ Input {
     REQUIRED int input_dimension
 }
 
+Data {
+    REQUIRED int input_width
+    REQUIRED int input_height
+    REQUIRED int input_dimension
+    OPTION float scale 1
+    OPTION string mean none
+}
+
 Convolution {
     REQUIRED int number_kernel
     REQUIRED int kernel_width

@@ -12,7 +12,8 @@ This is a simple project to implement neural network in c++, the structure of ne
 
 ## Supported Layers
 #### Data layer
-* Input layer (data input)
+* Input layer (raw data input)
+* Data layer (support data transform)
 
 #### Vision layers
 * Convolution layer (depth-wise support)
@@ -81,6 +82,9 @@ nn.addLayer(LayerOption{{"type", "XXX"}, {"option", "YYY"}, {"input_name", "ZZZ"
 > **input_width** <br>
 > **input_height** <br>
 > **input_dimension**
+* Data layer options
+> scale (1) <br>
+> mean (none) usage: "mean_1, mean_2, ...", same dimension as input
 
 ##### Vision layers
 * Convolution layer options
@@ -261,12 +265,13 @@ public:
     void Forward(bool train);    // For normal layer
     void Forward(Tensor *input);    // For input layer
     void Backward(Tensor *target);    // The output tensor should be extended! Or it will cause segmentation fault when clearing gradient (maybe fix at next version)
+    inline const char* Type() const {return "Custom_Name";}
 private:
     ...
 };
 REGISTER_LAYER_CLASS(Custom);
 ```
-Remeber to add enum at `Layer.hpp` and write the display name at `Layer.cpp` `BaseLayer::type_to_string()`to make sure it can display correctly when using `Neural_Network::shape()` command but without that it should can work fine too.
+Remeber to add enum at `Layer.hpp`.
 
 In the constrctor of custom layer, you can use ask space for storing data, for example
 ```cpp
@@ -563,4 +568,3 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
-

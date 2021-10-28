@@ -412,6 +412,69 @@ void InputLayer::Forward(Tensor *input_tensor_) {
     copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output_tensor->weight);
 }
 
+DataLayer::DataLayer(LayerOption opt_) {
+    opt = opt_;
+    type = LayerType::Data;
+    name = (opt.find("name") == opt.end()) ? "data" : opt["name"];
+    input_name = (opt.find("input_name") == opt.end()) ? "default" : opt["input_name"];
+    
+    info.input_width = opt_find_int(opt, "input_width", 0);
+    info.input_height = opt_find_int(opt, "input_height", 0);
+    info.input_dimension = opt_find_int(opt, "input_dimension", 0);
+    info.input_number = info.input_width * info.input_height * info.input_dimension;
+    info.output_width = info.input_width;
+    info.output_height = info.input_height;
+    info.output_dimension = info.input_dimension;
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    info.batch_size = opt_find_int(opt, "batch_size", 1);
+    
+    float scale = opt_find_float(opt, "scale", 1);
+    bool mean = opt_find(opt, "mean");
+    
+    applyKernel(2);
+    kernel[0] = Tensor(1, 1, 1, scale);
+    kernel[1] = Tensor(1, 1, info.input_dimension, 0);
+    if (mean) {
+        int check = int(count(opt["mean"].begin(), opt["mean"].end(), ','))+ 1;
+        if (check != info.input_dimension)
+            fprintf(stderr, "[DataLayer] Mean value unmatched!\n");
+        string mean_list = opt["mean"];
+        for (int i = 0; i < check && i < info.input_dimension; ++i) {
+            kernel[1][i] = atof(mean_list.c_str());
+            size_t pos = mean_list.find(',');
+            mean_list = mean_list.substr(pos + 1);
+        }
+    } else {
+        kernel[1].free();
+    }
+    
+    output_tensor = new Tensor(info.output_width, info.output_height, info.output_dimension * info.batch_size, 0);
+    output_tensor->extend();
+}
+
+REGISTER_LAYER_CLASS(Data);
+
+void DataLayer::Forward(Tensor *input_tensor_) {
+    input_tensor = input_tensor_;
+    float *output = output_tensor->weight;
+    float *mean = kernel[1].weight;
+    
+    copy_cpu(info.output_number * info.batch_size, input_tensor->weight, output);
+    if (mean) {
+        int channel_size = info.input_width * info.input_height;
+        for (int b = 0; b < info.batch_size; ++b) {
+            for (int d = 0; d < info.input_dimension; ++d) {
+                sub_cpu(channel_size, mean[d], output);
+                output += channel_size;
+            }
+        }
+    }
+    if (kernel[0][0] != 1) {
+        output = output_tensor->weight;
+        scal_cpu(info.output_number * info.batch_size, kernel[0][0], output);
+    }
+}
+
 ConvolutionLayer::ConvolutionLayer(LayerOption opt_) {
     opt = opt_;
     type = LayerType::Convolution;

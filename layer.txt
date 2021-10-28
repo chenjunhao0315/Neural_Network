@@ -4,9 +4,12 @@ Input {
     REQUIRED int input_dimension
 }
 
-FullyConnected {
-    REQUIRED int number_neurons
-    OPTION bool batchnorm false 
+Data {
+    REQUIRED int input_width
+    REQUIRED int input_height
+    REQUIRED int input_dimension
+    OPTION float scale 1
+    OPTION string mean none
 }
 
 Convolution {
@@ -21,18 +24,6 @@ Convolution {
     OPTION int groups 1
 }
 
-PRelu {
-    OPTION float alpha 0.25
-}
-
-LRelu {
-    OPTION float alpha 0.1
-}
-
-Dropout {
-    OPTION float probability 0.5
-}
-
 Pooling {
     REQUIRED int kernel_width
     OPTION int kernel_height 0
@@ -44,11 +35,25 @@ UpSample {
     REQUIRED int stride
 }
 
-ShortCut {
-    OPTION single connect shortcut
-    REQUIRED string shortcut
+Dropout {
+    OPTION float probability 0.5
+}
+
+FullyConnected {
+    REQUIRED int number_neurons
+    OPTION bool batchnorm false
+}
+
+PRelu {
+    OPTION float alpha 0.25
+}
+
+LRelu {
+    OPTION float alpha 0.1
+}
+
+Elu {
     OPTION float alpha 1
-    OPTION float beta 1
 }
 
 Concat {
@@ -64,6 +69,19 @@ Eltwise {
     OPTION string eltwise_op sum
     OPTION float alpha 1
 }
+
+ShortCut {
+    OPTION single connect shortcut
+    REQUIRED string shortcut
+    OPTION float alpha 1
+    OPTION float beta 1
+}
+
+ScaleChannel {
+    OPTION single connect scalechannel
+    OPTION string scalechannel none
+}
+
 
 YOLOv3 {
     REQUIRED int net
@@ -100,10 +118,5 @@ YOLOv4 {
     OPTION bool new_coordinate false
     OPTION bool focal_loss false
     OPTION IOU_KIND iou_loss IOU
-    OPTION IOU_KIND iou_thres_kind IOU 
-}
-
-ScaleChannel {
-    OPTION single connect scalechannel
-    OPTION string scalechannel none
+    OPTION IOU_KIND iou_thres_kind IOU
 }

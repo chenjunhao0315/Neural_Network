@@ -50,63 +50,13 @@ void Neural_Network::addLayer(LayerOption opt_) {
     
     auto_opt.clear();
     if (opt_.find("activation") != opt_.end()) {
-        string method = opt_["activation"];
-        if (method == "Relu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "re_" + opt_["name"];
-            }
-            auto_opt["type"] = "Relu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Softmax") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sm_" + opt_["name"];
-            }
-            auto_opt["type"] = "Softmax";
-            auto_opt["number_class"] = auto_opt["number_neurons"];
-            opt_layer.push_back(auto_opt);
-        } else if (method == "PRelu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "pr_" + opt_["name"];
-            }
-            auto_opt["type"] = "PRelu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "LRelu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "lr_" + opt_["name"];
-            }
-            auto_opt["type"] = "LRelu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Elu") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "el_" + opt_["name"];
-            }
-            auto_opt["type"] = "Elu";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Sigmoid") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sg_" + opt_["name"];
-            }
-            auto_opt["type"] = "Sigmoid";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Tanh") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "ta_" + opt_["name"];
-            }
-            auto_opt["type"] = "Tanh";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Mish") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "mi_" + opt_["name"];
-            }
-            auto_opt["type"] = "Mish";
-            opt_layer.push_back(auto_opt);
-        } else if (method == "Swish") {
-            if (opt_.find("name") != opt_.end()) {
-                auto_opt["name"] = "sw_" + opt_["name"];
-            }
-            auto_opt["type"] = "Swish";
-            opt_layer.push_back(auto_opt);
-        }
+        string activation = opt_["activation"];
+        auto_opt["type"] = activation;
+        string abbreviate = activation.substr(0, 2);
+        std::transform(abbreviate.begin(), abbreviate.end(), abbreviate.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+        auto_opt["name"] = abbreviate + "_" + opt_["name"];
+        opt_layer.push_back(auto_opt);
     }
 }
 
@@ -476,7 +426,7 @@ bool Neural_Network::load_ottermodel(const char *model_name, int batch_size) {
 
 bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
     FILE *f = fopen(weights_name, "wb");
-    OTTER_CHECK_PTR_BOOL(f, "[Neural Network] Open file fail!\n");
+    OTTER_CHECK_PTR_QUIT(f, "[Neural Network] Open file fail!\n", -73);
     int major = 0;
     int minor = 2;
     int revision = 0;
@@ -507,7 +457,7 @@ bool Neural_Network::save_darknet(const char *weights_name, int cut_off) {
 
 bool Neural_Network::load_darknet(const char *weights_name) {
     FILE *f = fopen(weights_name, "rb");
-    OTTER_CHECK_PTR_BOOL(f, "[Neural Network] Open file fail!\n");
+    OTTER_CHECK_PTR_QUIT(f, "[Neural Network] Open file fail!\n", -73);
     fseek(f, 0, SEEK_END);
     size_t check = ftell(f);
     fseek(f, 0, SEEK_SET);

@@ -19,7 +19,8 @@ vtensor Data::get(int num) {
         vfloat img;
         for (int j = 0; j < width * height; ++j) {
             fread(&c, 1, 1, f);
-            img.push_back((float)c / 255.0);
+//            img.push_back((float)c / 255.0);
+            img.push_back((float)c);
         }
         data_set.push_back(Tensor(img, img, img, 28, 28));
         img.clear();

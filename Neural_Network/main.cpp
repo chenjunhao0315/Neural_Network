@@ -54,8 +54,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_50048_v4_r2.ottermodel");
-    IMG img("sheep.jpg");
+    YOLOv4 yolo("backup_15040_v4_r3.ottermodel");
+    IMG img("umbrella.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     

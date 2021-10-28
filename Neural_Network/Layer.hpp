@@ -45,6 +45,7 @@ struct Train_Args {
 
 enum LayerType {
     Input,
+    Data,
     Pooling,
     Convolution,
     AvgPooling,
@@ -73,6 +74,7 @@ enum LayerType {
 
 // Data layer
 class InputLayer;
+class DataLayer;
 
 // Vision layers
 class ConvolutionLayer;
@@ -382,8 +384,15 @@ class InputLayer : public BaseLayer {
 public:
     InputLayer(LayerOption opt_);
     void Forward(Tensor *input_tensor_);
-    void Backward(Tensor *none = nullptr) {}
     inline const char* Type() const {return "Input"; }
+};
+
+// Data layer
+class DataLayer : public BaseLayer {
+public:
+    DataLayer(LayerOption opt_);
+    void Forward(Tensor *input_tensor_);
+    inline const char* Type() const {return "Data"; }
 };
 
 // Convolution layer

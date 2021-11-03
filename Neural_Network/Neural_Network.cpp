@@ -190,8 +190,8 @@ float Neural_Network::Backward(Tensor *target) {
     if (model == "mtcnn") {
         float *target_ptr = target->weight;
         if (target_ptr[0] == 1) {
-            Tensor cls_pos(1, 1, 1, 1);
-            Tensor bbox_pos(1, 1, 4, 0);
+            Tensor cls_pos(1, 1, 1, 1, 1);
+            Tensor bbox_pos(1, 1, 1, 4, 0);
             bbox_pos = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
             layer[path[0][0]]->Backward(&cls_pos);
             layer[path[1][0]]->Backward(&bbox_pos);
@@ -210,13 +210,13 @@ float Neural_Network::Backward(Tensor *target) {
             loss = loss_cls + loss_bbox * 0.5;
         }
         else if (target_ptr[0] == 0) {
-            Tensor cls_neg(1, 1, 1, 0);
+            Tensor cls_neg(1, 1, 1, 1, 0);
             for (int i = 0; i < path[0].size(); ++i) {
                 layer[path[0][i]]->Backward(&cls_neg);
             }
         }
         else if (target_ptr[0] == -1) {
-            Tensor bbox_part(1, 1, 4, 0);
+            Tensor bbox_part(1, 1, 1, 4, 0);
             bbox_part = {target_ptr[1], target_ptr[2], target_ptr[3], target_ptr[4]};
             for (int i = 0; i < path[1].size(); ++i) {
                 layer[path[1][i]]->Backward(&bbox_part);
@@ -224,7 +224,7 @@ float Neural_Network::Backward(Tensor *target) {
             loss *= 0.5;
         }
         else if (target_ptr[0] == -2) {
-            Tensor landmark(1, 1, 10, 0);
+            Tensor landmark(1, 1, 1, 10, 0);
             float *landmark_ptr = landmark.weight;
             for (int i = 5; i <= 14; ++i) {
                 *(landmark_ptr++) = target_ptr[i];
@@ -612,8 +612,8 @@ Trainer::Trainer(Neural_Network *net, TrainerOption opt) {
     
     if (opt.find("steps") != opt.end()) {
         steps_num = opt["steps"];
-        steps = Tensor(1, 1, steps_num, 0);
-        scales = Tensor(1, 1, steps_num, 0);
+        steps = Tensor(1, 1, 1, steps_num, 0);
+        scales = Tensor(1, 1, 1, steps_num, 0);
         for (int i = 0; i < steps_num; ++i) {
             string steps_label = "steps_" + to_string(i + 1);
             string scales_label = "scales_" + to_string(i + 1);
@@ -817,9 +817,9 @@ vfloat Trainer::train_batch(vtensor &data_set, vtensor &target_set, int epoch) {
         loss = 0;
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j + batch_size <= data_set_size; ) {
-            Tensor data(1, 1, data_set[0].size * batch_size, 0);
+            Tensor data(batch_size, 1, 1, data_set[0].size, 0);
             float *data_ptr = data.weight;
-            Tensor label(1, 1, target_set[0].size * batch_size, 0);
+            Tensor label(batch_size, 1, 1, target_set[0].size, 0);
             float *label_ptr = label.weight;
             for (int k = 0; k < batch_size; ++k, ++j) {
                 Tensor &data_src = data_set[index[j]];
@@ -957,12 +957,12 @@ vfloat Trainer::train_batch(Tensor &data, Tensor &target) {
 }
 
 // Python interface
-Tensor* create_tensor_init(int width, int height, int dimension, float parameter) {
-    return new Tensor(width, height, dimension, parameter);
+Tensor* create_tensor_init(int batch, int channel, int height, int width, float parameter) {
+    return new Tensor(batch, channel, height, width, parameter);
 }
 
-Tensor* create_tensor_array(float *data, int width, int height, int dimension) {
-    return new Tensor(data, width, height, dimension);
+Tensor* create_tensor_array(float *data, int width, int height, int channel) {
+    return new Tensor(data, width, height, channel);
 }
 
 void tensor_show(Tensor *t) {

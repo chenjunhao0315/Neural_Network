@@ -437,9 +437,9 @@ trainer.train_batch(data, label);
 It is the data structure used in this neural networkm, data arrangement is NCHW. The **Tensor** class is defined by,
 ```cpp
 class Tensor {
-    int width;
+    int batch;
+    int channel;
     int height;
-    int dimension;
     int size;
     float* weight;
     float* delta_weight;
@@ -450,15 +450,15 @@ class Tensor {
 * Method 1 <br>
 You will get a **Tensor t** with random value inside.
 ```cpp
-Tensor t(WIDTH, HEIGHT, DIMENSION);
+Tensor t(BATCH, CHANNEL, HEIGHT, WIDTH);
 ```
 * Method 2 <br>
 You will get a **Tensor t** with identical value **PARAMETER** inside.
 ```cpp
-Tensor t(WIDTH, HEIGHT, DIMENSION, PARAMETER);
+Tensor t(BATCH, CHANNEL, HEIGHT, WIDTH, PARAMETER);
 ```
 * Method 3 <br>
-You will get a **Tensor t** with the same value as the **vector** you past in with **width** and **height** are equal to **1**.
+You will get a **Tensor t** with the same value as the **vector** you past in with **batch**, **height** and **width** are equal to **1**.
 ```cpp
 vfloat v{1, 2, 3};
 Tensor t(v);
@@ -473,58 +473,65 @@ Tensor t(f, 1, 1, 3);    // t = [1, 2, 3]
 #### Tensor extend
 Allocate the memory of **delta_weight** in Tensor. To save memory, it will not be allocated in default.
 ```cpp
-Tensor t(WIDTH, HEIGHT, DIMENSION);
+Tensor t(BATCH, CHANNEL, HEIGHT, WIDTH);
 t.extend();
+```
+
+#### Tensor reshape
+Reshape the Tensor and clear all data.
+```cpp
+Tensor t(BATCH, CHANNEL, HEIGHT, WIDTH);
+t.reshape(BATCH, CHANNEL, HEIGHT, WIDTH, EXTEND);
 ```
 
 #### Operation on Tensor
 * = (Tensor) <br>
 Deep copy from a to b, including extend.
 ```cpp
-Tensor a(1, 1, 2, 1);    // a = [1, 1]
+Tensor a(1, 1, 1, 2, 1);    // a = [1, 1]
 Tensor b = a;   // b = [1, 1]
 ```
 * = (float) <br>
 Set all value as input
 ```cpp
-Tensor a(1, 1, 3, 0);    // a = [0, 0, 0]
+Tensor a(1, 1, 1, 3, 0);    // a = [0, 0, 0]
 a = 1;  // a = [1, 1, 1]
 ```
 * = (initializer list) <br>
 Set the previous elements as initialzer list
 ```cpp
-Tensor a(1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
+Tensor a(1, 1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
 a = {1, 2, 4};  // a = [1, 2, 4, 3, 3]
 ```
 * [INDEX] <br>
 Revise or take the value at INDEX.
 ```cpp
-Tensor a(1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
+Tensor a(1, 1, 1, 5, 3);    // a = [3, 3, 3, 3, 3]
 a[2] = 0;   // a = [3, 3, 0, 3, 3]
 float value = a[4]; // value = 3
 ```
 * += (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);    // a = [1, 1]
-Tensor b(1, 1, 2, 2);    // b = [2, 2]
+Tensor a(1, 1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 1, 2, 2);    // b = [2, 2]
 a += b; // a = [3, 3] b = [2, 2]
 ```
 * -= (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);    // a = [1, 1]
-Tensor b(1, 1, 2, 2);    // b = [2, 2]
+Tensor a(1, 1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 1, 2, 2);    // b = [2, 2]
 a -= b; // a = [-1, -1] b = [2, 2]
 ```
 * \+ (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);    // a = [1, 1]
-Tensor b(1, 1, 2, 2);    // b = [2, 2]
+Tensor a(1, 1, 1, 2, 1);    // a = [1, 1]
+Tensor b(1, 1, 1, 2, 2);    // b = [2, 2]
 Tensor c = a + b;   // c = [3, 3]
 ```
 * \- (Tensor)
 ```cpp
-Tensor a(1, 1, 2, 1);   // a = [1, 1]
-Tensor b(1, 1, 2, 2);   // b = [2, 2]
+Tensor a(1, 1, 1, 2, 1);   // a = [1, 1]
+Tensor b(1, 1, 1, 2, 2);   // b = [2, 2]
 Tensor c = a - b;   // c = [-1,-1]
 ```
 * << <br>
@@ -556,15 +563,15 @@ int main(int argc, const char * argv[]) {
     nn.addLayer(LayerOption{{"type", "FullyConnected"}, {"number_neurons", "2"}, {"activation", "Softmax"}});
     nn.compile();
 
-    Tensor a(1, 1, 2, 0);
-    Tensor b(1, 1, 2, 1);
-    Tensor c(1, 1, 2); c = {0, 1};
-    Tensor d(1, 1, 2); d = {1, 0};
+    Tensor a(1, 1, 1, 2, 0);
+    Tensor b(1, 1, 1, 2, 1);
+    Tensor c(1, 1, 1, 2); c = {0, 1};
+    Tensor d(1, 1, 1, 2); d = {1, 0};
     vtensor data{a, b, c, d};
-    Tensor a_l(1, 1, 1, 0);
-    Tensor b_l(1, 1, 1, 0);
-    Tensor c_l(1, 1, 1, 1);
-    Tensor d_l(1, 1, 1, 1);
+    Tensor a_l(1, 1, 1, 1, 0);
+    Tensor b_l(1, 1, 1, 1, 0);
+    Tensor c_l(1, 1, 1, 1, 1);
+    Tensor d_l(1, 1, 1, 1, 1);
     vtensor label{a_l, b_l, c_l, d_l};
 
     Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.1}, {"warmup", 5}});
@@ -587,3 +594,4 @@ int main(int argc, const char * argv[]) {
 [6]: https://arxiv.org/pdf/1604.02878.pdf
 [7]: https://arxiv.org/pdf/1804.02767.pdf
 [8]: https://www.youtube.com/watch?v=XJ7HLz9VYz0&list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh
+

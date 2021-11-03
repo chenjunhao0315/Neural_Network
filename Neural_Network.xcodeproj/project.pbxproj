@@ -368,6 +368,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,
@@ -383,6 +384,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,

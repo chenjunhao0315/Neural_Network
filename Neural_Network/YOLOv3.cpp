@@ -22,7 +22,7 @@ YOLOv3::YOLOv3(const char *model_name, int classes_, int batch_size) {
 
 vector<Detection> YOLOv3::detect(IMG &input) {
     IMG src_img = yolo_pre_process_img(input, net_width, net_height);
-    Tensor src_tensor(net_width, net_height, 3, 0);
+    Tensor src_tensor(1, 3, net_height, net_width, 0);
     convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, net_width, net_height, 3);
     
     Clock c;
@@ -129,7 +129,7 @@ void YOLOv3::yolo_nms(vector<Detection> &det_list, int classes ,float threshold)
 }
 
 vector<Detection> YOLOv3::yolo_correct_box(Tensor *box_list, int img_w, int img_h, int net_w, int net_h, bool relative) {
-    int list_length = box_list->dimension;
+    int list_length = box_list->channel;
     vector<Detection> corrected_box; corrected_box.resize(list_length);
     float *list_info = box_list->weight;
 
@@ -351,7 +351,7 @@ yolo_train_args YOLOv3_DataLoader::get_train_arg(int index) {
     Tensor label(label_data);
 //    resize.save("resize.jpg");
     resize = resize.scale(1.0 / 255.0, MAT_32FC3);
-    Tensor data(net_w, net_h, 3, 0);
+    Tensor data(1, 3, net_h, net_w, 0);
     convert_index_base_to_channel_base((float*)resize.toPixelArray(), data.weight, net_w, net_h, 3);
     
     return yolo_train_args(data, label);
@@ -451,9 +451,9 @@ void YOLOv3_Trainer::train(int epoch) {
         loss = 0;
         shuffle(index.begin(), index.end(), rng);
         for (int j = 0; j + batch_size <= data_set_size; ) {
-            Tensor data(1, 1, data_size * batch_size, 0);
+            Tensor data(batch_size, 1, 1, data_size, 0);
             float *data_ptr = data.weight;
-            Tensor label(1, 1, label_size * batch_size, 0);
+            Tensor label(batch_size, 1, 1, label_size, 0);
             float *label_ptr = label.weight;
                 
             for (int k = 0; k < batch_size; ++k, ++j) {

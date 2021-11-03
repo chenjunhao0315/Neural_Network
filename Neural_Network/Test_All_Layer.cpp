@@ -56,13 +56,13 @@ void test_all_layer(bool save) {
     
     class Data bee("bee.npy", 28, 28, 3, 80);
     vtensor data_bee = bee.get(500);
-    vtensor label_bee(500, Tensor(1, 1, 1, 0));
+    vtensor label_bee(500, Tensor(1, 1, 1, 1, 0));
     class Data cat("cat.npy", 28, 28, 3, 80);
     vtensor data_cat = cat.get(500);
-    vtensor label_cat(500, Tensor(1, 1, 1, 1));
+    vtensor label_cat(500, Tensor(1, 1, 1, 1, 1));
     class Data fish("fish.npy", 28, 28, 3, 80);
     vtensor data_fish = fish.get(500);
-    vtensor label_fish(500, Tensor(1, 1, 1, 2));
+    vtensor label_fish(500, Tensor(1, 1, 1, 1, 2));
     
     vtensor data_train;
     vtensor data_label;

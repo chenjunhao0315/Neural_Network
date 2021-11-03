@@ -141,8 +141,8 @@ private:
 
 // Python interface
 extern "C" {
-    Tensor* create_tensor_init(int width, int height, int dimension, float parameter);
-    Tensor* create_tensor_array(float *data, int width, int height, int dimension);
+    Tensor* create_tensor_init(int batch, int channel, int height, int width, float parameter);
+    Tensor* create_tensor_array(float *data, int width, int height, int channel);
     void tensor_show(Tensor *t);
 
     Neural_Network* create_network(const char *model_name);

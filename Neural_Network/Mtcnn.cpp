@@ -97,7 +97,7 @@ Feature_map PNet::predict(IMG &img) {
     int x, y;
     int h, w, f_h, f_w, f_d;
     int coordinate_h, coordinate_w;
-    Tensor input(12, 12, 3, 0);
+    Tensor input(1, 3, 12, 12, 0);
     
     unsigned char *rgb = img.toPixelArray();
     int img_size = img.width * img.height * 3;
@@ -267,7 +267,7 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
     vector<Bbox> square_bbox = convert_to_square(pnet_bbox);
     vector<Bbox> rnet_bbox;
     size_t square_bbox_size = square_bbox.size();
-    Tensor crop_img(24, 24, 3, 0);
+    Tensor crop_img(1, 3, 24, 24, 0);
     for (int i = 0; i < square_bbox_size; ++i) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(24, 24));
@@ -346,7 +346,7 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
         IMG crop = img.crop(Rect(square_bbox[i].x1, square_bbox[i].y1, square_bbox[i].x2, square_bbox[i].y2));
         crop = crop.resize(Size(48, 48));
         unsigned char *pixel = crop.toPixelArray();
-        Tensor crop_img(48, 48, 3, 0);
+        Tensor crop_img(1, 3, 48, 48, 0);
         float *pixel_c = crop_img.weight;
         int count = 0;
         for (int d = 0; d < 3; ++d) {
@@ -662,7 +662,7 @@ Tensor MtcnnLoader::getLabel(int index) {
     fread(&cls, sizeof(int), 1, label_ptr);
     fread(bbox, sizeof(float), 4, label_ptr);
     fread(landmark, sizeof(float), 10, label_ptr);
-    Tensor label_data(1, 1, 15, 0);
+    Tensor label_data(1, 1, 1, 15, 0);
     float *label_ptr = label_data.weight;
     *(label_ptr++) = ((float)cls);
     for (int i = 0; i < 4; ++i) {

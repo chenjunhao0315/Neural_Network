@@ -21,7 +21,7 @@ using namespace std;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-//    test_all_layer(true);
+    test_all_layer(true);
     
 //    YOLOv4 nn(80, 32);
 //
@@ -54,10 +54,10 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-//    YOLOv4 yolo("backup_0_40000_v4_r7.ottermodel");
-//    IMG img("umbrella.jpg");
-//    yolo.detect(img);
-//    img.save("detected.jpg", 100);
+    YOLOv4 yolo("backup_0_40000_v4_r7.ottermodel");
+    IMG img("umbrella.jpg");
+    yolo.detect(img);
+    img.save("detected.jpg", 100);
     
 //    IMG img("target.jpg");
 //    Clock c;

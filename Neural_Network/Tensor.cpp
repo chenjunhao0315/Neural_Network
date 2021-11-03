@@ -8,12 +8,24 @@
 #include "Tensor.hpp"
 
 Tensor::Tensor() {
-    width = 0;
+    batch = 0;
+    channel = 0;
     height = 0;
-    dimension = 0;
+    width = 0;
     size = 0;
     weight = nullptr;
     delta_weight = nullptr;
+}
+
+void Tensor::reshape(int batch_, int channel_, int height_, int width_, bool extend) {
+    this->free();
+    batch = batch_;
+    channel = channel_;
+    height = height_;
+    width = width_;
+    size = batch * channel * height * width;
+    weight = new float [size]();
+    delta_weight = (extend) ? new float [size]() : nullptr;
 }
 
 void Tensor::free() {
@@ -25,28 +37,21 @@ Tensor::~Tensor() {
     this->free();
 }
 
-Tensor::Tensor(const Tensor &T) {
+Tensor::Tensor(const Tensor &T) : Tensor() {
     if (this != &T) {
-        width = T.width;
-        height = T.height;
-        dimension = T.dimension;
-        size = T.size;
-        weight = new float [size];
-        memcpy(weight, T.weight, sizeof(float) * size);
+        this->reshape(T.batch, T.channel, T.height, T.width, T.delta_weight);
         
-        if (T.delta_weight) {
-            delta_weight = new float [size];
+        memcpy(weight, T.weight, sizeof(float) * size);
+        if (T.delta_weight)
             memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
-        } else {
-            delta_weight = nullptr;
-        }
     }
 }
 
 Tensor::Tensor(Tensor &&T) {
+    batch = T.batch;
     width = T.width;
     height = T.height;
-    dimension = T.dimension;
+    channel = T.channel;
     size = T.size;
     weight = T.weight;
     T.weight = nullptr;
@@ -56,29 +61,29 @@ Tensor::Tensor(Tensor &&T) {
 
 Tensor& Tensor::operator=(const Tensor &T) {
     if (this != &T) {
+        if (size != T.size) {
+            this->reshape(T.batch, T.channel, T.height, T.width, T.delta_weight);
+        }
+        
+        batch = T.batch;
         width = T.width;
         height = T.height;
-        dimension = T.dimension;
-        if (size != T.size) {
-            this->free();
-        }
-        size = T.size;
-        weight = new float [size];
+        channel = T.channel;
+        
         memcpy(weight, T.weight, sizeof(float) * size);
         if (T.delta_weight) {
-            delta_weight = new float [size];
+            if (!delta_weight)
+                this->extend();
             memcpy(delta_weight, T.delta_weight, sizeof(float) * size);
         } else {
-            delta_weight = nullptr;
+            OTTER_FREE_ARRAY(delta_weight);
         }
     }
     return *this;
 }
 
 Tensor& Tensor::operator=(float c) {
-    float *ptr = weight;
-    for (int i = size; i--; )
-        *(ptr++) = c;
+    fill_cpu(size, weight, c);
     return *this;
 }
 
@@ -130,16 +135,9 @@ Tensor& Tensor::operator-=(const Tensor &T) {
     return *this;
 }
 
-Tensor::Tensor(int width_, int height_, int dimension_) {
-    width = width_;
-    height = height_;
-    dimension = dimension_;
-    size = width * height * dimension;
-    
-    // initialize
-    weight = new float [size];
-    delta_weight = nullptr;
-    
+Tensor::Tensor(int batch_, int channel_, int height_, int width_) : Tensor() {
+    this->reshape(batch_, channel_, height_, width_, false);
+
     // assign random value
     float scale = sqrt(1.0 / size);
     for (int i = size; i--; ) {
@@ -147,15 +145,9 @@ Tensor::Tensor(int width_, int height_, int dimension_) {
     }
 }
 
-Tensor::Tensor(int width_, int height_, int dimension_, float parameter) {
-    width = width_;
-    height = height_;
-    dimension = dimension_;
-    size = width * height * dimension;
-    
-    // initialize
-    weight = new float [size]();
-    delta_weight = nullptr;
+Tensor::Tensor(int batch_, int channel_, int height_, int width_, float parameter) : Tensor() {
+    this->reshape(batch_, channel_, height_, width_, false);
+
     if (parameter)
         fill(weight, weight + size, parameter);
 }
@@ -168,49 +160,27 @@ void Tensor::copyTo(Tensor &T) {
     memcpy(T.weight, weight, sizeof(float) * min(size, T.size));
 }
 
-Tensor::Tensor(Tensor *T) {
+Tensor::Tensor(Tensor *T) : Tensor() {
     if (T) {
-        width = T->width;
-        height = T->height;
-        dimension = T->dimension;
-        size = width * height * dimension;
-        
-        // initialize
-        weight = new float [size]();
-        if (T->delta_weight)
-            delta_weight = new float [size]();
-        else
-            delta_weight = nullptr;
-        
+        this->reshape(T->batch, T->channel, T->height, T->width, T->delta_weight);
         
         memcpy(weight, T->weight, sizeof(float) * size);
+        if (T->delta_weight)
+            memcpy(delta_weight, T->delta_weight, sizeof(float) * size);
     }
 }
 
-Tensor::Tensor(vfloat &V) {
-    width = 1;
-    height = 1;
-    dimension = (int)V.size();
-    size = width * height * dimension;
+Tensor::Tensor(vfloat &V) : Tensor() {
+    this->reshape(1, (int)V.size(), 1, 1, false);
     
-    // initialize
-    weight = new float [size];
-    delta_weight = nullptr;
     for (int i = 0; i < size; ++i) {
         weight[i] = V[i];
     }
 }
 
-Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
-    width = width_;
-    height = height_;
-    dimension = 3;
-    int n = size = width * height;
-    size *= 3;
-    
-    // initialize
-    weight = new float [size]();
-    delta_weight = nullptr;
+Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) : Tensor() {
+    this->reshape(1, 3, height_, width_, false);
+    int n = width * height;
     
     for (int i = 0; i < n; ++i) {
         weight[i] = V1[i];
@@ -219,31 +189,23 @@ Tensor::Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_) {
     }
 }
 
-Tensor::Tensor(float* pixelArray, int width_, int height_, int dimension_) {
-    width = width_;
-    height = height_;
-    dimension = dimension_;
-    int n = size = width * height * dimension;
+Tensor::Tensor(float* pixelArray, int width_, int height_, int channel_) : Tensor() {
+    this->reshape(1, channel_, height_, width_, false);
     
-    // initialize
-    weight = new float [n];
-    delta_weight = nullptr;
-    
-    copy_cpu(n, pixelArray, weight);
+    copy_cpu(size, pixelArray, weight);
 }
 
 void Tensor::one_of_n_encodinig(int index, int n) {
     if (size != n) {
-        size = n;
-        if (weight) delete [] weight;
-        weight = new float [size]();
+        this->reshape(1, n, 1, 1, false);
     }
     weight[index] = 1;
 }
 
 Tensor Tensor::concate(const Tensor &T) {
     assert(same_plane(*this, T));
-    Tensor result(width, height, dimension + T.dimension);
+//    Tensor result(width, height, channel + T.channel);
+    Tensor result(batch, channel + T.channel, height, width, 0);
     float *src_1 = weight;
     float *src_2 = T.weight;
     float *dst = result.weight;
@@ -298,49 +260,19 @@ int Tensor::getHeight() {
 }
 
 int Tensor::getDimension() {
-    return dimension;
+    return channel;
 }
 
 void Tensor::shape() {
-    printf("width: %d height: %d dimension: %d size: %d\n", width, height, dimension, size);
+    printf("width: %d height: %d channel: %d size: %d\n", width, height, channel, size);
 }
 
-void Tensor::set(int width_, int height_, int dimension_, float value) {
-    weight[((height_ * width) + width_) + (width * height * dimension_)] = value;
-}
-
-float Tensor::get(int width_, int height_, int dimension_) {
-    return weight[((height_ * width) + width_) + (width * height * dimension_)];
-}
-
-float Tensor::getGrad(int width_, int height_, int dimension_) {
-    return delta_weight[((height_ * width) + width_) + (width * height * dimension_)];
-}
-
-void Tensor::addGrad(int width_, int height_, int dimension_, float value, int shift_) {
-    delta_weight[((width * height_) + width_) + (width * height * dimension_) + shift_] += value;
-}
-
-void Tensor::save(FILE *f) {
-    fwrite(&width, sizeof(int), 1, f);
-    fwrite(&height, sizeof(int), 1, f);
-    fwrite(&dimension, sizeof(int), 1, f);
-    fwrite(&size, sizeof(int), 1, f);
-    fwrite(weight, sizeof(float), size, f);
+float Tensor::get(int batch_, int channel_, int height_, int width_) {
+    return weight[((height_ * width) + width_) + (width * height * channel_) + (width * height * channel * batch_)];
 }
 
 void Tensor::save_raw(FILE *f) {
     fwrite(weight, sizeof(float), size, f);
-}
-
-void Tensor::load(FILE *f) {
-    fread(&width, sizeof(int), 1, f);
-    fread(&height, sizeof(int), 1, f);
-    fread(&dimension, sizeof(int), 1, f);
-    fread(&size, sizeof(int), 1, f);
-    if (weight) delete [] weight;
-    weight = new float [size];
-    fread(weight, sizeof(float), size, f);
 }
 
 void Tensor::load_raw(FILE *f) {
@@ -362,7 +294,7 @@ vfloat Tensor::toVector() {
 void Tensor::toIMG(const char *filename) {
     FILE *f = fopen(filename, "wb");
     fprintf(f, "P6\n%d %d\n255\n", width, height);
-    unsigned char *pixel = new unsigned char [3 * width * height];
+    unsigned char pixel[3 * width * height];
     for (int i = 0; i < width * height; ++i) {
         for (int j = 0; j < 3; ++j) {
             pixel[i + j] = (unsigned char)(weight[i + j * width * height] * 255);
@@ -373,13 +305,15 @@ void Tensor::toIMG(const char *filename) {
 }
 
 ostream& operator<<(ostream& os, Tensor& t) {
-    for (int d = 0; d < t.dimension; ++d) {
-        os << "Dim: " << d << std::endl;
-        for (int h = 0; h < t.height; ++h) {
-            for (int w = 0; w < t.width; ++w) {
-                os << std::fixed << std::setprecision(2) << (t.get(w, h, d)) << " ";
+    for (int b = 0; b < t.batch; ++b) {
+        for (int c = 0; c < t.channel; ++c) {
+            os << "Dim: " << c << std::endl;
+            for (int h = 0; h < t.height; ++h) {
+                for (int w = 0; w < t.width; ++w) {
+                    os << std::fixed << std::setprecision(2) << (t.get(b, c, h, w)) << " ";
+                }
+                os << std::endl;
             }
-            os << std::endl;
         }
     }
     return os;
@@ -389,13 +323,17 @@ bool same_plane(const Tensor &a, const Tensor &b) {
     return a.width == b.width && a.height == b.height;
 }
 
+bool same_block(const Tensor &a, const Tensor &b) {
+    return same_plane(a, b) && a.channel == b.channel;
+}
+
 bool same_structure(const Tensor &a, const Tensor &b) {
-    return same_plane(a, b) && a.dimension == b.dimension;
+    return same_block(a, b) && a.batch == b.batch;
 }
 
 Tensor operator+(const Tensor &a, const Tensor &b) {
     assert(same_plane(a, b));
-    Tensor c(a.width, a.height, a.dimension, 0);
+    Tensor c(a.batch, a.channel, a.height, a.width, 0);
     float *src_1 = a.weight;
     float *src_2 = b.weight;
     float *dst = c.weight;
@@ -407,7 +345,7 @@ Tensor operator+(const Tensor &a, const Tensor &b) {
 
 Tensor operator-(const Tensor &a, const Tensor &b) {
     assert(same_plane(a, b));
-    Tensor c(a.width, a.height, a.dimension, 0);
+    Tensor c(a.batch, a.channel, a.height, a.width, 0);
     float *src_1 = a.weight;
     float *src_2 = b.weight;
     float *dst = c.weight;

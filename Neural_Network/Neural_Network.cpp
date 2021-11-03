@@ -99,7 +99,7 @@ void Neural_Network::compile(int batch_size_) {
                     opt[par.data + "_" + to_string(i) + "_height"] = to_string(layer[id_table[connect_name]]->getParameter(1));
                     opt[par.data + "_" + to_string(i) + "_dimension"] = to_string(layer[id_table[connect_name]]->getParameter(2));
                 }
-            opt[par.data + "_num"] = to_string(connect_num);
+                opt[par.data + "_num"] = to_string(connect_num);
             }
         } else if (layer_param.check("net")) {
             opt["net_width"] = to_string(layer[0]->getParameter(0));

@@ -1,10 +1,23 @@
 # Neural_Network
 
-## Introduction
+## About
 This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1], [Darknet][2] and [Caffe][4].
+
+The main motivation for me to write this framework is the homework from NTHU EE231002 Lab14 Image Processing. There is a task need to add a box around my head and I want it to do automatically, when I discover this paper, [MTCNN][6], I know it is time for me to construct a neural network from scratch.
+
+First, I found this on youtube, [10.1: Introduction to Neural Networks - The Nature of Code][8], I learn some knowledge about neural network, but javascript? I think for a while, my poor coding ability and poor algorithm may make the whole project unusable or take uncountable time to run, so i turn to c++. (Maybe it is my bias that I think c/c++ is more efficient than javascript) At early stage, I take a reference from [ConvNetJS][1], the code is easy to understand, even until now, the **trainer** of this project is mostly indentical to that.
+
+After finishing MTCNN, aiming to construct more complex network, I look for some object detection model, but most of them are based on Tensorflow or PyTorch, if I have any problem during implementation, it is hard to trace code to check if I am right or wrong. Then, I found [YOLO][7], it is based on [Darknet][2], a framework that not so complex, human readiable, give me a chance to build more complex network by myself. There are lots of layers in this project based on Darknet but maybe easier to read than the original version.
+
+At the time I finish YOLO, I find that my layer management is too complex due to bad data structure. I noticed [Caffe][4]'s layer registry by accident, that is what I want. Revise the code right away to manage my layer like that, creating new format to define network structure called **otter** to store network topology replacing the old tedious method.
+
+SSD...
+RNN...
+FASTER_RCNN...
 
 ## Feature
 * C++11
+* No dependencies
 * Multi-thread support with OpenMp
 * Run only on CPU
 * Structure visualization by [Netron][3] with Caffe2 like prototxt file
@@ -16,8 +29,8 @@ This is a simple project to implement neural network in c++, the structure of ne
 * Data layer (support data transform)
 
 #### Vision layers
-* Convolution layer (depth-wise support)
-* Pooling layer
+* Convolution layer (depthwise support)
+* Pooling layer (maxpooling)
 * AvgPooling layer
 * UpSample layer
 
@@ -192,7 +205,7 @@ nn.addOutput("Layer_name");
 ```
 
 #### Construct network
-It will construct the computation graph of neural network automatically, but not checking is it reasonable or not.
+It will construct the static computation graph of neural network automatically, but not checking is it reasonable or not.
 ```cpp
 nn.compile(mini_batch_size);    // The default mini_batch_size is 1
 ```
@@ -276,7 +289,7 @@ Remeber to add enum at `Layer.hpp`.
 
 In the constrctor of custom layer, you can use ask space for storing data, for example
 ```cpp
-CustomLayer::CustomLayer(Layeroption opt) {
+CustomLayer::CustomLayer(Layeroption opt) : BaseLayer(opt) {
     this->applyInput(NUM);    // ask for input space to store input tensor (default = 1) Note: Data layer should set it to 0
     this->applyOutput(NUM);    // ask for output space to store output tensor (default = 1)
     this->applyKernel(NUM);    // ask for kernel space to store data
@@ -522,7 +535,7 @@ If the project doesn't include YOLOv4 layer, you can build with
 * `$ g++ -Ofast -fopenmp -o nn *.cpp`
 
 Else, the isnan() function is not working with -Ofast flag
-* `$ g++ -O3 -fopenmp -o nn *.cpp`
+* `$ g++ -O2 -fopenmp -o nn *.cpp`
 
 Run with
 * `$ ./nn`
@@ -571,4 +584,6 @@ int main(int argc, const char * argv[]) {
 [3]: https://netron.app
 [4]: https://github.com/BVLC/caffe
 [5]: https://chrischoy.github.io/research/making-caffe-layer/
-
+[6]: https://arxiv.org/pdf/1604.02878.pdf
+[7]: https://arxiv.org/pdf/1804.02767.pdf
+[8]: https://www.youtube.com/watch?v=XJ7HLz9VYz0&list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh

@@ -42,8 +42,8 @@ BaseLayer::BaseLayer(LayerOption opt_) {
     info.input_number = info.input_width * info.input_height * info.input_dimension;
     info.batch_size = opt_find_int(opt, "batch_size", 1);
     
-    this->applyInput(1);
-    this->applyOutput(1);
+    this->applyInput(1);    // default input
+    this->applyOutput(1);   // default output
 }
 
 BaseLayer::BaseLayer(const BaseLayer &L) {
@@ -169,7 +169,12 @@ void BaseLayer::applyInput(int num) {
 }
 
 void BaseLayer::applyOutput(int num) {
-    if (info.input_num) OTTER_FREE_ARRAY(output_tensor);
+    if (info.output_num) {
+        for (int i = 0; i < info.output_num; ++i) {
+            delete output_tensor[i];
+        }
+    }
+    OTTER_FREE_ARRAY(output_tensor);
     output_tensor = new Tensor* [num];
     info.output_num = num;
 }

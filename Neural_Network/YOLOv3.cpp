@@ -52,13 +52,13 @@ void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold, 
         for (int c = 0; c < classes; ++c) {
             if (dets[i].prob[c] > threshold) {
                 if (sort_class < 0) {
-                    strcat(labelstr, label[c].c_str());
+                    if (!label[c].empty()) strcat(labelstr, label[c].c_str());
                     sort_class = c;
                 } else {
                     strcat(labelstr, ", ");
-                    strcat(labelstr, label[c].c_str());
+                    if (!label[c].empty()) strcat(labelstr, label[c].c_str());
                 }
-                printf("%s: %.0f%%\n", label[c].c_str(), dets[i].prob[c]*100);
+                if (!label[c].empty()) printf("%s: %.0f%%\n", label[c].c_str(), dets[i].prob[c]*100);
             }
         }
         if (sort_class >= 0 && dets[i].objectness > 0) {
@@ -79,7 +79,7 @@ void yolo_mark(vector<Detection> &dets, IMG &img, int classes, float threshold, 
             h = text.height;
             
             img.drawRectangle(Rect(x1, y1, x2, y2), Color(r, g, b));
-            img.paste(text, Point(x1, ((y1 - h) < 0) ? y1 : y1 - h));
+            img.paste(text, Point((x1 < 0) ? 0 : x1, ((y1 - h) < 0) ? y1 : y1 - h));
         }
     }
 }

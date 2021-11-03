@@ -226,6 +226,13 @@ public:
     Tensor* biases;
 };
 
+class RecurrentLayer : public BaseLayer {
+public:
+    ~RecurrentLayer();
+    RecurrentLayer(LayerOption opt_);
+    BaseLayer *self_layers;
+};
+
 class LayerRegistry {
 public:
     typedef BaseLayer* (*Creator)(const LayerOption&);

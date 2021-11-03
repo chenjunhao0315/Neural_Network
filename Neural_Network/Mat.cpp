@@ -412,7 +412,7 @@ Mat Mat::absScale(float scale, float alpha) {
 
 Mat Mat::transpose() {
     Mat result(height, width, type);
-    unsigned char *src = data, *src_ptr = data;
+    unsigned char *src, *src_ptr = data;
     unsigned char *dst = result.ptr();
     
     int elemsize = elemSize();

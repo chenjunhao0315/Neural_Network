@@ -293,9 +293,13 @@ CustomLayer::CustomLayer(Layeroption opt) : BaseLayer(opt) {
     this->applyInput(NUM);    // ask for input space to store input tensor (default = 1) Note: Data layer should set it to 0
     this->applyOutput(NUM);    // ask for output space to store output tensor (default = 1)
     this->applyKernel(NUM);    // ask for kernel space to store data
-    kernel[0] = Tensor(WIDTH, HEIGHT, DIMENSION, PARAMETER);
+    kernel[0] = Tensor(BATCH, CHANNEL, HEIGHTWIDTH, PARAMETER);
     kernel[0].extend();    // If the kernel parameter can be updated
     kernel[1] = ...
+    this->applyBias(NUM);    // ask for biases space to store data
+    biases[0] = Tensor(BATCH, CHANNEL, HEIGHTWIDTH, PARAMETER);
+    biases[0].extend();
+    biases[1] = ...
 }
 ```
 If the layer can be trained, you need to pass train arguments to trainer, you need to add code at `BaseLayer::getTrainArgs()`, return the traing arguments, the traing arguments is defined by, 
@@ -594,4 +598,5 @@ int main(int argc, const char * argv[]) {
 [6]: https://arxiv.org/pdf/1604.02878.pdf
 [7]: https://arxiv.org/pdf/1804.02767.pdf
 [8]: https://www.youtube.com/watch?v=XJ7HLz9VYz0&list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh
+
 

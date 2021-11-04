@@ -8,9 +8,7 @@
 #include "Neural_Network.hpp"
 
 Neural_Network::~Neural_Network() {
-    for (int i = 0; i < layer_number; ++i)
-        delete layer[i];
-    OTTER_FREE_ARRAY(layer);
+    OTTER_FREE_PTRS(layer, layer_number);
     OTTER_FREE_ARRAY(workspace);
 }
 

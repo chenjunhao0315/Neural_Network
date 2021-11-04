@@ -20,6 +20,16 @@
 
 #define OTTER_FREE(data) if (data) delete data; data = nullptr;
 #define OTTER_FREE_ARRAY(data) if (data) delete [] data; data = nullptr;
+#define OTTER_FREE_PTRS(data, size)   \
+    if (data) {   \
+        for (int i = 0; i < size; ++i) {  \
+            delete data[i]; \
+            data[i] = nullptr;  \
+        }   \
+        delete [] data; \
+        data = nullptr; \
+    }
+
 #define OTTER_CHECK_PTR_QUIT(ptr, message, error_code)   \
     if (!ptr) {fprintf(stderr, message); exit(error_code);}
 #define OTTER_CHECK_PTR_BOOL(ptr, message)   \

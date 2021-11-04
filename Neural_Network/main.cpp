@@ -21,7 +21,7 @@ using namespace std;
 int main(int argc, const char * argv[]) {
     // This is a good day to learn.
     
-    test_all_layer(true);
+//    test_all_layer(true);
     
 //    YOLOv4 nn(80, 32);
 //

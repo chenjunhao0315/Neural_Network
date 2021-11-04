@@ -143,6 +143,7 @@ public:
     void applyInput(int num);
     void applyOutput(int num);
     void applyKernel(int num);
+    void applyBias(int num);
     void shape();
     void show_detail();
     long getOperations();
@@ -162,6 +163,7 @@ public:
         int input_num;
         int output_num;
         int kernel_num;
+        int bias_num;
         int input_number;
         int output_number;
         int output_width;

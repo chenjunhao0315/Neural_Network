@@ -10,11 +10,9 @@
 static ParameterParser layerparameter("layer.txt");
 
 BaseLayer::~BaseLayer() {
-    OTTER_FREE_ARRAY(input_tensor);
-    for (int i = 0; i < info.output_num; ++i)
-        delete output_tensor[i];
-    OTTER_FREE_ARRAY(output_tensor);
-    OTTER_FREE(biases);
+    OTTER_FREE_ARRAY(input_tensor); // only store ptr, don't free any data inside
+    OTTER_FREE_PTRS(output_tensor, info.output_num);    // remember to free data inside
+    OTTER_FREE_ARRAY(biases);
     OTTER_FREE_ARRAY(kernel);
 }
 
@@ -26,12 +24,7 @@ BaseLayer::BaseLayer() {
     memset(&info, 0, sizeof(Info));
 }
 
-BaseLayer::BaseLayer(LayerOption opt_) {
-    input_tensor = nullptr;
-    output_tensor = nullptr;
-    kernel = nullptr;
-    biases = nullptr;
-    memset(&info, 0, sizeof(Info));
+BaseLayer::BaseLayer(LayerOption opt_) : BaseLayer() {
     opt = opt_;
     name = opt_find_string(opt, "name", "");
     input_name = opt_find_string(opt, "input_name", "");
@@ -46,7 +39,7 @@ BaseLayer::BaseLayer(LayerOption opt_) {
     this->applyOutput(1);   // default output
 }
 
-BaseLayer::BaseLayer(const BaseLayer &L) {
+BaseLayer::BaseLayer(const BaseLayer &L) : BaseLayer() {
     if (this != &L) {
         type = L.type;
         name = L.name;
@@ -61,23 +54,18 @@ BaseLayer::BaseLayer(const BaseLayer &L) {
         for (int i = 0; i < info.output_num; ++i) {
             output_tensor[i] = new Tensor(L.output_tensor[i]);
         }
-        if (L.kernel) {
-            kernel = new Tensor [info.kernel_num];
-            for (int i = 0; i < info.kernel_num; ++i) {
-                kernel[i] = L.kernel[i];
-            }
-        } else {
-            kernel = nullptr;
+        this->applyKernel(info.kernel_num);
+        for (int i = 0; i < info.kernel_num; ++i) {
+            kernel[i] = L.kernel[i];
         }
-        if (L.biases) {
-            biases = new Tensor(L.biases);
-        } else {
-            biases = nullptr;
+        this->applyBias(info.bias_num);
+        for (int i = 0; i < info.bias_num; ++i) {
+            biases[i] = L.biases[i];
         }
     }
 }
 
-BaseLayer::BaseLayer(BaseLayer &&L) {
+BaseLayer::BaseLayer(BaseLayer &&L) : BaseLayer() {
     type = L.type;
     name = L.name;
     input_name = L.input_name;
@@ -108,18 +96,13 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
         for (int i = 0; i < info.output_num; ++i) {
             output_tensor[i] = new Tensor(L.output_tensor[i]);
         }
-        if (L.kernel) {
-            kernel = new Tensor [info.kernel_num];
-            for (int i = 0; i < info.kernel_num; ++i) {
-                kernel[i] = L.kernel[i];
-            }
-        } else {
-            kernel = nullptr;
+        this->applyKernel(info.kernel_num);
+        for (int i = 0; i < info.kernel_num; ++i) {
+            kernel[i] = L.kernel[i];
         }
-        if (L.biases) {
-            biases = new Tensor(L.biases);
-        } else {
-            biases = nullptr;
+        this->applyBias(info.bias_num);
+        for (int i = 0; i < info.bias_num; ++i) {
+            biases[i] = L.biases[i];
         }
     }
     return *this;
@@ -169,19 +152,21 @@ void BaseLayer::applyInput(int num) {
 }
 
 void BaseLayer::applyOutput(int num) {
-    if (info.output_num) {
-        for (int i = 0; i < info.output_num; ++i) {
-            delete output_tensor[i];
-        }
-    }
-    OTTER_FREE_ARRAY(output_tensor);
+    if (info.output_num) OTTER_FREE_PTRS(output_tensor, info.output_num);
     output_tensor = new Tensor* [num];
     info.output_num = num;
 }
 
 void BaseLayer::applyKernel(int num) {
+    if (info.kernel_num) OTTER_FREE_ARRAY(kernel);
     kernel = new Tensor [num];
     info.kernel_num = num;
+}
+
+void BaseLayer::applyBias(int num) {
+    if (info.bias_num) OTTER_FREE_ARRAY(biases);
+    biases = new Tensor [num];
+    info.bias_num = num;
 }
 
 void BaseLayer::shape() {
@@ -551,8 +536,9 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) : BaseLayer(opt_) {
     }
     
     float bias = opt_find_float(opt, "bias", 0);
-    biases = new Tensor(1, info.output_dimension, 1, 1, bias);
-    biases->extend();
+    this->applyBias(1);
+    biases[0] = Tensor(1, info.output_dimension, 1, 1, bias);
+    biases[0].extend();
     
     info.workspace_size = info.kernel_width * info.kernel_height * info.input_dimension * info.output_width * info.output_height / info.groups;
     
@@ -972,8 +958,9 @@ FullyConnectedLayer::FullyConnectedLayer(LayerOption opt_) : BaseLayer(opt_) {
     }
     
     float bias = opt_find_float(opt, "bias", 0);
-    biases = new Tensor(1, info.output_dimension, 1, 1, bias);
-    biases->extend();
+    this->applyBias(1);
+    biases[0] = Tensor(1, info.output_dimension, 1, 1, bias);
+    biases[0].extend();
     output_tensor[0] = new Tensor(info.batch_size, info.output_dimension, 1, 1, 0);
     output_tensor[0]->extend();
 }
@@ -1382,8 +1369,9 @@ BatchNormalizationLayer::BatchNormalizationLayer(LayerOption opt_) : BaseLayer(o
     kernel[5] = Tensor( info.batch_size, 1, 1, info.input_number, 0); // x
     kernel[6] = Tensor( info.batch_size, 1, 1, info.input_number, 0); // x_norm
     
-    biases = new Tensor(1, info.output_dimension, 1, 1, 0);
-    biases->extend();
+    this->applyBias(1);
+    biases[0] = Tensor(1, info.output_dimension, 1, 1, 0);
+    biases[0].extend();
     
     output_tensor[0] = new Tensor(info.batch_size, info.output_dimension, info.output_height, info.output_width, 0);
     output_tensor[0]->extend();
@@ -2034,7 +2022,8 @@ YOLOv3Layer::YOLOv3Layer(LayerOption opt_) : BaseLayer(opt_) {
         }
     }
     
-    biases = new Tensor(1, 1, info.total_anchor_num, 2, 0); // Anchor
+    this->applyBias(1);
+    biases[0] = Tensor(1, 1, info.total_anchor_num, 2, 0); // Anchor
     stringstream ss;
     ss << opt["anchor"];
     int w, h;
@@ -2387,7 +2376,8 @@ YOLOv4Layer::YOLOv4Layer(LayerOption opt_) : BaseLayer(opt_) {
     kernel[2] = Tensor(info.batch_size, info.anchor_num, info.output_height, info.output_width, -1);   // class_ids
     kernel[3] = Tensor(1, 1, 1, 1, 0); // classes_multipliers
     
-    biases = new Tensor(1, info.total_anchor_num, 1, 2, 0); // Anchor
+    this->applyBias(1);
+    biases[0] = Tensor(1, info.total_anchor_num, 1, 2, 0); // Anchor
     stringstream ss;
     ss << opt["anchor"];
     int w, h;

@@ -52,7 +52,7 @@ BaseLayer::BaseLayer(const BaseLayer &L) : BaseLayer() {
         }
         this->applyOutput(info.output_num);
         for (int i = 0; i < info.output_num; ++i) {
-            output_tensor[i] = new Tensor(L.output_tensor[i]);
+            output_tensor[i] = new Tensor(*L.output_tensor[i]);
         }
         this->applyKernel(info.kernel_num);
         for (int i = 0; i < info.kernel_num; ++i) {
@@ -94,7 +94,7 @@ BaseLayer& BaseLayer::operator=(const BaseLayer &L) {
         }
         this->applyOutput(info.output_num);
         for (int i = 0; i < info.output_num; ++i) {
-            output_tensor[i] = new Tensor(L.output_tensor[i]);
+            output_tensor[i] = new Tensor(*L.output_tensor[i]);
         }
         this->applyKernel(info.kernel_num);
         for (int i = 0; i < info.kernel_num; ++i) {
@@ -146,26 +146,26 @@ vtensorptr BaseLayer::connectGraph(vtensorptr input_tensor_, float *workspace) {
 }
 
 void BaseLayer::applyInput(int num) {
-    if (info.input_num) OTTER_FREE_ARRAY(input_tensor);
-    input_tensor = new Tensor* [num];
+    OTTER_FREE_ARRAY(input_tensor);
+    input_tensor = new Tensor* [num]();
     info.input_num = num;
 }
 
 void BaseLayer::applyOutput(int num) {
-    if (info.output_num) OTTER_FREE_PTRS(output_tensor, info.output_num);
-    output_tensor = new Tensor* [num];
+    OTTER_FREE_PTRS(output_tensor, info.output_num);
+    output_tensor = new Tensor* [num]();
     info.output_num = num;
 }
 
 void BaseLayer::applyKernel(int num) {
-    if (info.kernel_num) OTTER_FREE_ARRAY(kernel);
-    kernel = new Tensor [num];
+    OTTER_FREE_ARRAY(kernel);
+    kernel = new Tensor [num]();
     info.kernel_num = num;
 }
 
 void BaseLayer::applyBias(int num) {
-    if (info.bias_num) OTTER_FREE_ARRAY(biases);
-    biases = new Tensor [num];
+    OTTER_FREE_ARRAY(biases);
+    biases = new Tensor [num]();
     info.bias_num = num;
 }
 
@@ -287,7 +287,7 @@ bool BaseLayer::load_raw(FILE *f) {
 }
 
 bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_struct, unordered_map<string, int> &id_table) {
-    if (type == LayerType::Input) {
+    if (type == LayerType::Input || type == LayerType::Data) {
         fprintf(f, "input: \"data\"\n");
         fprintf(f, "input_dim: %d\n", info.batch_size);
         fprintf(f, "input_dim: %d\n", info.output_dimension);
@@ -311,6 +311,8 @@ bool BaseLayer::to_prototxt(FILE *f, int refine_id, vector<LayerOption> &refine_
             fprintf(f, "    kernel_size: %d\n", info.kernel_width);
             fprintf(f, "    pad: %d\n", info.padding);
             fprintf(f, "    stride: %d\n", info.stride);
+            fprintf(f, "    dilation: %d\n", info.dilation);
+            fprintf(f, "    groups: %d\n", info.groups);
             if (info.batchnorm) {
                 fprintf(f, "    bias_term: false\n");
             } else {
@@ -426,6 +428,50 @@ void ParameterParser::parse() {
     }
 }
 
+RecurrentLayer::~RecurrentLayer() {
+    delete [] self_layers;
+}
+
+RecurrentLayer::RecurrentLayer() : BaseLayer() {
+    self_layers = nullptr;
+}
+
+RecurrentLayer::RecurrentLayer(LayerOption opt_) : BaseLayer(opt_) {
+    info.time_steps = opt_find_int(opt, "time_steps", 1);
+    info.batch_size /= info.time_steps;
+    info.hidden_nodes = opt_find_int(opt, "hidden_nodes", 1);
+    
+    info.output_width = 1;
+    info.output_height = 1;
+    info.output_dimension = opt_find_int(opt, "output_nodes", 1);
+    info.output_number = info.output_width * info.output_height * info.output_dimension;
+    
+    self_layers = nullptr;
+}
+
+void RecurrentLayer::applySelfLayers(int num) {
+    OTTER_FREE_ARRAY(self_layers);
+    self_layers = new BaseLayer [num]();
+    info.self_num = num;
+}
+
+RNNLayer::RNNLayer(LayerOption opt_) : RecurrentLayer(opt_) {
+    LayerOption self_opt = opt; self_opt["type"] = "FullyConnected";
+    int option = 1;
+    if (opt_find(opt, "Batchnorm")) ++option;
+    if (opt_find(opt, "Activation")) ++option;
+    this->applySelfLayers(3 * option);
+    
+    this->applyKernel(2);
+    kernel[0] = Tensor(info.batch_size, info.output_dimension, info.output_height, info.output_width, 0);   // state
+    kernel[1] = Tensor(info.batch_size, info.output_dimension, info.output_height, info.output_width, 0);   // prev_state
+    
+    output_tensor[0] = new Tensor(info.batch_size, info.output_dimension, info.output_height, info.output_width, 0);
+    output_tensor[0]->extend();
+}
+
+REGISTER_LAYER_CLASS(RNN);
+
 
 InputLayer::InputLayer(LayerOption opt_) : BaseLayer(opt_) {
     type = LayerType::Input;
@@ -523,6 +569,10 @@ ConvolutionLayer::ConvolutionLayer(LayerOption opt_) : BaseLayer(opt_) {
     info.output_dimension = opt_find_int(opt, "number_kernel", 1);
     info.output_number = info.output_width * info.output_height * info.output_dimension;
     info.groups = opt_find_int(opt, "groups", 1);
+    if (info.input_dimension < info.groups) {
+        fprintf(stderr, "[ConvolutionLayer] %s input dimension(%d) should be greater than groups(%d)!\n", name.c_str(), info.input_dimension, info.groups);
+        exit(156);
+    }
     info.batchnorm = opt_find(opt, "batchnorm");
     info.nweights = info.input_dimension / info.groups * info.output_dimension * info.kernel_width * info.kernel_height;
     
@@ -575,7 +625,7 @@ void ConvolutionLayer::Forward(bool train) {
             float *c = output + group_offset * n * m;
             float *im = input + group_offset * info.input_number / info.groups;
             
-            if (kernel_size == 1) {
+            if (kernel_size == 1 && info.stride == 1 && info.dilation == 1) {
                 // Doesn't need to rearrange
                 b = im;
             } else {

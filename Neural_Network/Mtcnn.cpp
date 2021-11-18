@@ -123,7 +123,7 @@ Feature_map PNet::predict(IMG &img) {
                     }
                 }
             }
-            vtensorptr output = pnet.Forward(&input);
+            Tensor** output = pnet.Forward(&input);
             vfloat feature; feature.reserve(6);
             for (int i = 0; i < 2; ++i) {
                 vfloat extract = output[i]->toVector();
@@ -282,7 +282,7 @@ vector<Bbox> RNet::detect(IMG &img, vector<Bbox> &pnet_bbox) {
             }
         }
         
-        vtensorptr output = rnet.Forward(&crop_img);
+        Tensor** output = rnet.Forward(&crop_img);
         vfloat rnet_detect; rnet_detect.reserve(16);
         for (int i = 0; i < 3; ++i) {
             vfloat extract = output[i]->toVector();
@@ -357,7 +357,7 @@ vector<Bbox> ONet::detect(IMG &img, vector<Bbox> &rnet_bbox) {
             }
         }
         
-        vtensorptr output = onet.Forward(&crop_img);
+        Tensor** output = onet.Forward(&crop_img);
         vfloat onet_detect; onet_detect.reserve(16);
         for (int i = 0; i < 3; ++i) {
             vfloat extract = output[i]->toVector();

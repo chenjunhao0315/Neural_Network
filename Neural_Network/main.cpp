@@ -54,8 +54,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_0_40000_v4_r7.ottermodel");
-    IMG img("umbrella.jpg");
+    YOLOv4 yolo("backup_0_65024_v4_r17.ottermodel");
+    IMG img("person.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -84,15 +84,15 @@ int main(int argc, const char * argv[]) {
 ////    nn.to_prototxt();
 ////    nn.save_otter("test.otter");
 //
-//    Tensor a(1, 1, 2, 0);
-//    Tensor b(1, 1, 2, 1);
-//    Tensor c(1, 1, 2); c = {0, 1};
-//    Tensor d(1, 1, 2); d = {1, 0};
+//    Tensor a(1, 1, 1, 2, 0);
+//    Tensor b(1, 1, 1, 2, 1);
+//    Tensor c(1, 1, 1, 2); c = {0, 1};
+//    Tensor d(1, 1, 1, 2); d = {1, 0};
 //    vtensor data{a, b, c, d};
-//    Tensor a_l(1, 1, 1, 0);
-//    Tensor b_l(1, 1, 1, 0);
-//    Tensor c_l(1, 1, 1, 1);
-//    Tensor d_l(1, 1, 1, 1);
+//    Tensor a_l(1, 1, 1, 1, 0);
+//    Tensor b_l(1, 1, 1, 1, 0);
+//    Tensor c_l(1, 1, 1, 1, 1);
+//    Tensor d_l(1, 1, 1, 1, 1);
 //    vtensor label{a_l, b_l, c_l, d_l};
 //
 //    Trainer trainer(&nn, TrainerOption{{"method", Trainer::Method::SGD}, {"learning_rate", 0.1}, {"warmup", 5}});
@@ -121,6 +121,15 @@ int main(int argc, const char * argv[]) {
     
 //    Mat a(3, 3, MAT_32FC1);
 //    cout << a;
+    
+//    Neural_Network nn;
+//    nn.load_ottermodel("test_all_layer.ottermodel");
+//    nn.shape();
+//
+//    class Data cat("cat.npy", 28, 28, 3, 80);
+//    vtensor data_cat = cat.get(1);
+//    Tensor **result = nn.Forward(&data_cat[0]);
+//    cout << *result[0];
     
     return 0;
 }

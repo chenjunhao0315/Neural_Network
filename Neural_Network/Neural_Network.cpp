@@ -10,6 +10,7 @@
 Neural_Network::~Neural_Network() {
     OTTER_FREE_PTRS(layer, layer_number);
     OTTER_FREE_ARRAY(workspace);
+    OTTER_FREE_ARRAY(output_tensor);
 }
 
 Neural_Network::Neural_Network(string model_) {
@@ -17,6 +18,7 @@ Neural_Network::Neural_Network(string model_) {
     layer_number = 0;
     layer = nullptr;
     workspace = nullptr;
+    output_tensor = nullptr;
 }
 
 void Neural_Network::addOutput(string name) {
@@ -153,6 +155,10 @@ void Neural_Network::constructGraph() {
                     string connect_name;
                     getline(connect_list, connect_name, ',');
                     EARSE_SPACE(connect_name);
+                    if (terminal.find(connect_name) == terminal.end()) {
+                        fprintf(stderr, "[Graph Constructor] Connection error %s didn't exist!\n", connect_name.c_str());
+                        exit(-1);
+                    }
                     input_tensor.push_back(terminal[connect_name][0]);
                 }
             }
@@ -165,22 +171,22 @@ void Neural_Network::constructGraph() {
     
     int output_size = (int)output_layer.size();
     if (output_size > 0) {
-        output.reserve(output_size);
-        output.push_back(terminal[output_layer[0]][0]);
-        for (int i = 1; i < output_size; ++i) {
-            output.push_back(terminal[output_layer[i]][0]);
+        output_tensor = new Tensor* [output_size];
+        for (int i = 0; i < output_size; ++i) {
+            output_tensor[i] = terminal[output_layer[i]][0];
         }
     } else {
-        output.push_back(terminal[opt_layer[layer_number - 1]["name"]][0]);
+        output_tensor = new Tensor* [1];
+        output_tensor[0] = terminal[opt_layer[layer_number - 1]["name"]][0];
     }
 }
 
-vtensorptr Neural_Network::Forward(Tensor *input_tensor_, bool train) {
+Tensor** Neural_Network::Forward(Tensor *input_tensor_, bool train) {
     layer[0]->Forward(input_tensor_);
     for (int i = 1; i < layer_number; ++i) {
         layer[i]->Forward(train);
     }
-    return output;
+    return output_tensor;
 }
 
 float Neural_Network::Backward(Tensor *target) {
@@ -239,6 +245,10 @@ float Neural_Network::Backward(Tensor *target) {
         }
     }
     return loss;
+}
+
+void Neural_Network::extract(string name, Tensor &t) {
+    t = *terminal[name][0];
 }
 
 void Neural_Network::shape() {
@@ -963,8 +973,44 @@ Tensor* create_tensor_array(float *data, int width, int height, int channel) {
     return new Tensor(data, width, height, channel);
 }
 
+Tensor* copy_tensor(Tensor *t) {
+    return new Tensor(*t);
+}
+
+void free_tensor(Tensor *t) {
+    OTTER_FREE(t);
+}
+
 void tensor_show(Tensor *t) {
     cout << *t;
+}
+
+int tensor_batch(Tensor *t) {
+    return t->batch;
+}
+
+int tensor_channel(Tensor *t) {
+    return t->channel;
+}
+
+int tensor_height(Tensor *t) {
+    return t->height;
+}
+
+int tensor_width(Tensor *t) {
+    return t->width;
+}
+
+float tensor_get(Tensor *t, int key) {
+    return t->weight[key];
+}
+
+void tensor_set(Tensor *t, int key, float value) {
+    t->weight[key] = value;
+}
+
+float* tensor_get_weight(Tensor *t) {
+    return t->weight;
 }
 
 Neural_Network* create_network(const char *model_name) {
@@ -975,8 +1021,16 @@ void network_load_ottermodel(Neural_Network *net, const char *ottermodel) {
     net->load_ottermodel(ottermodel);
 }
 
-void network_forward(Neural_Network *net, Tensor *data) {
-    
+void free_network(Neural_Network *net) {
+    OTTER_FREE(net);
+}
+
+Tensor** network_forward(Neural_Network *net, Tensor *data) {
+    return net->Forward(data);
+}
+
+int network_getoutputnum(Neural_Network *net) {
+    return net->getOutputNum();
 }
 
 void network_shape(Neural_Network *net) {

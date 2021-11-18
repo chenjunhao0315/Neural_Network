@@ -37,8 +37,9 @@ public:
     void addLayer(LayerOption opt_);
     void addOutput(string name);
     void compile(int batch_size_ = 1);
-    vtensorptr Forward(Tensor *input_tensor_, bool train = false);
+    Tensor** Forward(Tensor *input_tensor_, bool train = false);
     float Backward(Tensor *target);
+    void extract(string name, Tensor &t);
     nn_status status();
     network_structure getStructure();
     void ClearGrad();
@@ -58,19 +59,20 @@ public:
     void alloc_workspace();
     void constructGraph();
     int getBatchSize() {return batch_size;}
+    int getOutputNum() {return max(1, (int)output_layer.size());}
     vector<Train_Args> getTrainArgs();
     vfloat predict(Tensor *input);
     float evaluate(vtensor &data_set, vtensor &target);
 private:
     string model;
-    int layer_number;
-    vector<LayerOption> opt_layer;
     BaseLayer **layer;
-    vtensorptr output;
+    Tensor **output_tensor;
     vector<string> output_layer;
+    vector<LayerOption> opt_layer;
     unordered_map<string, vtensorptr> terminal;
     vector<vector<int>> path;
     int batch_size;
+    int layer_number;
     float *workspace;
     int version_major = 3;
     int version_minor = 0;
@@ -143,11 +145,22 @@ private:
 extern "C" {
     Tensor* create_tensor_init(int batch, int channel, int height, int width, float parameter);
     Tensor* create_tensor_array(float *data, int width, int height, int channel);
+    void free_tensor(Tensor *t);
+    Tensor* copy_tensor(Tensor *t);
     void tensor_show(Tensor *t);
+    int tensor_batch(Tensor *t);
+    int tensor_channel(Tensor *t);
+    int tensor_height(Tensor *t);
+    int tensor_width(Tensor *t);
+    float tensor_get(Tensor *t, int key);
+    void tensor_set(Tensor *t, int key, float value);
+    float* tensor_get_weight(Tensor *t);
 
     Neural_Network* create_network(const char *model_name);
+    void free_network(Neural_Network *net);
     void network_load_ottermodel(Neural_Network *net, const char *ottermodel);
-    void network_forward(Neural_Network *net, Tensor *data);
+    Tensor** network_forward(Neural_Network *net, Tensor *data);
+    int network_getoutputnum(Neural_Network *net);
     void network_shape(Neural_Network *net);
 }
 #endif /* Neural_Network_hpp */

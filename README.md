@@ -22,6 +22,7 @@ FASTER_RCNN...
 * Run only on CPU
 * Structure visualization by [Netron][3] with Caffe2 like prototxt file
 * Easy to add custom layer
+* Python interface
 
 ## Supported Layers
 #### Data layer
@@ -255,17 +256,24 @@ The graph shown by Nerton.
 ![image](https://github.com/chenjunhao0315/Neural_Network/blob/main/Example_Network.png)
 
 #### Forward Propagation
-The data flow of network is based on **Tensor**. To forward propagation, just past the pointer of data to `network.Forward(POINTER_OF_DATA)` function. And it will return a **vector** of **Tensor pointer**, the **vtensorptr** is defined by `std::vecotr<Tensor*>`.
+The data flow of network is based on **Tensor**. To forward propagation, just past the pointer of data to `network.Forward(POINTER_OF_DATA)` function. And it will return a **pointer** to **Tensor pointer**. Careful to use the output, it is the direct result of Neural Network!
 ```cpp
-Tensor data(28, 28, 3);
-vtensorptr output = nn.Forward(&data);
+Tensor data(1, 3, 28, 28);
+Tensor** output = nn.Forward(&data);
 ```
 
 #### Backward Propagation
 To backward propagation, just past the pointer of data to `network.Backward(POINTER_OF_LABEL)` function. And it will return the **loss** with floating point type.
 ```cpp
-Tensor label(1, 1, 3); label = {0, 1, 0};
+Tensor label(1, 1, 1, 3); label = {0, 1, 0};
 float loss = nn.Backward(&label);
+```
+
+#### Extract Temporary Result
+If you want to extract some result from the inner layer,
+```cpp
+Tensor temp;
+nn.extract("LAYERNAME", temp);
 ```
 
 #### Add custom layer
@@ -541,14 +549,86 @@ Tensor c = a - b;   // c = [-1,-1]
 * << <br>
 Print all **weights** in Tensor.
 
+## Python Interface
+### Neural_Network
+Only inference mode now! The neural network is not completed with python interface, just for convenience used with some visualize UI, like matplotlib, etc. Before you use the python interface, you should build the library `otter.so` first!
+#### Initialize network 
+Initialize network,
+```python
+nn = Neural_Network(NETWORK_NAME)
+```
+
+#### Load ottermodel
+Load ottermodel from file, 
+```python
+nn.load_ottermodel(MODEL_NAME)
+```
+
+#### Network shape
+Show the breif detail between layer and layer.
+```python
+nn.shape()
+```
+
+#### Forward propagation
+The data flow of network is based on **Tensor**. To forward propagation, just past the data to `network.Forward(DATA)` function. And it will return a **list** of **Tensor**.
+```python
+data = Tensor(1, 3, 28, 28, 0)
+result = nn.Forward(data)
+```
+
+### Tensor
+Tensor in python version is also not completed yet. Just work with basic operation.
+#### Initialize the tensor
+* Method 1 <br>
+You will get a **Tensor t** with identical value **PARAMETER** inside.
+```python
+t =  Tensor(BATCH, CHANNEL, HEIGHT, WIDTH, PARAMETER);
+```
+
+#### Load numpy into tensor
+WIth any shape of tensor, it will reshape automatically as `numpy.ndarray`
+```python
+t = Tensor()
+arr = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+t.load_array(arr)    # Tensor shape (1, 2, 2, 2) with value [1, 2, 3 ,4, 5, 6, 7, 8]
+print(t)    # Use print to print out the Tensor
+```
+
+#### Convert Tensor to numpy
+If want to do some data analysis,  you can convert the Tensor to numpy
+```python
+t = Tensor(1, 2, 2, 2, 1)
+arr = t.to_numpy()    # [[[1, 1], [1, 1]], [[1, 1], [1, 1]]]
+```
+
+#### Max value and its index
+Get the max value and its index inside Tensor
+```python
+t = Tensor()
+arr = np.array([1, 3, 2])
+t.load_array(arr)    # Tensor shape (1, 1, 1, 3) with value [1, 3, 2]
+index, value = t.max_index()    # value = 3, index = 1
+```
+
+
 ## Build and run
-If the project doesn't include YOLOv4 layer, you can build with
+#### Linux, MacOS
+Just do `make` in the directory. Before make, you can set such options in the `Makefile`:
+* `EXEC=EXECUTION_FILE_NAME` You can change the execution file name by yourself.
+* `OPENMP=1` to build with OpenMP support to accelerate Network by using multi-core CPU
+* `LIBSO=1` to build a library `otter.so`
+
+If your project need to train the YOLOv4 layer, you should revise `OPTS = -Ofast` as `OPTS = -O2` in `Makefile`
+
+#### Windows
+If you need to train YOLOv4 layer, you can build with
 * `$ g++ -Ofast -fopenmp -o nn *.cpp`
 
 Else, the isnan() function is not working with -Ofast flag
 * `$ g++ -O2 -fopenmp -o nn *.cpp`
 
-Run with
+#### Run
 * `$ ./nn`
 
 ## Example
@@ -598,5 +678,6 @@ int main(int argc, const char * argv[]) {
 [6]: https://arxiv.org/pdf/1604.02878.pdf
 [7]: https://arxiv.org/pdf/1804.02767.pdf
 [8]: https://www.youtube.com/watch?v=XJ7HLz9VYz0&list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh
+
 
 

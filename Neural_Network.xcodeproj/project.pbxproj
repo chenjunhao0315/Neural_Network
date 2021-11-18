@@ -23,6 +23,7 @@
 		76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */; };
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
+		76FA99472746C8C700DE35F4 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 76FA99462746C8C700DE35F4 /* Makefile */; };
 		76FDA0DC26F7C0F2006C816D /* libomp.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 76FDA0DB26F7C0F2006C816D /* libomp.dylib */; };
 /* End PBXBuildFile section */
 
@@ -74,6 +75,8 @@
 		76CD64E2269F8AF800A4EDFD /* Image_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Image_Process.hpp; sourceTree = "<group>"; };
 		76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Jpeg.cpp; sourceTree = "<group>"; };
 		76CD64E6269F8B6D00A4EDFD /* Jpeg.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Jpeg.hpp; sourceTree = "<group>"; };
+		76FA99462746C8C700DE35F4 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		76FA99482746C8D000DE35F4 /* otter.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = otter.py; sourceTree = "<group>"; };
 		76FDA0DB26F7C0F2006C816D /* libomp.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libomp.dylib; path = ../../../../../usr/local/Cellar/llvm/12.0.1/lib/libomp.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -118,6 +121,8 @@
 		76390E722666B3D000FFA5EC /* Neural_Network */ = {
 			isa = PBXGroup;
 			children = (
+				76FA99482746C8D000DE35F4 /* otter.py */,
+				76FA99462746C8C700DE35F4 /* Makefile */,
 				763C4B7927282CF1002CE1A9 /* layer.txt */,
 				76390E732666B3D000FFA5EC /* main.cpp */,
 				76390E7B2666B44E00FFA5EC /* Neural_Network.cpp */,
@@ -220,6 +225,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */,
+				76FA99472746C8C700DE35F4 /* Makefile in Sources */,
 				76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */,
 				76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */,
 				76390E812666B45D00FFA5EC /* Layer.cpp in Sources */,

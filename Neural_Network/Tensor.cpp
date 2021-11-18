@@ -160,16 +160,6 @@ void Tensor::copyTo(Tensor &T) {
     memcpy(T.weight, weight, sizeof(float) * min(size, T.size));
 }
 
-Tensor::Tensor(Tensor *T) : Tensor() {
-    if (T) {
-        this->reshape(T->batch, T->channel, T->height, T->width, T->delta_weight);
-        
-        memcpy(weight, T->weight, sizeof(float) * size);
-        if (T->delta_weight)
-            memcpy(delta_weight, T->delta_weight, sizeof(float) * size);
-    }
-}
-
 Tensor::Tensor(vfloat &V) : Tensor() {
     this->reshape(1, (int)V.size(), 1, 1, false);
     
@@ -225,11 +215,18 @@ float* Tensor::getDeltaWeight() {
 }
 
 void Tensor::showWeight() {
-    int n = size;
-    for (int i = 0; i < n; ++i) {
-        printf("%.2f ", weight[i]);
+    for (int b = 0; b < batch; ++b) {
+        printf("Batch: %d\n", b);
+        for (int c = 0; c < channel; ++c) {
+            printf("Dim: %d\n", c);
+            for (int h = 0; h < height; ++h) {
+                for (int w = 0; w < width; ++w) {
+                    printf("%.2f ", this->get(b, c, h, w));
+                }
+                printf("\n");
+            }
+        }
     }
-    printf("\n");
 }
 
 void Tensor::showDeltaWeight() {
@@ -264,7 +261,7 @@ int Tensor::getDimension() {
 }
 
 void Tensor::shape() {
-    printf("width: %d height: %d channel: %d size: %d\n", width, height, channel, size);
+    printf("(%d, %d, %d, %d)\n", batch, channel, height, width);
 }
 
 float Tensor::get(int batch_, int channel_, int height_, int width_) {
@@ -306,6 +303,7 @@ void Tensor::toIMG(const char *filename) {
 
 ostream& operator<<(ostream& os, Tensor& t) {
     for (int b = 0; b < t.batch; ++b) {
+        os << "Batch: " << b << std::endl;
         for (int c = 0; c < t.channel; ++c) {
             os << "Dim: " << c << std::endl;
             for (int h = 0; h < t.height; ++h) {

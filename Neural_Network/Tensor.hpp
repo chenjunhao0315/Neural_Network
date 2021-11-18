@@ -38,7 +38,6 @@ public:
     Tensor& operator-=(const Tensor &T);
     float& operator[](int index);
     const float& operator[](int index) const;
-    Tensor(Tensor *T);
     Tensor(vfloat &V);
     Tensor(vfloat V1, vfloat V2, vfloat V3, int width_, int height_);
     Tensor(float* RGB, int width_, int height_, int channel_);

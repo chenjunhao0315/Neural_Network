@@ -42,6 +42,13 @@ private:
     unordered_map<int, tuple<float, vfloat, vfloat>> summary;
 };
 
+class DecisionTree {
+public:
+    DecisionTree(int max_depth_) : max_depth(max_depth_) {}
+private:
+    int max_depth;
+};
+
 float accuracy_score(vint &pred, vint &truth);
 
 #endif /* Machine_Learning_hpp */

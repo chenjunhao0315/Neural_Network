@@ -16,8 +16,14 @@ YOLOv4::YOLOv4(const char *model_name, int classes_, int batch_size) {
 //    network.load_darknet("yolov4-p6.weights");
 //    network.load_otter("yolov3-openimages.otter");
 //    network.load_darknet("yolov3-openimages.weights");
+//    network.load_otter("yolo-fastest-1.1-xl.otter");
+//    network.load_darknet("yolo-fastest-1.1-xl.weights");
+//    network.load_otter("yolov4_new.otter");
+//    network.load_darknet("yolov4_new.weights");
+//    network.save_ottermodel("yolov4_new.ottermodel");
     network.shape();
 //    network.show_detail();
+//    network.to_prototxt("yolo-fastest-1.1.prototxt");
     classes = 80;
     label = get_yolo_label("coco.txt", classes);
     network_structure net = network.getStructure();
@@ -32,11 +38,12 @@ vector<Detection> YOLOv4::detect(IMG &input) {
     convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, net_width, net_height, 3);
     
     Clock c;
-    vtensorptr feature_map = network.Forward(&src_tensor);
+    Tensor** feature_map = network.Forward(&src_tensor);
+    int feature_map_size = network.getOutputNum();
     c.stop_and_show();
     
     vector<Detection> dets;
-    for (int i = 0; i < feature_map.size(); ++i) {
+    for (int i = 0; i < feature_map_size; ++i) {
         vector<Detection> det = yolo_correct_box(feature_map[i], input.width, input.height, net_width, net_height, 0);
         dets.insert(dets.end(), det.begin(), det.end());
     }
@@ -81,7 +88,7 @@ void yolov4_mark(vector<Detection> &dets, IMG &img, int classes, float threshold
             h = text.height;
             
             img.drawRectangle(Rect(x1, y1, x2, y2), Color(r, g, b));
-            img.paste(text, Point((x1 < 0) ? 0 : x1, ((y1 - h) < 0) ? y1 : y1 - h));
+            img.paste(text, Point((x1 < 0) ? 0 : x1, ((y1 - h) < 0) ? 0 : y1 - h));
         }
     }
 }
@@ -1196,7 +1203,7 @@ unsigned long custom_hash(const char *str) {
     unsigned long hash = 5381;
     int c;
 
-    while (c = *str++)
+    while ((c = *str++) != '\0')
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
     return hash;

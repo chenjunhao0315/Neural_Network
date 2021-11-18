@@ -69,6 +69,7 @@ enum LayerType {
     EuclideanLoss,
     Yolov3,
     Yolov4,
+    RNN,
     Error
 };
 
@@ -113,12 +114,15 @@ class EuclideanLossLayer;
 class YOLOv3Layer;
 class YOLOv4Layer;
 
+// Recurrent layers
+class RNNLayer;
+
 #define opt_find(opt, type) \
     (opt.find(type) != opt.end())
 #define opt_get_int(opt, type) \
-    atoi(opt[type].c_str());
+    int(atoi(opt[type].c_str()));
 #define opt_get_float(opt, type) \
-    atof(opt[type].c_str());
+    float(atof(opt[type].c_str()));
 #define opt_find_int(opt, type, default) \
     (opt.find(type) == opt.end()) ? default : opt_get_int(opt, type)
 #define opt_find_float(opt, type, default) \
@@ -172,6 +176,10 @@ public:
         int input_width;
         int input_height;
         int input_dimension;
+        int hidden_nodes;
+        int output_nodes;
+        int time_steps;
+        int self_num;
         int concat_num;
         int splits;
         int split_id;
@@ -231,7 +239,12 @@ public:
 class RecurrentLayer : public BaseLayer {
 public:
     ~RecurrentLayer();
+    RecurrentLayer();
     RecurrentLayer(LayerOption opt_);
+    virtual void Forward() {}
+    virtual void Backward() {}
+    void applySelfLayers(int num);
+//protected:
     BaseLayer *self_layers;
 };
 
@@ -616,6 +629,12 @@ public:
     void Backward(Tensor *target);
     inline const char* Type() const {return "EuclideanLoss"; }
 private:
+};
+
+// RNN layer
+class RNNLayer : public RecurrentLayer {
+public:
+    RNNLayer(LayerOption opt_);
 };
 
 // YOLOv3 layer

@@ -26,11 +26,12 @@ vector<Detection> YOLOv3::detect(IMG &input) {
     convert_index_base_to_channel_base((float *)src_img.toPixelArray(), src_tensor.weight, net_width, net_height, 3);
     
     Clock c;
-    vtensorptr feature_map = network.Forward(&src_tensor);
+    Tensor** feature_map = network.Forward(&src_tensor);
+    int feature_map_size = network.getOutputNum();
     c.stop_and_show();
     
     vector<Detection> dets;
-    for (int i = 0; i < feature_map.size(); ++i) {
+    for (int i = 0; i < feature_map_size; ++i) {
         vector<Detection> det = yolo_correct_box(feature_map[i], input.width, input.height, net_width, net_height, 0);
         dets.insert(dets.end(), det.begin(), det.end());
     }

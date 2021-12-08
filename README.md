@@ -1,7 +1,7 @@
 # Neural_Network
 
 ## About
-This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1], [Darknet][2] and [Caffe][4].
+This is a simple project to implement neural network in c++, the structure of network is inspired by [ConvNetJS][1], [Darknet][2], [Caffe][4] and [PyTorch][9].
 
 The main motivation for me to write this framework is the homework from NTHU EE231002 Lab14 Image Processing. There is a task need to add a box around my head and I want it to do automatically, when I discover this paper, [MTCNN][6], I know it is time for me to construct a neural network from scratch.
 
@@ -11,9 +11,11 @@ After finishing MTCNN, aiming to construct more complex network, I look for some
 
 At the time I finish YOLO, I find that my layer management is too complex due to bad data structure. I noticed [Caffe][4]'s layer registry by accident, that is what I want. Revise the code right away to manage my layer like that, creating new format to define network structure called **otter** to store network topology replacing the old tedious method.
 
-SSD...
-RNN...
-FASTER_RCNN...
+SSD...<br>
+RNN...<br>
+FASTER_RCNN...<br>
+
+Introduce new Tensor data structure based on libtorch, try to implement autograd system with static and dynamic graph.
 
 ## Feature
 * C++11
@@ -678,6 +680,7 @@ int main(int argc, const char * argv[]) {
 [6]: https://arxiv.org/pdf/1604.02878.pdf
 [7]: https://arxiv.org/pdf/1804.02767.pdf
 [8]: https://www.youtube.com/watch?v=XJ7HLz9VYz0&list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh
+[9]: https://github.com/pytorch/pytorch
 
 
 

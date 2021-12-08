@@ -15,6 +15,7 @@
 #include "YOLOv4.hpp"
 #include "Test_All_Layer.hpp"
 #include "Machine_Learning.hpp"
+#include "OtterTensorFactory.hpp"
 
 using namespace std;
 
@@ -54,8 +55,8 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_0_65024_v4_r17.ottermodel");
-    IMG img("person.jpg");
+    YOLOv4 yolo("backup_0_90048_v4_r19.ottermodel");
+    IMG img("umbrella.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
     
@@ -130,6 +131,45 @@ int main(int argc, const char * argv[]) {
 //    vtensor data_cat = cat.get(1);
 //    Tensor **result = nn.Forward(&data_cat[0]);
 //    cout << *result[0];
+    
+//    autograd::tensor<float> a(1, 1, 1, 6), b(1, 1, 1, 6);
+//    a = {1, 2, 3, 4, 5, 6}; a.set_name("a");
+////    b = {1, 1, 1, 1, 1, 1}; b.set_name("b");
+//    autograd::tensor<float> c = autograd::add(a, 1.f);
+//    c.set_name("c");
+//    autograd::tensor<float> d = autograd::pow(c, 2.f);
+//    d.set_name("d");
+//    autograd::tensor<float> e(1, 1, 1, 6);
+//    e = {2, 2, 2, 2, 2, 2};
+//    e.set_name("e");
+//    autograd::tensor<float> f = autograd::mul(d, e);
+//    f.set_name("f");
+//    autograd::tensor<float> g(1, 1, 1, 6);
+//    g = {1./6, 1./6, 1./6, 1./6, 1./6, 1./6};
+//    g.set_name("g");
+//
+//    autograd::tensor<float> h = autograd::mul(f, g);
+//    h.set_name("h");
+//
+//    h.forward();
+//    h.backward();
+//    a.show_diff();
+//
+//    autograd::tensor<float> a(1, 1, 1, 2), b(1, 1, 1, 2);
+//
+//    autograd::tensor<float> c(a.shape());
+//    cout << c;
+//
+//    autograd::tensor<float> d = autograd::add<float>(a, b);
+//
+//    cout << a << b;
+    
+//    OtterMemory_Tiny a(5);
+//    a.status();
+//
+//    otter::Tensor i = otter::empty_cpu({1, 28, 28, 3}, ScalarType::Int);
+//
+//    i.print();
     
     return 0;
 }

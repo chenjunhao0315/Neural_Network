@@ -9,6 +9,13 @@
 /* Begin PBXBuildFile section */
 		7605471A26BC17F900909C8B /* Mat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7605471826BC17F900909C8B /* Mat.cpp */; };
 		760C6CA226696CED0098007D /* Data_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 760C6CA026696CED0098007D /* Data_Process.cpp */; };
+		7612F35F275921F70065F405 /* OtterTensor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F35D275921F70065F405 /* OtterTensor.cpp */; };
+		7612F366275A88C00065F405 /* OtterDType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F364275A88C00065F405 /* OtterDType.cpp */; };
+		7612F369275F019A0065F405 /* OtterPerspectiveView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F367275F019A0065F405 /* OtterPerspectiveView.cpp */; };
+		7612F36C275FB9DC0065F405 /* OtterArrayRef.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F36A275FB9DC0065F405 /* OtterArrayRef.cpp */; };
+		7612F37227614BB00065F405 /* OtterAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37027614BB00065F405 /* OtterAllocator.cpp */; };
+		7612F37527614CFC0065F405 /* OtterTensorFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37327614CFC0065F405 /* OtterTensorFactory.cpp */; };
+		7612F378276150E70065F405 /* OtterAccumulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F376276150E70065F405 /* OtterAccumulator.cpp */; };
 		761AB9952711C75C00779088 /* Otter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 761AB9932711C75C00779088 /* Otter.cpp */; };
 		76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E5C26F9C845008E30A8 /* YOLOv4.cpp */; };
 		76208E6426FE340C008E30A8 /* Box.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E6226FE340C008E30A8 /* Box.cpp */; };
@@ -24,6 +31,7 @@
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
 		76FA99472746C8C700DE35F4 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 76FA99462746C8C700DE35F4 /* Makefile */; };
+		76FA99512747DC8200DE35F4 /* OtterMemory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76FA994F2747DC8200DE35F4 /* OtterMemory.cpp */; };
 		76FDA0DC26F7C0F2006C816D /* libomp.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 76FDA0DB26F7C0F2006C816D /* libomp.dylib */; };
 /* End PBXBuildFile section */
 
@@ -45,6 +53,20 @@
 		7605471F26BDE05A00909C8B /* Cast.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Cast.hpp; sourceTree = "<group>"; };
 		760C6CA026696CED0098007D /* Data_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_Process.cpp; sourceTree = "<group>"; };
 		760C6CA126696CED0098007D /* Data_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_Process.hpp; sourceTree = "<group>"; };
+		7612F35D275921F70065F405 /* OtterTensor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterTensor.cpp; sourceTree = "<group>"; };
+		7612F35E275921F70065F405 /* OtterTensor.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterTensor.hpp; sourceTree = "<group>"; };
+		7612F364275A88C00065F405 /* OtterDType.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterDType.cpp; sourceTree = "<group>"; };
+		7612F365275A88C00065F405 /* OtterDType.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterDType.hpp; sourceTree = "<group>"; };
+		7612F367275F019A0065F405 /* OtterPerspectiveView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterPerspectiveView.cpp; sourceTree = "<group>"; };
+		7612F368275F019A0065F405 /* OtterPerspectiveView.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterPerspectiveView.hpp; sourceTree = "<group>"; };
+		7612F36A275FB9DC0065F405 /* OtterArrayRef.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterArrayRef.cpp; sourceTree = "<group>"; };
+		7612F36B275FB9DC0065F405 /* OtterArrayRef.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterArrayRef.hpp; sourceTree = "<group>"; };
+		7612F37027614BB00065F405 /* OtterAllocator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterAllocator.cpp; sourceTree = "<group>"; };
+		7612F37127614BB00065F405 /* OtterAllocator.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterAllocator.hpp; sourceTree = "<group>"; };
+		7612F37327614CFC0065F405 /* OtterTensorFactory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterTensorFactory.cpp; sourceTree = "<group>"; };
+		7612F37427614CFC0065F405 /* OtterTensorFactory.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterTensorFactory.hpp; sourceTree = "<group>"; };
+		7612F376276150E70065F405 /* OtterAccumulator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterAccumulator.cpp; sourceTree = "<group>"; };
+		7612F377276150E70065F405 /* OtterAccumulator.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterAccumulator.hpp; sourceTree = "<group>"; };
 		761AB9932711C75C00779088 /* Otter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Otter.cpp; sourceTree = "<group>"; };
 		761AB9942711C75C00779088 /* Otter.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Otter.hpp; sourceTree = "<group>"; };
 		761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = Neural_Network.profdata; sourceTree = "<group>"; };
@@ -77,6 +99,8 @@
 		76CD64E6269F8B6D00A4EDFD /* Jpeg.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Jpeg.hpp; sourceTree = "<group>"; };
 		76FA99462746C8C700DE35F4 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		76FA99482746C8D000DE35F4 /* otter.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = otter.py; sourceTree = "<group>"; };
+		76FA994F2747DC8200DE35F4 /* OtterMemory.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterMemory.cpp; sourceTree = "<group>"; };
+		76FA99502747DC8200DE35F4 /* OtterMemory.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterMemory.hpp; sourceTree = "<group>"; };
 		76FDA0DB26F7C0F2006C816D /* libomp.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libomp.dylib; path = ../../../../../usr/local/Cellar/llvm/12.0.1/lib/libomp.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -92,6 +116,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7612F363275A886D0065F405 /* OTensor */ = {
+			isa = PBXGroup;
+			children = (
+				76FA994F2747DC8200DE35F4 /* OtterMemory.cpp */,
+				76FA99502747DC8200DE35F4 /* OtterMemory.hpp */,
+				7612F35D275921F70065F405 /* OtterTensor.cpp */,
+				7612F35E275921F70065F405 /* OtterTensor.hpp */,
+				7612F364275A88C00065F405 /* OtterDType.cpp */,
+				7612F365275A88C00065F405 /* OtterDType.hpp */,
+				7612F367275F019A0065F405 /* OtterPerspectiveView.cpp */,
+				7612F368275F019A0065F405 /* OtterPerspectiveView.hpp */,
+				7612F36A275FB9DC0065F405 /* OtterArrayRef.cpp */,
+				7612F36B275FB9DC0065F405 /* OtterArrayRef.hpp */,
+				7612F37027614BB00065F405 /* OtterAllocator.cpp */,
+				7612F37127614BB00065F405 /* OtterAllocator.hpp */,
+				7612F37327614CFC0065F405 /* OtterTensorFactory.cpp */,
+				7612F37427614CFC0065F405 /* OtterTensorFactory.hpp */,
+				7612F376276150E70065F405 /* OtterAccumulator.cpp */,
+				7612F377276150E70065F405 /* OtterAccumulator.hpp */,
+			);
+			path = OTensor;
+			sourceTree = "<group>";
+		};
 		761D5CF226B93FA1009A4FE3 /* OptimizationProfiles */ = {
 			isa = PBXGroup;
 			children = (
@@ -156,6 +203,7 @@
 				761AB9942711C75C00779088 /* Otter.hpp */,
 				768995EE271F27DD00128595 /* Machine_Learning.cpp */,
 				768995EF271F27DE00128595 /* Machine_Learning.hpp */,
+				7612F363275A886D0065F405 /* OTensor */,
 			);
 			path = Neural_Network;
 			sourceTree = "<group>";
@@ -224,19 +272,27 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7612F37527614CFC0065F405 /* OtterTensorFactory.cpp in Sources */,
 				76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */,
 				76FA99472746C8C700DE35F4 /* Makefile in Sources */,
 				76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */,
 				76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */,
 				76390E812666B45D00FFA5EC /* Layer.cpp in Sources */,
 				7605471A26BC17F900909C8B /* Mat.cpp in Sources */,
+				7612F37227614BB00065F405 /* OtterAllocator.cpp in Sources */,
 				760C6CA226696CED0098007D /* Data_Process.cpp in Sources */,
+				7612F366275A88C00065F405 /* OtterDType.cpp in Sources */,
 				76390E742666B3D000FFA5EC /* main.cpp in Sources */,
+				7612F369275F019A0065F405 /* OtterPerspectiveView.cpp in Sources */,
+				7612F35F275921F70065F405 /* OtterTensor.cpp in Sources */,
 				76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */,
 				76390E7D2666B44E00FFA5EC /* Neural_Network.cpp in Sources */,
 				768995F0271F27DE00128595 /* Machine_Learning.cpp in Sources */,
 				76390E892666B78800FFA5EC /* Utilities.cpp in Sources */,
 				76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */,
+				7612F36C275FB9DC0065F405 /* OtterArrayRef.cpp in Sources */,
+				76FA99512747DC8200DE35F4 /* OtterMemory.cpp in Sources */,
+				7612F378276150E70065F405 /* OtterAccumulator.cpp in Sources */,
 				76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */,
 				76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */,
 				76208E6426FE340C008E30A8 /* Box.cpp in Sources */,
@@ -370,11 +426,12 @@
 		76390E782666B3D000FFA5EC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
-				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,
@@ -386,11 +443,12 @@
 		76390E792666B3D000FFA5EC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
-				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,

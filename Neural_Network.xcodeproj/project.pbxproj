@@ -16,6 +16,11 @@
 		7612F37227614BB00065F405 /* OtterAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37027614BB00065F405 /* OtterAllocator.cpp */; };
 		7612F37527614CFC0065F405 /* OtterTensorFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37327614CFC0065F405 /* OtterTensorFactory.cpp */; };
 		7612F378276150E70065F405 /* OtterAccumulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F376276150E70065F405 /* OtterAccumulator.cpp */; };
+		7612F37B2761B1B10065F405 /* OtterTensorOption.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F3792761B1B10065F405 /* OtterTensorOption.cpp */; };
+		7612F37E27623D260065F405 /* OtterTensorIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37C27623D260065F405 /* OtterTensorIterator.cpp */; };
+		7612F381276270E70065F405 /* OtterScalar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F37F276270E70065F405 /* OtterScalar.cpp */; };
+		7612F38627627B3A0065F405 /* OtterScalarType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F38427627B3A0065F405 /* OtterScalarType.cpp */; };
+		7612F38927654A4E0065F405 /* OtterSmallVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7612F38727654A4E0065F405 /* OtterSmallVector.cpp */; };
 		761AB9952711C75C00779088 /* Otter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 761AB9932711C75C00779088 /* Otter.cpp */; };
 		76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E5C26F9C845008E30A8 /* YOLOv4.cpp */; };
 		76208E6426FE340C008E30A8 /* Box.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76208E6226FE340C008E30A8 /* Box.cpp */; };
@@ -28,6 +33,7 @@
 		76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76A40ED026A4CF4700A01830 /* Mtcnn.cpp */; };
 		76AD0BB826E22DFD006B3028 /* Test_All_Layer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76AD0BB626E22DFD006B3028 /* Test_All_Layer.cpp */; };
 		76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */; };
+		76CBF5E1276BD265000036E1 /* OtterMaybeOwned.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CBF5DF276BD265000036E1 /* OtterMaybeOwned.cpp */; };
 		76CD64E3269F8AF800A4EDFD /* Image_Process.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */; };
 		76CD64E7269F8B6D00A4EDFD /* Jpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */; };
 		76FA99472746C8C700DE35F4 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 76FA99462746C8C700DE35F4 /* Makefile */; };
@@ -67,6 +73,16 @@
 		7612F37427614CFC0065F405 /* OtterTensorFactory.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterTensorFactory.hpp; sourceTree = "<group>"; };
 		7612F376276150E70065F405 /* OtterAccumulator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterAccumulator.cpp; sourceTree = "<group>"; };
 		7612F377276150E70065F405 /* OtterAccumulator.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterAccumulator.hpp; sourceTree = "<group>"; };
+		7612F3792761B1B10065F405 /* OtterTensorOption.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterTensorOption.cpp; sourceTree = "<group>"; };
+		7612F37A2761B1B10065F405 /* OtterTensorOption.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterTensorOption.hpp; sourceTree = "<group>"; };
+		7612F37C27623D260065F405 /* OtterTensorIterator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterTensorIterator.cpp; sourceTree = "<group>"; };
+		7612F37D27623D260065F405 /* OtterTensorIterator.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterTensorIterator.hpp; sourceTree = "<group>"; };
+		7612F37F276270E70065F405 /* OtterScalar.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterScalar.cpp; sourceTree = "<group>"; };
+		7612F380276270E70065F405 /* OtterScalar.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterScalar.hpp; sourceTree = "<group>"; };
+		7612F38427627B3A0065F405 /* OtterScalarType.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterScalarType.cpp; sourceTree = "<group>"; };
+		7612F38527627B3A0065F405 /* OtterScalarType.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterScalarType.hpp; sourceTree = "<group>"; };
+		7612F38727654A4E0065F405 /* OtterSmallVector.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterSmallVector.cpp; sourceTree = "<group>"; };
+		7612F38827654A4E0065F405 /* OtterSmallVector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterSmallVector.hpp; sourceTree = "<group>"; };
 		761AB9932711C75C00779088 /* Otter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Otter.cpp; sourceTree = "<group>"; };
 		761AB9942711C75C00779088 /* Otter.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Otter.hpp; sourceTree = "<group>"; };
 		761D5CF326B93FA1009A4FE3 /* Neural_Network.profdata */ = {isa = PBXFileReference; lastKnownFileType = file; path = Neural_Network.profdata; sourceTree = "<group>"; };
@@ -93,6 +109,8 @@
 		76AD0BB726E22DFD006B3028 /* Test_All_Layer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Test_All_Layer.hpp; sourceTree = "<group>"; };
 		76BDC04A26D4440100E6EF7D /* YOLOv3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = YOLOv3.cpp; sourceTree = "<group>"; };
 		76BDC04B26D4440100E6EF7D /* YOLOv3.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = YOLOv3.hpp; sourceTree = "<group>"; };
+		76CBF5DF276BD265000036E1 /* OtterMaybeOwned.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OtterMaybeOwned.cpp; sourceTree = "<group>"; };
+		76CBF5E0276BD265000036E1 /* OtterMaybeOwned.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = OtterMaybeOwned.hpp; sourceTree = "<group>"; };
 		76CD64E1269F8AF800A4EDFD /* Image_Process.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Image_Process.cpp; sourceTree = "<group>"; };
 		76CD64E2269F8AF800A4EDFD /* Image_Process.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Image_Process.hpp; sourceTree = "<group>"; };
 		76CD64E5269F8B6D00A4EDFD /* Jpeg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Jpeg.cpp; sourceTree = "<group>"; };
@@ -135,6 +153,18 @@
 				7612F37427614CFC0065F405 /* OtterTensorFactory.hpp */,
 				7612F376276150E70065F405 /* OtterAccumulator.cpp */,
 				7612F377276150E70065F405 /* OtterAccumulator.hpp */,
+				7612F3792761B1B10065F405 /* OtterTensorOption.cpp */,
+				7612F37A2761B1B10065F405 /* OtterTensorOption.hpp */,
+				7612F37C27623D260065F405 /* OtterTensorIterator.cpp */,
+				7612F37D27623D260065F405 /* OtterTensorIterator.hpp */,
+				7612F37F276270E70065F405 /* OtterScalar.cpp */,
+				7612F380276270E70065F405 /* OtterScalar.hpp */,
+				7612F38427627B3A0065F405 /* OtterScalarType.cpp */,
+				7612F38527627B3A0065F405 /* OtterScalarType.hpp */,
+				7612F38727654A4E0065F405 /* OtterSmallVector.cpp */,
+				7612F38827654A4E0065F405 /* OtterSmallVector.hpp */,
+				76CBF5DF276BD265000036E1 /* OtterMaybeOwned.cpp */,
+				76CBF5E0276BD265000036E1 /* OtterMaybeOwned.hpp */,
 			);
 			path = OTensor;
 			sourceTree = "<group>";
@@ -273,11 +303,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				7612F37527614CFC0065F405 /* OtterTensorFactory.cpp in Sources */,
+				7612F37E27623D260065F405 /* OtterTensorIterator.cpp in Sources */,
+				7612F38627627B3A0065F405 /* OtterScalarType.cpp in Sources */,
+				76CBF5E1276BD265000036E1 /* OtterMaybeOwned.cpp in Sources */,
 				76A40ED226A4CF4700A01830 /* Mtcnn.cpp in Sources */,
 				76FA99472746C8C700DE35F4 /* Makefile in Sources */,
 				76208E5E26F9C845008E30A8 /* YOLOv4.cpp in Sources */,
 				76BDC04C26D4440100E6EF7D /* YOLOv3.cpp in Sources */,
 				76390E812666B45D00FFA5EC /* Layer.cpp in Sources */,
+				7612F37B2761B1B10065F405 /* OtterTensorOption.cpp in Sources */,
+				7612F381276270E70065F405 /* OtterScalar.cpp in Sources */,
 				7605471A26BC17F900909C8B /* Mat.cpp in Sources */,
 				7612F37227614BB00065F405 /* OtterAllocator.cpp in Sources */,
 				760C6CA226696CED0098007D /* Data_Process.cpp in Sources */,
@@ -285,6 +320,7 @@
 				76390E742666B3D000FFA5EC /* main.cpp in Sources */,
 				7612F369275F019A0065F405 /* OtterPerspectiveView.cpp in Sources */,
 				7612F35F275921F70065F405 /* OtterTensor.cpp in Sources */,
+				7612F38927654A4E0065F405 /* OtterSmallVector.cpp in Sources */,
 				76390E852666B46F00FFA5EC /* Tensor.cpp in Sources */,
 				76390E7D2666B44E00FFA5EC /* Neural_Network.cpp in Sources */,
 				768995F0271F27DE00128595 /* Machine_Learning.cpp in Sources */,
@@ -431,7 +467,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = 2;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,
@@ -448,7 +484,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMPILER_INDEX_STORE_ENABLE = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = 2;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/llvm/12.0.1/lib,

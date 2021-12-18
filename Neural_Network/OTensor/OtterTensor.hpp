@@ -13,6 +13,7 @@
 #include "OtterMemory.hpp"
 #include "OtterDType.hpp"
 #include "OtterPerspectiveView.hpp"
+#include "OtterMaybeOwned.hpp"
 
 #define NOT_IMPLEMENTED fprintf(stderr, "NOT_IMPLEMENTED!")
 
@@ -281,6 +282,11 @@ private:
 
 class TensorBase {
 public:
+    struct unsafe_borrow_t { explicit unsafe_borrow_t() = default; };
+protected:
+    explicit TensorBase(unsafe_borrow_t, const TensorBase& rhs) : tensor_nucleus_(OtterPtr<TensorNucleus>::reclaim(rhs.tensor_nucleus_.get())) {}
+    friend OtterMaybeOwnedTraits<TensorBase>;
+public:
     TensorBase() = default;
     TensorBase(const TensorBase&) = default;
     TensorBase(TensorBase&&) = default;
@@ -311,6 +317,14 @@ public:
     
     TensorNucleus* unsafeReleaseTensorNucleus() {
         return tensor_nucleus_.release();
+    }
+    
+    OtterPtr<TensorNucleus> getOtterPtr() const {
+        return tensor_nucleus_;
+    }
+    
+    OtterPtr<TensorNucleus> unsafeReleaseOtterPtr() {
+        return std::move(tensor_nucleus_);
     }
     
     int64_t memory_offset() {
@@ -378,22 +392,99 @@ TensorBase make_tensor_base(Args&&... args) {
     return TensorBase(make_otterptr<T>(std::forward<Args>(args)...));
 }
 
+template <>
+struct OtterMaybeOwnedTraits<TensorBase> {
+    using owned_type = TensorBase;
+    using borrow_type = TensorBase;
+    
+    static borrow_type create_borrow(const owned_type& from) {
+        return borrow_type(borrow_type::unsafe_borrow_t{}, from);
+    }
+    
+    static void assign_borrow(borrow_type& lhs, const borrow_type& rhs) {
+        lhs.unsafeReleaseTensorNucleus();
+        lhs = borrow_type(borrow_type::unsafe_borrow_t{}, rhs);
+    }
+
+    static void destroy_borrow(borrow_type& target) {
+        target.unsafeReleaseTensorNucleus();
+    }
+
+    static const owned_type& referenceFromBorrow(const borrow_type& borrow) {
+        return borrow;
+    }
+
+    static const owned_type* pointerFromBorrow(const borrow_type& borrow) {
+        return &borrow;
+    }
+};
+
+class OtterTensorRef;
+
 class Tensor : public TensorBase {
+protected:
+    explicit Tensor(unsafe_borrow_t, const TensorBase& rhs): TensorBase(unsafe_borrow_t{}, rhs) {}
+    friend OtterMaybeOwnedTraits<Tensor>;
+    friend OtterTensorRef;
 public:
     Tensor() = default;
 
     explicit Tensor(OtterPtr<TensorNucleus> tensor_nucleus) : TensorBase(std::move(tensor_nucleus)) {}
+    
     Tensor(const Tensor &tensor) = default;
     Tensor(Tensor &&tensor) = default;
     
     explicit Tensor(const TensorBase &base): TensorBase(base) {}
     Tensor(TensorBase &&base): TensorBase(std::move(base)) {}
+    
+    Tensor& operator=(const TensorBase& x) & {
+        tensor_nucleus_ = x.getOtterPtr();
+        return *this;
+    }
+    Tensor& operator=(TensorBase&& x) & {
+        tensor_nucleus_ = x.unsafeReleaseOtterPtr();
+        return *this;
+    }
+
+    Tensor& operator=(const Tensor &x) & {
+        return operator=(static_cast<const TensorBase&>(x));
+    }
+    Tensor& operator=(Tensor &&x) & {
+        return operator=(static_cast<TensorBase&&>(x));
+    }
 };
 
 template <typename T, typename... Args>
 Tensor make_tensor(Args&&... args) {
     return Tensor(make_otterptr<T>(std::forward<Args>(args)...));
 }
+
+template <>
+struct OtterMaybeOwnedTraits<Tensor> {
+    using owned_type = Tensor;
+    using borrow_type = Tensor;
+
+    static borrow_type create_borrow(const owned_type& from) {
+        return borrow_type(borrow_type::unsafe_borrow_t{}, from);
+    }
+
+    static void assign_borrow(borrow_type& lhs, const borrow_type& rhs) {
+        lhs.unsafeReleaseTensorNucleus();
+        lhs = borrow_type(borrow_type::unsafe_borrow_t{}, rhs);
+    }
+
+    static void destroy_borrow(borrow_type& toDestroy) {
+        toDestroy.unsafeReleaseTensorNucleus();
+    }
+
+    static const owned_type& referenceFromBorrow(const borrow_type& borrow) {
+        return borrow;
+    }
+
+    static const owned_type* pointerFromBorrow(const borrow_type& borrow) {
+        return &borrow;
+    }
+};
 
 }   // namespace otter
 

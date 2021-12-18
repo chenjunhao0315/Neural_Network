@@ -11,27 +11,9 @@
 #include <stdio.h>
 #include <string>
 
+#include "OtterScalarType.hpp"
+
 class _Uninitialized {};
-
-#define DTYPE_CONVERSION_TABLE(_)       \
-    _(uint8_t, Byte)      /* 0 */       \
-    _(int8_t, Char)       /* 1 */       \
-    _(int16_t, Short)     /* 2 */       \
-    _(int, Int)           /* 3 */       \
-    _(int64_t, Long)      /* 4 */       \
-    _(float, Float)       /* 5 */       \
-    _(double, Double)     /* 6 */       \
-    _(bool, Bool)         /* 7 */
-
-enum class ScalarType : int8_t {
-#define DEFINE_ENUM(_1, n) n,
-    DTYPE_CONVERSION_TABLE(DEFINE_ENUM)
-#undef DEFINE_ENUM
-    Undefined,
-    NumOptions
-};
-
-std::string toString(ScalarType type);
 
 struct OtterTypeData final {
     using New = void*();
@@ -226,7 +208,7 @@ private:
     constexpr uint16_t OtterType::type2index<T>() noexcept {     \
         return static_cast<uint16_t>(ScalarType::name);         \
     }
-    DTYPE_CONVERSION_TABLE(DEFINE_SCALAR_METADATA_INSTANCE)
+    OTTER_ALL_SCALAR_TYPES(DEFINE_SCALAR_METADATA_INSTANCE)
 #undef DEFINE_SCALAR_METADATA_INSTANCE
 
 template <>
@@ -235,6 +217,14 @@ constexpr uint16_t OtterType::type2index<_Uninitialized>() noexcept {
 }
 
 inline OtterType::OtterType() noexcept : index_(type2index<_Uninitialized>()) {}
+
+static inline OtterType scalarTypeToTypeMeta(ScalarType scalar_type) {
+  return OtterType::fromScalarType(scalar_type);
+}
+
+static inline ScalarType typeMetaToScalarType(OtterType dtype) {
+  return dtype.toScalarType();
+}
 
 inline bool operator==(const OtterType lhs, const OtterType rhs) noexcept {
     return (lhs.index_ == rhs.index_);

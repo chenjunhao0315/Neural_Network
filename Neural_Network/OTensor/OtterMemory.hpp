@@ -82,7 +82,7 @@ protected:
 private:
     virtual void release_resources() {}
     
-    int refCount_;
+    mutable int refCount_;
 };
 
 struct DontIncreaseRefcount {};
@@ -101,7 +101,7 @@ public:
         other.target_ = nullptr;
     }
     ~OtterPtr() noexcept {
-        reset();
+        reset_();
     }
     
     OtterPtr& operator=(OtterPtr&& rhs) & noexcept {

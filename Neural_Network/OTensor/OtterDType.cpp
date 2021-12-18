@@ -17,18 +17,8 @@ OtterTypeData* OtterType::typeMetaDatas() {
         _PickCopy<T>(),                     \
         _PickPlacementDelete<T>(),          \
         _PickDelete<T>()),
-    DTYPE_CONVERSION_TABLE(SCALAR_TYPE_META)
+    OTTER_ALL_SCALAR_TYPES(SCALAR_TYPE_META)
     #undef SCALAR_TYPE_META
   };
   return instances;
-}
-
-std::string toString(ScalarType type) {
-    switch(type) {
-#define DEFINE_STR(_1, n) case ScalarType::n: return std::string(#n); break;
-        DTYPE_CONVERSION_TABLE(DEFINE_STR)
-#undef DEFINE_STR
-        default:
-            return std::string("Undefined");
-    }
 }

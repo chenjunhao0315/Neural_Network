@@ -16,6 +16,9 @@
 #include "Test_All_Layer.hpp"
 #include "Machine_Learning.hpp"
 #include "OtterTensorFactory.hpp"
+#include "OtterTensorOption.hpp"
+#include "OtterScalar.hpp"
+#include "OtterSmallVector.hpp"
 
 using namespace std;
 
@@ -55,7 +58,7 @@ int main(int argc, const char * argv[]) {
 //    yolo.detect(img);
 //    img.save("detected.jpg", 100);
     
-    YOLOv4 yolo("backup_0_90048_v4_r19.ottermodel");
+    YOLOv4 yolo("yolo-fastest-1.1-xl.ottermodel");
     IMG img("umbrella.jpg");
     yolo.detect(img);
     img.save("detected.jpg", 100);
@@ -167,9 +170,10 @@ int main(int argc, const char * argv[]) {
 //    OtterMemory_Tiny a(5);
 //    a.status();
 //
-//    otter::Tensor i = otter::empty_cpu({1, 28, 28, 3}, ScalarType::Int);
-//
-//    i.print();
+    otter::Tensor i = otter::empty_cpu({1, 28, 28, 3}, ScalarType::Int);
+
+    i.print();
+    
     
     return 0;
 }

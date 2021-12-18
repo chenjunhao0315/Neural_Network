@@ -11,8 +11,6 @@
 #include <stdio.h>
 #include <memory>
 
-#endif /* OtterAllocator_hpp */
-
 #ifndef OTTER_LOC
 #define OTTER_LOC __FILE__, __func__, __LINE__
 #endif
@@ -133,3 +131,5 @@ struct DefaultAllocator : public Allocator {
 static DefaultAllocator default_allocator;
 Allocator* get_default_allocator();
 Allocator* GetAllocator(Device device);
+
+#endif /* OtterAllocator_hpp */
